@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"23"`` for the ``js`` family and ``"41"`` for
+Schema (fact version ``"23"`` for the ``js`` family and ``"42"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -287,7 +287,19 @@ logger = logging.getLogger(__name__)
 # the file, or a file-wide frame trigger (``f_locals`` reads included); a
 # parameter or other binding of such a function is reachable too (R-707-1).
 # Unreleased as "39" on the #721 branch; renumbered after #714 and #727.
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "23", "python": "41"}
+# python "42": treesitter-chunker#699 S4 (plan 699-702 PY-6, PY-7, PY-9,
+# PY-10; ruling R-699-1 Q2, Q5, Q6, B-6, B-7): ``gc`` by member allow-list
+# plus the heap walkers as tokens fails closed file-wide in Tier 1 and is a
+# run-wide ``module-object`` cause in Tier 2; ``.patch`` on any receiver is a
+# patcher (W-3 semantics; handed on or named by string it fails closed in
+# Tier 1 and is an ``unresolvable-writer`` in Tier 2); in Tier 2 every
+# frame-locals spelling (``f_locals`` reads included, ``getargvalues``,
+# ``getgeneratorlocals``, ``getcoroutinelocals``, ``getasyncgenlocals``,
+# ``curframe_locals``), ``locals``/``vars`` as a value, import name or
+# constant-string token, and ``cell_contents`` other than a plain read are
+# ``module-object`` causes. Provisional: renumbered at merge if #726 or #729
+# lands first.
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "23", "python": "42"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.

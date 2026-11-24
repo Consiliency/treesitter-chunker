@@ -60,6 +60,18 @@ TESTS = (
     T1 + "test_unreadable_fstring_bytes_fail_closed",
     T1 + "test_main_needs_a_whole_component",
     T1 + "test_main_guard_resolves_the_call_in_its_body",
+    # treesitter-chunker#699 S4: the Tier 1 halves of PY-7 and PY-10.
+    T1 + "test_gc_off_its_member_list_fails_closed_file_wide",
+    T1 + "test_gc_member_list_controls_still_resolve",
+    T1 + "test_gc_traced_routes_fail_closed",
+    T1 + "test_patch_on_any_receiver_fails_closed",
+    T1 + "test_patch_on_any_receiver_controls_still_resolve",
+    # Ruling R-699-10: imported patchers from any module, in Tier 1.
+    T1 + "test_r10_imported_patchers_fail_closed",
+    T1 + "test_r10_imported_patch_multiple_fails_closed",
+    T1 + "test_r10_imported_patcher_controls_still_resolve",
+    T1 + "test_r11_private_patchers_on_any_receiver_fail_closed",
+    T1 + "test_r12_patch_tokens_fail_closed",
 )
 
 # (id, file, old text, new text). The old text must occur in the file once.
@@ -644,15 +656,9 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "                facts.shutoff.add(CAUSE_MODULE_OBJECT)\n"
         "            if spellings & _RESOLVER_NAMES:",
     ),
-    (
-        "frame-locals-reads",
-        PYM,
-        '    """``X.f_locals`` used only as a read (a closed list): ``.get(...)``\n'
-        '    called, a subscript read, or the right operand of ``in``/``not in``."""\n',
-        '    """``X.f_locals`` used only as a read (a closed list): ``.get(...)``\n'
-        '    called, a subscript read, or the right operand of ``in``/``not in``."""\n'
-        "    return True\n",
-    ),
+    # ("frame-locals-reads" is retired: treesitter-chunker#699 S4, PY-9,
+    # removed the Tier 2 read allow-list it disabled; every ``f_locals``
+    # spelling is a cause, killed by "s4-frame-readers-identifier".)
     (
         "runpy-loader",
         PYM,
@@ -888,12 +894,10 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "                if name not in self.mockers:",
         "                if False:",
     ),
-    (
-        "e6-9-getfixturevalue-mocker",
-        PYM,
-        "    mockers = _MOCKER_NAMES | patchers.mockers",
-        "    mockers = _MOCKER_NAMES",
-    ),
+    # ("e6-9-getfixturevalue-mocker" is retired: treesitter-chunker#699 S4,
+    # PY-10, makes ``X.patch`` a patcher on any receiver, so the fixture-name
+    # check in ``_scan_patchers`` it disabled is gone; the fixture's escapes
+    # stay, killed by "e6-9-mp-alias-fixpoint" and "p6-5-...".)
     (
         "e6-9-computed-fixture-name",
         PYM,
@@ -1052,9 +1056,11 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "            if False:",
     ),
     (
+        # Re-anchored by treesitter-chunker#699 S4: every frame-locals word of
+        # a constant string (PY-9), ``f_locals`` included.
         "b-string-f-locals",
         PYM,
-        "            if _FRAME_LOCALS in parts:",
+        "            if words & _FRAME_READERS:",
         "            if False:",
     ),
     (
@@ -1365,6 +1371,304 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         '            attribute = parent.type == "attribute" and _same(\n',
         "            ):\n                pass\n"
         '            attribute = parent.type == "attribute" and _same(\n',
+    ),
+    # treesitter-chunker#699 S4 (PY-6, PY-7 with B-7, PY-9 with B-6, PY-10).
+    (
+        "s4-gc-checked-module",
+        PYS,
+        "    _GC: _GC_SAFE,\n}",
+        "}",
+    ),
+    (
+        "s4-gc-unsafe-member-on-list",
+        PYS,
+        '        "is_finalized",\n        "DEBUG_COLLECTABLE",',
+        '        "is_finalized",\n        "garbage",\n        "DEBUG_COLLECTABLE",',
+    ),
+    (
+        "s4-gc-walker-token",
+        PYS,
+        "            if spellings & _GC_WALKERS:",
+        "            if False:",
+    ),
+    (
+        "s4-gc-walker-string",
+        PYS,
+        "        if set(_TOKEN_WORDS.split(value)) & _GC_WALKERS:",
+        "        if False:",
+    ),
+    (
+        "s4-gc-attribute",
+        PYS,
+        "                elif name == _GC:",
+        "                elif False:",
+    ),
+    (
+        "s4-gc-acquired",
+        PYS,
+        "        if acquired and _GC in _ACQUIRED_PARTS.split(value):",
+        "        if False:",
+    ),
+    (
+        "s4-gc-fires-as-string-code",
+        PYS,
+        "        if module == _GC:\n            self.heap_walk = True\n        else:",
+        "        if False:\n            pass\n        else:",
+    ),
+    (
+        "s4-gc-tier1-file-wide",
+        PYS,
+        "        if self.heap_walk:\n            # PY-7: a heap walk",
+        "        if False:\n            # PY-7: a heap walk",
+    ),
+    (
+        "s4-gc-tier2-cause",
+        PYM,
+        "    if analysis.heap_walk:",
+        "    if False:",
+    ),
+    (
+        "s4-patch-any-receiver-call",
+        PYS,
+        "            elif _is_patch_attribute(function, self.source):\n"
+        '                kind = "patch"  # ``X.patch(...)`` for any ``X`` (PY-10)\n',
+        "",
+    ),
+    (
+        "s4-patch-handed-on",
+        PYS,
+        "                and not _patch_applied(node, self.source)\n"
+        "                and not self._sensitive(node, _PATCH)\n",
+        "                and False\n",
+    ),
+    (
+        "s4-patch-recognised-alias-exempt",
+        PYS,
+        "                and not self._sensitive(node, _PATCH)\n",
+        "",
+    ),
+    (
+        "s4-patch-attribute-target",
+        PYS,
+        "                and node.id not in self.attribute_targets\n"
+        "                and not _patch_applied(node, self.source)\n",
+        "                and not _patch_applied(node, self.source)\n",
+    ),
+    (
+        "s4-patch-applied-methods",
+        PYS,
+        "        and _text(method, source) in _PATCH_METHODS\n"
+        "        and _callee_call(parent) is not None\n",
+        "        and False\n",
+    ),
+    (
+        "s4-patch-name-string",
+        PYS,
+        "        for node in self._patch_name_strings():",
+        "        for node in ():",
+    ),
+    (
+        "s4-patch-tier2-any-receiver",
+        PYM,
+        "        if node is not None and ps._is_patch_attribute(node, source):\n"
+        "            # PY-10: ``X.patch`` on any receiver",
+        "        if False:\n            # PY-10: ``X.patch`` on any receiver",
+    ),
+    (
+        "s4-patch-tier2-call-receiver",
+        PYM,
+        "        if not names and receiver is not None and function is not None:",
+        "        if False:",
+    ),
+    (
+        "s4-patch-tier2-reads",
+        PYM,
+        "    _scan_patch_reads(analysis, facts)\n",
+        "",
+    ),
+    (
+        "s4-patch-tier2-name-string",
+        PYM,
+        '        if value is not None and "patch" in ps._TOKEN_PARTS.split(value):',
+        "        if False:",
+    ),
+    (
+        "s4-patch-tier2-recognised-alias-exempt",
+        PYM,
+        "            and not analysis._sensitive(node, ps._PATCH)\n",
+        "",
+    ),
+    (
+        "s4-patch-tier2-attribute-target",
+        PYM,
+        "            and node.id not in analysis.attribute_targets\n"
+        "            and not ps._patch_applied(node, source)\n",
+        "            and not ps._patch_applied(node, source)\n",
+    ),
+    (
+        "s4-frame-readers-identifier",
+        PYM,
+        "        if spellings & _FRAME_READERS:",
+        "        if False:",
+    ),
+    (
+        "s4-frame-readers-drop-getargvalues",
+        PYM,
+        '        _FRAME_LOCALS,\n        "getargvalues",\n',
+        "        _FRAME_LOCALS,\n",
+    ),
+    (
+        "s4-frame-readers-drop-curframe-locals",
+        PYM,
+        '        "getasyncgenlocals",\n        "curframe_locals",\n',
+        '        "getasyncgenlocals",\n',
+    ),
+    (
+        "s4-frame-readers-words",
+        PYS,
+        '_TOKEN_WORDS = re.compile(r"[^A-Za-z0-9_]+")',
+        '_TOKEN_WORDS = re.compile(r"[.:]")',
+    ),
+    (
+        "s4-locals-value-cause",
+        PYM,
+        "    if any(node is None for node, _by_lookup in analysis._locals_readers()):",
+        "    if False:",
+    ),
+    (
+        "s4-cell-identifier",
+        PYM,
+        "        if _CELL_CONTENTS in spellings and not _cell_read(analysis, ident):",
+        "        if False:",
+    ),
+    (
+        "s4-cell-read-is-write",
+        PYM,
+        "        if _CELL_CONTENTS in spellings and not _cell_read(analysis, ident):",
+        "        if _CELL_CONTENTS in spellings:",
+    ),
+    (
+        "s4-cell-string",
+        PYM,
+        "            if _CELL_CONTENTS in words:",
+        "            if False:",
+    ),
+    (
+        "s4-cell-target",
+        PYM,
+        "        or parent.id in analysis.attribute_targets\n    ):\n        return False\n"
+        "    outer = parent",
+        "    ):\n        return False\n    outer = parent",
+    ),
+    (
+        "s4-cell-descriptor",
+        PYM,
+        "        return method is not None and not ps._dunder(ps._text(method, analysis.source))",
+        "        return True",
+    ),
+    # Ruling R-699-10 (the Fable review of #733).
+    (
+        "r10-getclosurevars-reader",
+        PYM,
+        '        "getclosurevars",\n',
+        "",
+    ),
+    (
+        "r10-imported-patch-any-module",
+        PYS,
+        '                if kind == "import_from_statement":\n'
+        "                    # treesitter-chunker#699 R-699-10 item 2",
+        '                if kind == "import_from_statement" and module_parts in (\n'
+        '                    ["unittest", "mock"],\n'
+        '                    ["mock"],\n'
+        "                ):\n"
+        "                    # treesitter-chunker#699 R-699-10 item 2",
+    ),
+    (
+        "r10-class-pattern-keyword",
+        PYM,
+        "            if ps._spellings(keyword, source) & _CLASS_PATTERN_PATCHERS:",
+        "            if False:",
+    ),
+    (
+        "r10-class-pattern-patch",
+        PYM,
+        '_CLASS_PATTERN_PATCHERS = _PATCH_METHOD_NAMES | {"patch"}',
+        "_CLASS_PATTERN_PATCHERS = _PATCH_METHOD_NAMES",
+    ),
+    (
+        "r10-class-pattern-methods",
+        PYM,
+        '_CLASS_PATTERN_PATCHERS = _PATCH_METHOD_NAMES | {"patch"}',
+        '_CLASS_PATTERN_PATCHERS = frozenset({"patch"})',
+    ),
+    (
+        "r10-star-patcher",
+        PYM,
+        "                if builder.exposes_patcher(node, None):",
+        "                if False:",
+    ),
+    # Ruling R-699-12.
+    (
+        "r12-private-identifier-tier1",
+        PYS,
+        "            if spellings & _PRIVATE_PATCH_TOKENS:\n                self.dynamic = True",
+        "            if False:\n                self.dynamic = True",
+    ),
+    (
+        "r12-private-identifier-tier2",
+        PYM,
+        "            ps._spellings(node, source) & ps._PRIVATE_PATCH_TOKENS",
+        "            False",
+    ),
+    (
+        "r12-token-string-tier1",
+        PYS,
+        "            ) or _patch_token_string(node, self.source):",
+        "            ):",
+    ),
+    (
+        "r12-token-string-tier2",
+        PYM,
+        "        if ps._patch_token_string(node, source):",
+        "        if False:",
+    ),
+    (
+        "r12-patch-exact-string",
+        PYS,
+        "    return value == _PATCH or bool(",
+        "    return bool(",
+    ),
+    (
+        "r12-private-string-words",
+        PYS,
+        "        set(_TOKEN_WORDS.split(value)) & _PRIVATE_PATCH_TOKENS",
+        "        set()",
+    ),
+    (
+        "r12-get-target-token",
+        PYS,
+        '"_patch_dict", "_get_target"}',
+        '"_patch_dict"}',
+    ),
+    (
+        "r12-whole-literal",
+        PYS,
+        "        return False  # judged as part of the whole literal",
+        "        pass",
+    ),
+    (
+        "r12-larger-constant",
+        PYS,
+        "        return False  # judged as part of the larger constant (``'pat' + 'ch'``)",
+        "        pass",
+    ),
+    (
+        "r12-reexport-any-scope",
+        PYM,
+        "            if any(\n                builder.exposes_patcher(start, name)\n"
+        "                for start in builder.targets(module, path)\n            ):",
+        "            if False:",
     ),
 )
 

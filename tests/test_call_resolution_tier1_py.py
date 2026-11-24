@@ -6100,11 +6100,11 @@ def test_code_surgery_and_ctypes_fail_closed_everywhere() -> None:
 @pytest.mark.parametrize(
     "form",
     [
-        # Heap walking alone, parameter defaults, read-only views and
-        # introspection metadata cannot change a proven binding (plan R12).
-        # ``__self__`` and ``__builtins__`` reach the builtins namespace,
-        # which only module-scope lookups fall back to (#695 O-3b).
-        "import gc\nrefs = gc.get_referrers(f)",
+        # Parameter defaults, read-only views and introspection metadata
+        # cannot change a proven binding. ``__self__`` and ``__builtins__``
+        # reach the builtins namespace, which only module-scope lookups fall
+        # back to (#695 O-3b). (Heap walking fails closed since #699 PY-7:
+        # ``test_gc_off_its_member_list_fails_closed_file_wide``.)
         "f.__defaults__ = (1,)",
         "f.__kwdefaults__ = {'a': 1}",
         "m = obj.__func__\ns = obj.__self__",
@@ -6118,13 +6118,338 @@ def test_routes_that_cannot_rebind_a_proof_still_resolve(form: str) -> None:
     assert proof_text(source) == ["def helper():\n        return 1"], form
 
 
-def test_heap_walked_dict_writes_are_caught_by_the_attribute_write_rule() -> None:
+def test_heap_walked_dict_writes_fail_closed() -> None:
+    # Before #699 PY-7 the attribute-write rule caught this one
+    # (``mixed-bindings``); the ``gc`` member list now fails closed first.
     source = (
         HELPER
         + "import gc\nfor d in gc.get_referrers(helper):\n    d['helper'] = len\n"
         "\n\ndef use():\n    return helper()\n"
     )
-    assert reason(source) == "mixed-bindings"
+    assert reason(source) == "dynamic-scope"
+
+
+# ---------------------------------------------------------------------------
+# treesitter-chunker#699 S4, PY-7 (ruling R-699-1 Q2 with B-7): ``gc`` by a
+# member allow-list, decided at the use site, plus the heap walkers as tokens.
+# Each fail-closed row is a runtime-traced tree (CPython 3.14.10 printed
+# ``runtime: 2`` while main 891e8997 proved ``helper``), or a spelling of one.
+
+GC_FAILS_CLOSED = {
+    "import": "import gc\nX = [o for o in gc.get_referents(f)]",
+    "import-as": "import gc as g\nX = g.get_referents(f)",
+    "from-member": "from gc import get_referents as r\nX = r(f)",
+    "from-garbage": "from gc import garbage\nX = garbage",
+    "from-star": "from gc import *\nX = 1",
+    "alias": "import gc\nm = gc\nX = m.get_referents(f)",
+    "passed": "import gc\nX = list(map(str, [gc]))",
+    "getattr": "import gc\nX = getattr(gc, 'collect')()",
+    "get-objects": "import gc\nX = gc.get_objects()",
+    "get-referrers": "import gc\nX = gc.get_referrers(f)",
+    "garbage": "import gc\ngc.set_debug(gc.DEBUG_SAVEALL)\nX = gc.garbage",
+    "callbacks": "import gc\ngc.callbacks.append(print)",
+    "function-local": "def g():\n    import gc\n    return gc.get_referents(f)",
+    "class-body": "class K:\n    import gc\nX = K.gc",
+    "project-attribute": "import compat\nX = compat.gc.get_referents(f)",
+    "other-module-attribute": "import os\nX = os.gc",
+    "project-from-import": "from compat import gc as g\nX = g.get_referents(f)",
+    "walker-token-import": "from compat import get_referents\nX = get_referents(f)",
+    "walker-token-string": "X = getattr(obj, 'get_' 'referrers')",
+    "walker-token-dotted": "import operator\nX = operator.attrgetter('gc.get_objects')",
+    "walker-token-definition": "def get_objects():\n    return []",
+    "import-module": "import importlib\nX = importlib.import_module('gc')",
+    "sys-modules": "import sys\nX = sys.modules['gc']",
+}
+
+
+@pytest.mark.parametrize("case", sorted(GC_FAILS_CLOSED))
+def test_gc_off_its_member_list_fails_closed_file_wide(case: str) -> None:
+    """Every spelling fails closed for module and function scope alike
+    (``dynamic`` and ``frame_locals``): a heap walk reaches a function's
+    globals dict, code object and closure cells."""
+    source = GC_FAILS_CLOSED[case] + "\n\n\n" + LOCAL_PROOF
+    assert reason(source) == "dynamic-scope", case
+
+
+GC_CONTROLS = {
+    "collect": "import gc\ngc.collect()\ngc.disable()\ngc.enable()",
+    "counters": "import gc\nX = (gc.get_count(), gc.get_threshold(), gc.get_stats())",
+    "debug": "import gc\ngc.set_debug(gc.DEBUG_STATS | gc.DEBUG_LEAK)",
+    "tracked": "import gc\nX = gc.is_tracked([]) or gc.is_finalized(f)",
+    "freeze": "import gc\ngc.freeze()\ngc.unfreeze()\nX = gc.get_freeze_count()",
+    "from-safe": "from gc import collect, isenabled\ncollect()\nX = isenabled()",
+    "function-local": "def g():\n    import gc\n    gc.collect()",
+    "attribute-safe": "import compat\ncompat.gc.collect()",
+    "attribute-write": "class K:\n    pass\nK.gc = 1",
+    "lambda-parameter": "P = lambda gc: gc.resolve",
+    "local-name": "def g(gc):\n    return gc.get_referents",
+}
+
+
+@pytest.mark.parametrize("case", sorted(GC_CONTROLS))
+def test_gc_member_list_controls_still_resolve(case: str) -> None:
+    source = GC_CONTROLS[case] + "\n\n\n" + LOCAL_PROOF
+    if case == "local-name":
+        # A heap-walker token in any position counts (R-724-1 token rule).
+        assert reason(source) == "dynamic-scope"
+        return
+    assert proof_text(source) == ["def helper():\n        return 1"], case
+
+
+def test_gc_member_lists_are_pinned_against_cpython() -> None:
+    """Every member of ``gc`` is classified, so a new one fails this test
+    until it is."""
+    import gc
+
+    members = {name for name in dir(gc) if not name.startswith("__")}
+    assert members == py_scope._GC_SAFE | py_scope._GC_UNSAFE
+    assert not py_scope._GC_SAFE & py_scope._GC_UNSAFE
+    assert py_scope._GC_WALKERS <= py_scope._GC_UNSAFE
+    assert frozenset({"get_referents", "get_referrers", "get_objects"}) == (
+        py_scope._GC_WALKERS
+    )
+
+
+GC_TRACED = {
+    # (planner/probes.py and the S4 battery; ``runtime: 2`` on CPython 3.14.10.)
+    "rf_gc_globals_update": (
+        "import gc\n\n\n" + "def helper(s):\n    return 'DEF'\n\n\n"
+        "def run():\n    return helper('ab')\n\n\n"
+        "D = dict(helper=len)\n"
+        "g = [o for o in gc.get_referents(run) if type(o) is dict][0]\ng.update(D)\n"
+    ),
+    "g7_from_import_member": (
+        "from gc import get_referents as r\n\n\n"
+        "def helper(s):\n    return 'DEF'\n\n\n"
+        "def run():\n    return helper('ab')\n\n\n"
+        "D = dict(helper=len)\n[o for o in r(run) if type(o) is dict][0].update(D)\n"
+    ),
+    "g7_cells_alias": (
+        "import gc\n\nw = gc\n\n\n"
+        "def mk():\n    helper = len\n    return lambda: helper\n\n\n"
+        "def run():\n    def helper(s):\n        return 'DEF'\n\n"
+        "    def invoke():\n        return helper('ab')\n\n"
+        "    code = [o for o in w.get_referents(invoke)"
+        " if type(o).__name__ == 'code'][0]\n"
+        "    cells = [o for o in w.get_referents(mk()) if type(o) is tuple][0]\n"
+        "    return type(invoke)(code, {}, None, None, cells)()\n"
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(GC_TRACED))
+def test_gc_traced_routes_fail_closed(case: str) -> None:
+    assert reason(GC_TRACED[case]) == "dynamic-scope", case
+
+
+# ---------------------------------------------------------------------------
+# treesitter-chunker#699 S4, PY-10 (ruling R-699-1 Q6, the E6-9b style):
+# ``.patch`` on any receiver is a patcher with the W-3 semantics. A computed
+# target fails closed; so does ``X.patch`` read other than applied, and a
+# constant ``"patch"`` naming a member by string. ``pt_patcher_param`` and
+# the S4 ``p10_*`` trees printed ``runtime: 2`` on CPython 3.14.10 while main
+# 891e8997 proved ``helper``. Q6 accepted the test-edge cost of HTTP
+# clients' ``.patch(url)`` with a computed URL; the four measured trees spell
+# none in production.
+
+PATCH_ANY_RECEIVER = {
+    "parameter": "def run(mk):\n    mk.patch(__name__ + '.helper', len).start()",
+    "getattr": "def run(mk):\n    getattr(mk, 'pat' 'ch')(__name__ + '.helper', len)",
+    "alias": "def run(mk):\n    p = mk.patch\n    p(__name__ + '.helper', len)",
+    "methodcaller": "import operator\nM = operator.methodcaller('patch', 'x')",
+    "attrgetter-dotted": "import operator\nM = operator.attrgetter('m.patch')",
+    "subscript-key": "def run(mk):\n    type(mk).members['patch'](mk, 'x')",
+    "dunder-call": "def run(mk):\n    mk.patch.__call__(__name__ + '.helper', len)",
+    "partial": "import functools\ndef run(mk):\n    functools.partial(mk.patch)",
+    "subscript-receiver": "def run(ms):\n    ms[0].patch(__name__ + '.helper', len)",
+    "call-receiver": "def run(get):\n    get().patch(__name__ + '.helper', len)",
+    "keyword-target": "def run(mk):\n    mk.patch(target=__name__ + '.helper', new=len)",
+    "splat": "def run(mk, a):\n    mk.patch(*a)",
+    # The former HTTP controls (folds 19-24), now the accepted Q6 cost.
+    "http-client": "def run(client):\n    u = 'http://x'\n    client.patch(u)",
+    "http-json": "def run(x):\n    u = 'http://x'\n    x.patch(u, json={})",
+    "requests": "import requests\ndef run(n):\n    u = 'http://x'\n"
+    "    requests.patch(u, data=n)",
+    "http-method": "class S:\n    def patch(self, url):\n        pass\n"
+    "def run():\n    u = 'http://x'\n    S().patch(u)",
+    "beside-patch-import": "from unittest.mock import patch as P\n"
+    "def run(client):\n    u = 'http://x'\n    client.patch(u)",
+}
+
+
+@pytest.mark.parametrize("case", sorted(PATCH_ANY_RECEIVER))
+def test_patch_on_any_receiver_fails_closed(case: str) -> None:
+    source = (
+        HELPER + PATCH_ANY_RECEIVER[case] + "\n\n\ndef use():\n    return helper()\n"
+    )
+    assert reason(source) == "dynamic-scope", case
+
+
+PATCH_ANY_RECEIVER_CONTROLS = {
+    "constant-route": "def run(router):\n    router.patch('/items/{id}')",
+    "decorator": "def run(router):\n    @router.patch('/items')\n    def h():\n"
+    "        return 1\n    return h",
+    "constant-object": "def run(x, client):\n    x.patch.object(client, 'other', 1)",
+    "attribute-write": "class K:\n    pass\nK.patch = 3",
+    "url-word": "def run(client):\n    client.get('/v1/patch')",
+    # A ``.patch`` the mock rules recognise is an alias they check use by
+    # use (E-21), not a hand-off.
+    "recognised-alias": "from unittest import mock\ndef run():\n    p = mock.patch\n"
+    "    p('os.getcwd', len).start()",
+}
+
+
+@pytest.mark.parametrize("case", sorted(PATCH_ANY_RECEIVER_CONTROLS))
+def test_patch_on_any_receiver_controls_still_resolve(case: str) -> None:
+    source = (
+        HELPER
+        + PATCH_ANY_RECEIVER_CONTROLS[case]
+        + "\n\n\ndef use():\n    return helper()\n"
+    )
+    assert proof_text(source) == ["def helper():\n    return 1"], case
+
+
+# treesitter-chunker#699 S4, ruling R-699-10 item 2: an import name spelled
+# ``patch`` or as a private mock patcher is a patcher token from any module
+# and under any alias. ``patch`` joins the W-3 alias set (a computed target
+# fails closed, a constant one keeps the own-name rule); a private patcher
+# fails closed outright. Fable's trees ``q_from_compat_*``,
+# ``q_from_mock_get_target`` and ``y_from_mock_patch_multiple_t1`` printed
+# ``runtime: 2`` on CPython 3.14.10 while #733's first head proved
+# ``helper``. Item 3: a class-pattern keyword spelled ``patch`` or as a
+# writer was already dynamic in Tier 1; it is pinned here.
+R10_IMPORTED_PATCHERS = {
+    "compat-patch-as": "from compat import patch as pp\ndef run():\n"
+    "    pp(__name__ + '.helper', len).start()",
+    "compat-bare": "from compat import patch\ndef run():\n"
+    "    patch(__name__ + '.helper', len).start()",
+    "compat-decorator": "from compat import patch\n"
+    "@patch(__name__ + '.helper', len)\ndef run():\n    return 1",
+    "relative-patch-as": "from .compat import patch as pp\ndef run():\n"
+    "    pp(__name__ + '.helper', len).start()",
+    "handed-on": "from compat import patch as pp\ndef run(f):\n    f(pp)",
+    "private-multiple": "from unittest.mock import _patch_multiple\ndef run():\n"
+    "    _patch_multiple(__name__, helper=len).start()",
+    "private-get-target": "from unittest.mock import _get_target, _patch\n"
+    "def run():\n    g, at = _get_target(__name__ + '.helper')\n"
+    "    _patch(g, at, len, None, False, None, None, None, {}).start()",
+    "private-object-alias": "import sys\nfrom unittest.mock import _patch_object as po\n"
+    "def run():\n    po(sys.modules[__name__], 'helper', len, None, False, None,"
+    " None, None, {}).start()",
+    "private-dict-any-module": "from compat import _patch_dict\ndef run(d):\n"
+    "    _patch_dict(d, helper=len).start()",
+    "private-unused": "from unittest.mock import _patch_object",
+    "class-pattern-patch": "def run(mk):\n    match mk:\n"
+    "        case object(patch=p):\n            p(__name__ + '.helper', len).start()",
+    "class-pattern-setattr": "def run(mk, m):\n    match mk:\n"
+    "        case object(setattr=s):\n            s(m, 'helper', len)",
+}
+
+
+@pytest.mark.parametrize("case", sorted(R10_IMPORTED_PATCHERS))
+def test_r10_imported_patchers_fail_closed(case: str) -> None:
+    source = (
+        HELPER + R10_IMPORTED_PATCHERS[case] + "\n\n\ndef use():\n    return helper()\n"
+    )
+    assert reason(source) == "dynamic-scope", case
+
+
+def test_r10_imported_patch_multiple_fails_closed() -> None:
+    """``patch.multiple`` on an imported ``patch`` (``q_from_compat_patch_multiple``)
+    records ``helper`` as an attribute write."""
+    source = (
+        HELPER + "from compat import patch\ndef run():\n"
+        "    patch.multiple(__name__, helper=len).start()\n\n\n"
+        "def use():\n    return helper()\n"
+    )
+    assert outcome(source, "helper")["outcome"] == "none"
+
+
+# Ruling R-699-11: a private mock patcher read or called on ANY receiver
+# (a handed-in ``unittest.mock``) fails closed, like ``.patch`` (PY-10).
+# Fable's ``q_param_get_target`` and the ``pp_private_patch_*`` trees
+# printed ``runtime: 2`` on CPython 3.14.10.
+R11_PRIVATE_PATCHERS_ON_ANY_RECEIVER = {
+    "get-target": "def run(mk):\n    g, at = mk._get_target(__name__ + '.helper')\n"
+    "    mk._patch(g, at, len, None, False, None, None, None, {}).start()",
+    "multiple": "def run(mk):\n    mk._patch_multiple(__name__, helper=len).start()",
+    "object": "def run(mk, m):\n    mk._patch_object(m, 'helper', len).start()",
+    "dict": "def run(mk, d):\n    mk._patch_dict(d, helper=len).start()",
+    "handed-on": "def run(mk, f):\n    f(mk._patch_object)",
+}
+
+
+@pytest.mark.parametrize("case", sorted(R11_PRIVATE_PATCHERS_ON_ANY_RECEIVER))
+def test_r11_private_patchers_on_any_receiver_fail_closed(case: str) -> None:
+    source = (
+        HELPER
+        + R11_PRIVATE_PATCHERS_ON_ANY_RECEIVER[case]
+        + "\n\n\ndef use():\n    return helper()\n"
+    )
+    assert reason(source) == "dynamic-scope", case
+
+
+# Ruling R-699-12 (the Fable re-check of #733): the private patchers and
+# ``_get_target`` are tokens in ANY role (item 1), and a constant string
+# exactly ``"patch"`` is a token in any position (item 2, adopted at 0
+# production edges on the four measured trees). Fable's ``h_t1_*`` and
+# ``j_t1_*`` trees printed ``runtime: 2`` on CPython 3.14.10 while
+# 26a119b8 proved ``helper``. ``list-element``, ``comparison`` and
+# ``x = 'patch'`` were controls before item 2.
+R12_PATCH_STRINGS = {
+    "private-getattr": "def run(mk):\n    getattr(mk, '_patch_multiple')(__name__, helper=len)",
+    "private-getattr-joined": "def run(mk):\n    getattr(mk, '_pa' 'tch_multiple')(__name__, helper=len)",
+    "private-fstring": "def run(mk):\n    getattr(mk, f\"{'_patch'}_multiple\")(__name__, helper=len)",
+    "private-attrgetter": "import operator\ndef run(mk):\n"
+    "    operator.attrgetter('_patch_multiple')(mk)(__name__, helper=len)",
+    "private-methodcaller": "import operator\ndef run(mk):\n"
+    "    operator.methodcaller('_patch_multiple', __name__, helper=len)(mk)",
+    "private-getattribute": "def run(mk):\n"
+    "    mk.__getattribute__('_patch_multiple')(__name__, helper=len)",
+    "get-target-string": "def run(mk):\n    g, at = getattr(mk, '_get_target')(__name__ + '.helper')\n"
+    "    getattr(mk, '_pa' 'tch')(g, at, len, None, False, None, None, None, {})",
+    "private-class-pattern": "def run(mk):\n    match mk:\n"
+    "        case object(_patch_multiple=p):\n            p(__name__, helper=len)",
+    "private-attribute-write": "class K:\n    pass\nK._patch = 3",
+    "private-definition": "def _get_target(t):\n    return t",
+    "match-args": "class K:\n    __match_args__ = ('patch',)",
+    "mapping-pattern": "def run(mk):\n    match vars(mk):\n        case {'patch': p}:\n"
+    "            p(__name__ + '.helper', len)",
+    "list-element": "M = ['get', 'patch']",
+    "comparison": "def run(n):\n    return n == 'patch'",
+    "assignment": "x = 'patch'",
+    "joined": "x = 'pat' + 'ch'",
+}
+
+
+@pytest.mark.parametrize("case", sorted(R12_PATCH_STRINGS))
+def test_r12_patch_tokens_fail_closed(case: str) -> None:
+    source = (
+        HELPER + R12_PATCH_STRINGS[case] + "\n\n\ndef use():\n    return helper()\n"
+    )
+    assert reason(source) == "dynamic-scope", case
+
+
+R10_IMPORTED_PATCHER_CONTROLS = {
+    "constant-target": "from compat import patch as pp\ndef run():\n"
+    "    pp('os.getcwd', len).start()",
+    "local-def-patch": "def patch(url):\n    return url\ndef run(i):\n"
+    "    patch('/items/' + str(i))",
+    "other-name": "from compat import patched\ndef run():\n    patched(__name__ + '.x')",
+    "module-named-patch": "import patch\ndef run():\n    return patch",
+    # R-699-12 item 2 matches ``"patch"`` exactly, not as a substring.
+    "patch-substring": "M = ['patches', 'patch-1', '/v1/patch', 'patch' 'es', 'patch' + 'es']",
+}
+
+
+@pytest.mark.parametrize("case", sorted(R10_IMPORTED_PATCHER_CONTROLS))
+def test_r10_imported_patcher_controls_still_resolve(case: str) -> None:
+    source = (
+        HELPER
+        + R10_IMPORTED_PATCHER_CONTROLS[case]
+        + "\n\n\ndef use():\n    return helper()\n"
+    )
+    assert proof_text(source) == ["def helper():\n    return 1"], case
 
 
 # ---------------------------------------------------------------------------
@@ -7394,13 +7719,12 @@ def test_fold19_695_computed_writes_keep_their_off_mode_edge(
         "k = 'helper'\n    cache = {}\n    cache[k] = 1",
         # Namespace dict reads (``keys()`` fails closed since fold 27).
         "x = mod.__dict__.get('x')\n    y = 'x' in mod.__dict__\n    z = len(mod.__dict__)",
-        # ``unittest.mock`` with constant targets elsewhere, and a ``patch``
-        # method that is not ``unittest.mock``'s.
+        # ``unittest.mock`` with constant targets elsewhere. (A ``patch``
+        # method that is not ``unittest.mock``'s, called with a computed
+        # argument, fails closed since #699 PY-10.)
         "from unittest import mock\n    mock.patch('os.getcwd', len).start()",
         "from unittest import mock\n    class K:\n        x = 1\n"
         "    mock.patch.object(K, 'x', 2).start()",
-        "class S:\n        def patch(self, url):\n            pass\n"
-        "    u = 'http://x'\n    S().patch(u)",
         # An f-string with a computed interpolation is no constant.
         "n = 'x'\n    v = getattr(mod, f'{n}')",
     ],
@@ -7477,11 +7801,9 @@ def test_fold20_695_receiver_patchers_keep_their_off_mode_edge(
 @pytest.mark.parametrize(
     "stmt",
     [
-        # A plain ``.patch(url)`` on other receivers (HTTP clients).
-        "u = 'http://x'\n    client.patch(u)",
-        "u = 'http://x'\n    x.patch(u, json={})",
-        "import requests\n    u = 'http://x'\n    requests.patch(u, data=n)",
-        # Patchers with constant targets or another attribute name.
+        # Patchers with constant targets or another attribute name. (A
+        # plain ``.patch(url)`` with a computed URL fails closed since #699
+        # PY-10.)
         "mocker.patch('os.getcwd', len)",
         "x.patch.object(client, 'other', 1)",
         "mocker.patch.multiple(client, other=1)",
@@ -7622,12 +7944,12 @@ def test_fold21_695_writes_and_triggers_keep_their_off_mode_edge(
             "",
             "class G:\n        def _resolve(self):\n            return 0\n    G()._resolve()",
         ),
-        # A plain ``.patch(url)``, and ordinary ``.update`` aliases.
-        ("", "u = 'http://x'\n    client.patch(u)"),
+        # Ordinary ``.update`` aliases (a plain ``.patch(url)`` with a
+        # computed URL fails closed since #699 PY-10).
         ("", "d = {}\n    u = d.update\n    u({'x': 1})"),
-        # The mock module used as a receiver, and ``'patch'`` without it.
+        # The mock module used as a receiver. (``x = 'patch'`` fails closed
+        # since R-699-12 item 2: ``R12_PATCH_STRINGS``.)
         (FOLD21_MOCK, "m = mock.Mock()\n    m.patch('x')"),
-        ("", "x = 'patch'"),
         # A class attribute that is no namespace alias.
         ("", "class K:\n        ns = {}\n    K.ns.update(dict(x=1))"),
     ],
@@ -7809,10 +8131,10 @@ def test_fold22_695_cross_kind_matrix_fails_closed(kind: str, form: str) -> None
 @pytest.mark.parametrize(
     ("pre", "stmt"),
     [
-        # Ordinary ``.update`` aliases, a plain ``.patch(url)``, ``mock.Mock()``,
-        # a local ``def locate``.
+        # Ordinary ``.update`` aliases, ``mock.Mock()``, a local ``def
+        # locate`` (a plain ``.patch(url)`` with a computed URL fails closed
+        # since #699 PY-10).
         ("", "d = {}\n    u = d.update\n    u({'x': 1})"),
-        ("", "u = 'http://x'\n    client.patch(u)"),
         ("from unittest import mock\n\n\n", "m = mock.Mock()\n    m.foo(1)"),
         ("", "def locate(*a):\n        return 0\n    locate(1)"),
         # A namespace dict read through a call does not carry it
@@ -8203,15 +8525,9 @@ def test_fold24_695_stdlib_signal_items_fails_closed() -> None:
 @pytest.mark.parametrize(
     ("pre", "stmt"),
     [
-        # A plain ``.patch(url)`` with a computed URL in a file that imports
-        # ``patch`` under another name, or imports only the mock module.
-        (
-            "from unittest.mock import patch as P\n\n\n",
-            "u = 'http://x'\n    client.patch(u)",
-        ),
-        ("import unittest.mock as um\n\n\n", "u = 'http://x'\n    client.patch(u)"),
-        (FOLD23_MOCK, "u = 'http://x'\n    client.patch(u)"),
-        # With a constant URL even beside the canonical ``patch`` import.
+        # A plain ``.patch(url)`` with a constant URL, even beside the
+        # canonical ``patch`` import (a computed URL fails closed since #699
+        # PY-10, whatever the file imports).
         ("from unittest.mock import patch\n\n\n", "client.patch('http://x')"),
         # Direct uses of the import names stay on the list.
         ("from unittest.mock import patch as P\n\n\n", "P('os.getcwd', len).start()"),
@@ -9449,6 +9765,7 @@ def test_string_code_lists_are_pinned() -> None:
         "_pickle": py_scope._PICKLE_SAFE,
         "timeit": frozenset({"default_timer"}),
         "runpy": frozenset({"run_path", "run_module"}),
+        "gc": py_scope._GC_SAFE,
     }
     assert frozenset(
         {

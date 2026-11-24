@@ -23,8 +23,9 @@ A narrowed edge carries `provenance.call_resolution` and `provenance.call_rules`
 
 In Python, `structural` skips module-scope and class-body proofs in files
 that can bind names dynamically, for example through `exec`, `globals()`,
-`sys.modules` or a star import. A mention of `f_locals` can rule out proofs
-throughout the file. See the
+`sys.modules` or a star import. A mention of `f_locals`, or heap walking
+with `gc`, can rule out proofs throughout the file. A `.patch` call on any
+receiver with a computed target counts as a patcher. See the
 [Boundary IR specification](interface-boundary-spec.md#call-resolution-extension-experimental)
 for the exact rules.
 
@@ -52,9 +53,9 @@ invalidate proofs for just that module or a specific name.
 | `evaluator` | Running code with Python `exec` or JavaScript `new Function`, or loading Node's `vm`, `repl` or `inspector` modules. |
 | `dynamic-loader` | Loading a path chosen at runtime, such as `require(path)` or Python `import_module(name)`. In JS/TS, replacing the CommonJS `require` counts too, including through a destructuring write such as `[require] = [f]`, because the replacement receives every later import's specifier. |
 | `module-system` | Changing how modules are found or cached, such as changing Python's `sys.path` or using Node's module machinery to change the module cache. In JS/TS, any mention of Node's `process` counts too, because `process.binding`, `process.mainModule` and a search of its keys reach the loader. A few safe uses of the global are exempt, such as reading `process.env` or `process.argv`. A default or namespace alias from a static import of `process` that is used the same way is exempt as well, unless the alias is itself named `process`: `import process from "node:process"` counts, while `import proc from "node:process"` can be exempt. Loading `process` through a `require` call always counts. |
-| `module-object` | Exposing a writable namespace, such as accessing a Python function's `__globals__` or handing the CommonJS `module` object to a helper. |
+| `module-object` | Exposing a writable namespace, such as accessing a Python function's `__globals__`, reading a frame's `f_locals`, reading closure contents with `inspect.getclosurevars`, walking the heap with `gc`, or handing the CommonJS `module` object to a helper. |
 | `unparsed-file` | A collected file that the analyzer cannot read or parse safely. |
-| `unresolvable-writer` | A patch or export write whose target cannot be located. |
+| `unresolvable-writer` | A patch or export write whose target cannot be located. In Python this includes:<br>• a `.patch` call on any receiver with a computed target;<br>• a constant string exactly `"patch"` in any position (an argument, a list element, `__match_args__`, a mapping-pattern key, a comparison);<br>• `unittest.mock`'s private patchers (`_patch`, `_patch_multiple`, `_patch_object`, `_patch_dict`) or `_get_target`, spelled anywhere, as a name, an attribute on any receiver or a word of a string;<br>• a name imported as `patch` from any module;<br>• a re-export of `patch` under another name. Only from-imports, at any scope, and star imports are followed; `compat.pp(...)` is not;<br>• a `case object(patch=p)` class pattern.<br>In a production file any of these turns Python Tier 2 off for the whole run. Examples: an argparse `sub.add_parser("patch")`, a semver list `["major", "minor", "patch"]`, an HTTP call `requests.patch(f"…/{i}")`, `session.request(method="patch", url=u)`, or `self._patch.start()`. In a test file it costs only test callers. |
 
 ### Test scoping
 
@@ -84,9 +85,6 @@ outside those rules.
 
 | Route | Example | Tracked in |
 | --- | --- | --- |
-| Python patch calls on other receivers | A `.patch` call can replace a target even when the receiver is a parameter with a name the tool does not recognize. | [treesitter-chunker#699](https://github.com/Consiliency/treesitter-chunker/issues/699) |
-| Python heap walking | Code can use `gc.get_referents`, `gc.get_referrers` or `gc.get_objects` to find a namespace, code object or closure cell. | [treesitter-chunker#699](https://github.com/Consiliency/treesitter-chunker/issues/699) |
-| Python closure cells and frames across files | Another file can rewrite a closure cell used by an import proof, read its caller's frame locals, or receive a frame or a re-exported `locals` or `vars` function. Frame access can also come through `sys.settrace` or `sys.breakpointhook` installed by another module. | [treesitter-chunker#699](https://github.com/Consiliency/treesitter-chunker/issues/699) |
 | Python imports exposed through a namespace | Passing `globals()` or `locals()` to a helper can let it reach and modify an imported module. | [treesitter-chunker#724](https://github.com/Consiliency/treesitter-chunker/issues/724) |
 | Python helpers that return imported modules | Returning an import already counts as exposing it to other code. More precise tracking is planned for which module a helper returns and how the caller uses it. | [treesitter-chunker#706](https://github.com/Consiliency/treesitter-chunker/issues/706) |
 
@@ -94,7 +92,7 @@ outside those rules.
 
 | Route | Example |
 | --- | --- |
-| Computed names and reflection | `getattr(obj, prefix + suffix)`, walking `dir(obj)` or `inspect.getmembers(obj)` to find a frame member, or finding a key such as `caller` with a pattern like `/^cal+er$/`. This also covers computed lookups for pytest fixture methods, ancestor packages and JS loader methods. |
+| Computed names and reflection | `getattr(obj, prefix + suffix)`, walking `dir(obj)` or `inspect.getmembers(obj)` to find a frame member, or finding a key such as `caller` with a pattern like `/^cal+er$/`. This also covers computed lookups for pytest fixture methods, ancestor packages and JS loader methods, a patcher name inside an f-string that also has a computed field, and the name `patch` passed along as a keyword or definition name that later code reads as data. |
 | Code or names supplied as data | A third-party evaluator runs a downloaded string, a worker sends pickled data to a Python `Connection.recv()`, or a JS program reads `caller` or `getFunction` from JSON. Python bytes `%` templates, runtime-built templates and `string.Template` subclasses with a custom delimiter such as `#` can hide a `__main__` lookup. A formatting callback can also cut `__main__` out of a larger component or receive a name joined across a replacement field. |
 | Writes inside a library | `functools.update_wrapper` writes to an object passed to it, or `argparse` populates a supplied namespace. A catch-all `__getattr__` can also supply an annotation hook to `update_wrapper`. Known Python module escapes are tracked in `imports`. |
 | Capabilities obtained outside the run | An installed package can re-export Python's `builtins` under another name or hide access to Node's code evaluation APIs. Native extensions and startup hooks such as `sitecustomize` can also change bindings. |

@@ -282,7 +282,15 @@ with a base or keyword argument, and every lookup in a file that mentions
 `eval`, `compile`, `breakpoint()`, `cProfile`/`pdb`/`timeit`-style helpers,
 `pickle.loads`, `shelve`, `marshal`, `get_type_hints`, string annotations
 that call, `__annotations__` writes, `runpy` with `init_globals`, a loader's
-`get_code`); monkeypatching from other modules is not tracked.
+`get_code`) or walks the heap (`gc` other than its collector controls and
+counters, `get_referents`, `get_referrers` or `get_objects` anywhere). A
+`.patch` call on any receiver with a target that is not a constant string,
+`.patch` handed on, a constant string exactly `"patch"` in any position, a
+name imported as `patch` from any module and applied to such a target, or a
+private `unittest.mock` patcher (`_patch`, `_patch_multiple`,
+`_patch_object`, `_patch_dict`) or `_get_target` spelled anywhere (any
+identifier role or a word of a constant string) makes the file's lookups
+prove nothing; monkeypatching from other modules is not tracked.
 
 With `"imports"`, everything `"structural"` does applies, and a JavaScript,
 TypeScript or TSX call whose callee a relative ES import binds (`import { t }`,
@@ -397,6 +405,17 @@ any module (`exec`, `eval`, `compile`, any of the string-code triggers
 above, a code object or closure such as `f.__code__` (reads included), a
 non-literal loader, other `importlib` uses, `runpy`, `sys.modules` other
 than a literal key, `sys.path` changes, `__globals__`, frame globals,
+any frame-locals spelling (`f_locals` reads included, `getargvalues`,
+`getgeneratorlocals`, `getcoroutinelocals`, `getasyncgenlocals`,
+`curframe_locals`, `getclosurevars`), `locals` or `vars` as a value, an
+attribute name, an imported name or a constant string, a closure cell's
+`cell_contents` other than a read, heap walking with `gc`, a `.patch` call
+with a computed target on any receiver, a constant string exactly `"patch"`
+in any position, a private `unittest.mock` patcher or `_get_target` spelled
+anywhere, a name imported as `patch` from any module, a re-export of `patch`
+under another name reached by a from-import at any scope or a star import
+(only those are followed; a module attribute read such as `compat.pp` is
+not), a class-pattern keyword spelled `patch` or as a `MonkeyPatch` method,
 `builtins`, `__main__`) or that tree-sitter and
 CPython may read differently turns Python Tier 2 off, scoped like the
 JavaScript causes (test files: `test_*.py`, `*_test.py`, `conftest.py`, or a

@@ -290,8 +290,41 @@ _MODULE_OBJECT_NAMES = frozenset(
     }
 )
 # A frame's ``f_locals``: for a module-level frame it is the module's
-# globals (PEP 667), so any use but a read is a ``module-object`` cause.
+# globals, and for a function frame a write-through proxy of its locals (PEP
+# 667). treesitter-chunker#699 PY-9 (ruling R-699-1 Q5 and B-6): any
+# spelling is a ``module-object`` cause, reads included, and so are the
+# other frame-locals proxies Tier 1 lists (``inspect.getargvalues(fr)
+# .locals``, ``getgeneratorlocals``, ``getcoroutinelocals``,
+# ``getasyncgenlocals``, ``pdb``'s ``curframe_locals``). A file that reads a
+# frame another file hands it (``gi_frame``, ``cr_frame``, ``ag_frame``,
+# ``tb_frame``, ``inspect.trace()``, ``sys._getframe(1)``) can take a patcher
+# or module object out of that frame's locals and apply it out of sight, and
+# every way to read them spells one of these names. Token level (R-724-1): an
+# identifier in any role, or a word of a constant string.
 _FRAME_LOCALS = "f_locals"
+_FRAME_READERS = frozenset(
+    {
+        _FRAME_LOCALS,
+        "getargvalues",
+        "getgeneratorlocals",
+        "getcoroutinelocals",
+        "getasyncgenlocals",
+        "curframe_locals",
+        # R-699-10 item 1: ``inspect.getclosurevars(f)`` hands out the
+        # contents of ``f``'s closure cells (``.nonlocals``) and the globals
+        # it names (``.globals``), another file's imported module among
+        # them, with no cell or frame name spelled.
+        "getclosurevars",
+    }
+)
+# treesitter-chunker#699 PY-6: a closure cell's ``cell_contents`` other than
+# a plain read (an attribute target, ``del``, the descriptor used as a
+# receiver: ``type(c).cell_contents.__set__(c, v)``; any other identifier
+# role; a word of a constant string: ``setattr(c, "cell_contents", v)``)
+# rewrites a cell another file's function closes over: a ``module-object``
+# cause. ``__closure__`` needs no rule of its own: every mention is a cause
+# since B-1.
+_CELL_CONTENTS = "cell_contents"
 _RESOLVER_NAMES = frozenset({"resolve_name", "safeimport", "find_class"})
 # Dunder attributes of a module object that read a plain value. Any other
 # dunder (``__dict__``, ``__setattr__``, ``__class__``, ``__spec__``,
@@ -483,6 +516,7 @@ def module_facts(
     patchers = _Patchers(analysis)
     _scan_patchers(analysis, facts, patchers)
     _scan_patch_methods(analysis, facts)
+    _scan_patch_reads(analysis, facts)
     _scan_patcher_escapes(analysis, facts, patchers)
     hazard = parse_hazard(source, analysis.root)
     module_bindings = {
@@ -1059,6 +1093,17 @@ def _scan_causes(
         facts.shutoff.add(CAUSE_EVALUATOR)
     if analysis.code_objects:
         facts.shutoff.add(CAUSE_MODULE_OBJECT)
+    if analysis.heap_walk:
+        # treesitter-chunker#699 PY-7 with B-7: Tier 1's ``gc`` verdict (a use
+        # off the member list, a heap-walker token) is a run-wide cause too:
+        # ``gc.get_referents(use.run)`` hands over another module's globals.
+        facts.shutoff.add(CAUSE_MODULE_OBJECT)
+    if any(node is None for node, _by_lookup in analysis._locals_readers()):
+        # treesitter-chunker#699 PY-9: ``locals``/``vars`` as a value, an
+        # import name or a constant-string word (Tier 1's R-707-1 token
+        # rule): another file may call it (``get_locals = locals``) and hand
+        # the dict of its frame's locals on.
+        facts.shutoff.add(CAUSE_MODULE_OBJECT)
     if analysis.main_string:
         # K-3 (#698, R-698-2): a string naming the main module, by the one
         # classifier Tier 1 uses (``py_scope._main_string``): a component
@@ -1084,9 +1129,12 @@ def _scan_causes(
             if value is None:
                 continue
             parts = set(ps._NAME_SEPARATORS.split(value))
+            words = set(ps._TOKEN_WORDS.split(value))
             if parts & (_MODULE_OBJECT_NAMES - {"__main__", "__mp_main__"}):
                 facts.shutoff.add(CAUSE_MODULE_OBJECT)
-            if _FRAME_LOCALS in parts:
+            if words & _FRAME_READERS:
+                facts.shutoff.add(CAUSE_MODULE_OBJECT)
+            if _CELL_CONTENTS in words:
                 facts.shutoff.add(CAUSE_MODULE_OBJECT)
             if parts & _RESOLVER_NAMES:
                 facts.shutoff.add(CAUSE_DYNAMIC_LOADER)
@@ -1101,7 +1149,9 @@ def _scan_causes(
     for ident in analysis.identifier_nodes:
         name = ps._text(ident, source)
         spellings = ps._spellings(ident, source)
-        if _FRAME_LOCALS in spellings and not _frame_locals_read(analysis, ident):
+        if spellings & _FRAME_READERS:
+            facts.shutoff.add(CAUSE_MODULE_OBJECT)
+        if _CELL_CONTENTS in spellings and not _cell_read(analysis, ident):
             facts.shutoff.add(CAUSE_MODULE_OBJECT)
         if ps._name_part(ident):
             parent = ident.parent
@@ -1177,9 +1227,10 @@ def _scan_causes(
                 )
 
 
-def _frame_locals_read(analysis: Any, ident: Any) -> bool:
-    """``X.f_locals`` used only as a read (a closed list): ``.get(...)``
-    called, a subscript read, or the right operand of ``in``/``not in``."""
+def _cell_read(analysis: Any, ident: Any) -> bool:
+    """``X.cell_contents`` only read (PY-6): an attribute that is not a
+    target (assignment, augmented assignment, ``del``) and not the receiver
+    of a dunder (``type(c).cell_contents.__set__``)."""
     from . import py_scope as ps
 
     parent = ident.parent
@@ -1187,30 +1238,21 @@ def _frame_locals_read(analysis: Any, ident: Any) -> bool:
         parent is None
         or parent.type != "attribute"
         or not ps._same(ident, parent.child_by_field_name("attribute"))
+        or parent.id in analysis.attribute_targets
     ):
         return False
     outer = parent
     while outer.parent is not None and outer.parent.type == "parenthesized_expression":
         outer = outer.parent
     above = outer.parent
-    if above is None:
-        return False
-    if above.type == "attribute" and ps._same(
-        outer, above.child_by_field_name("object")
+    if (
+        above is not None
+        and above.type == "attribute"
+        and ps._same(outer, above.child_by_field_name("object"))
     ):
         method = above.child_by_field_name("attribute")
-        return (
-            method is not None
-            and ps._text(method, analysis.source) == "get"
-            and ps._callee_call(above) is not None
-        )
-    if above.type == "subscript" and ps._same(
-        outer, above.child_by_field_name("value")
-    ):
-        return above.id not in analysis.attribute_targets and not any(
-            above.id == target.id for target in analysis.subscript_targets
-        )
-    return _operand_of_in(parent)
+        return method is not None and not ps._dunder(ps._text(method, analysis.source))
+    return True
 
 
 # pytest-mock fixture names whose ``.patch`` is ``unittest.mock.patch``.
@@ -1253,6 +1295,7 @@ _SYSPATH_METHOD = "syspath_prepend"
 # rules already classify (``vars(svc)``, ``svc.__dict__``, ``sys.modules``,
 # ``f_globals``), so their name adds nothing.
 _PATCH_METHOD_NAMES = _WRITE_METHODS | {"setitem", "delitem", _SYSPATH_METHOD}
+_CLASS_PATTERN_PATCHERS = _PATCH_METHOD_NAMES | {"patch"}
 _MP_FIXTURE_ARGUMENTS = frozenset({"target", "name"})
 _GETFIXTUREVALUE = "getfixturevalue"
 _FIXTURE_MOCKER = "mocker"
@@ -1596,21 +1639,30 @@ def _scan_patchers(
     ``getfixturevalue`` of a pytest-mock fixture name holds a fixture whose
     ``.patch`` is ``patch`` (:class:`_Patchers`). The president's trees
     ``h3a``/``h3b`` ran ``OTHER.t`` under pytest through these spellings, and ``h3c``
-    through ``patch.multiple(MOD, t=...)`` with a computed ``MOD``. A
-    ``patch`` method of anything else (``requests.patch(url)``) is no
-    patcher."""
+    through ``patch.multiple(MOD, t=...)`` with a computed ``MOD``.
+
+    treesitter-chunker#699 PY-10 (ruling R-699-1 Q6, in the E6-9b style):
+    ``X.patch(...)``, ``X.patch.object(...)``, ``.dict`` and ``.multiple``
+    are patcher calls on ANY receiver (a parameter, ``S().patch(...)``,
+    ``requests.patch(url)``): a computed target is an
+    ``unresolvable-writer``, a constant one taints the module it names. The
+    same names reached without a direct call (``p = mk.patch``) or by a
+    constant name (``getattr(mk, "patch")``) are an ``unresolvable-writer``
+    (:func:`_scan_patch_reads`)."""
     from . import py_scope as ps
 
     source = analysis.source
     patchers = patchers if patchers is not None else _Patchers(analysis)
-    mockers = _MOCKER_NAMES | patchers.mockers
 
     def is_patch(node: Any, names: Sequence[str]) -> bool:
         if node is not None and analysis._sensitive(node, ps._PATCH):
             return True
-        return names[-1] == "patch" and (
-            len(names) == 1 or "mock" in names[:-1] or names[0] in mockers
-        )
+        if node is not None and ps._is_patch_attribute(node, source):
+            # PY-10: ``X.patch`` on any receiver, which subsumes the former
+            # name checks (``mock.patch``, a fixture's or a fixture alias's
+            # ``.patch``).
+            return True
+        return list(names) == ["patch"]  # a bare ``patch``
 
     stack = [analysis.root]
     while stack:
@@ -1628,6 +1680,9 @@ def _scan_patchers(
             else None
         )
         names = _callee_names(node, source)
+        if not names and receiver is not None and function is not None:
+            # PY-10: ``S().patch(u)``, ``ms[0].patch.object(...)``.
+            names = [ps._text(function.child_by_field_name("attribute"), source)]
         if not names:
             continue
         arguments = [
@@ -1640,8 +1695,7 @@ def _scan_patchers(
         last = names[-1]
         patch = is_patch(function, names)
         method = (
-            len(names) >= 2
-            and receiver is not None
+            receiver is not None
             and last in ("object", "dict", "multiple")
             and is_patch(receiver, names[:-1])
         )
@@ -1661,6 +1715,63 @@ def _scan_patchers(
                 # P6-3: ``patch.multiple(MOD, t=f)`` with a computed ``MOD``
                 # (and ``patch.dict`` alike) names a target no rule computes.
                 facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+
+
+def _scan_patch_reads(analysis: Any, facts: _Facts) -> None:
+    """treesitter-chunker#699 PY-10, the E6-9b form of the hand-off rule:
+    ``X.patch`` for any ``X`` read other than applied where it is read
+    (called, or ``.object``/``.dict``/``.multiple`` called on it), and a
+    constant ``"patch"`` that names a member by string (a call argument or
+    subscript key, whole or as a dotted component: ``getattr(mk, "patch")``,
+    ``operator.methodcaller("patch", t)``), are an ``unresolvable-writer``:
+    the call that applies the patcher is out of sight. A ``.patch`` the mock
+    rules recognise (``p = mock.patch``) is an alias whose uses
+    :func:`_scan_patcher_escapes` checks instead. Writing ``X.patch = v``
+    reads no patcher."""
+    from . import py_scope as ps
+
+    source = analysis.source
+    stack = [analysis.root]
+    while stack:
+        node = stack.pop()
+        stack.extend(node.named_children)
+        value = _argument_string(node, source)
+        if value is not None and "patch" in ps._TOKEN_PARTS.split(value):
+            facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+            return
+        if ps._patch_token_string(node, source):
+            # R-699-12 items 1 and 2: ``"patch"`` exactly in any position
+            # (``__match_args__ = ("patch",)``, ``case {"patch": p}``), or a
+            # private patcher as a word of any constant string
+            # (``getattr(mk, "_pa" "tch")``).
+            facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+            return
+        if node.type == "identifier" and (
+            ps._spellings(node, source) & ps._PRIVATE_PATCH_TOKENS
+        ):
+            # R-699-12 item 1: a private patcher (or ``_get_target``) in any
+            # identifier role: a name, an attribute on any receiver (R-699-11),
+            # an import or alias name, a keyword, a class-pattern keyword.
+            facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+            return
+        if node.type == "keyword_pattern" and node.named_children:
+            # R-699-10 item 3: a class-pattern keyword reads the subject's
+            # attribute (``case object(patch=p)`` is ``p = subject.patch``),
+            # so ``patch`` and the E6-9b ``MonkeyPatch`` methods spelled
+            # there are patchers read out of sight, whatever the subject.
+            keyword = node.named_children[0]
+            if ps._spellings(keyword, source) & _CLASS_PATTERN_PATCHERS:
+                facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+                return
+        if (
+            node.type == "attribute"
+            and ps._is_patch_attribute(node, source)
+            and node.id not in analysis.attribute_targets
+            and not ps._patch_applied(node, source)
+            and not analysis._sensitive(node, ps._PATCH)
+        ):
+            facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+            return
 
 
 def import_group(
@@ -1992,6 +2103,35 @@ class _Builder:
                     found |= self.exposed(start, seen)
         return found
 
+    def exposes_patcher(self, node: str, name: str | None) -> bool:
+        """R-699-10 item 2, R-699-12 item 3: whether module ``node`` binds
+        ``patch`` by a module-scope from-import under ``name`` (``from
+        unittest.mock import patch as pp``, read back by ``from node import
+        pp`` at any scope), or under any name (``None``: what ``from node
+        import *`` may hand over; underscore names and ``__all__`` are not
+        narrowed, which only fails closed). A private patcher needs no
+        following: it is a token of the file that binds it (R-699-12).
+
+        One hop is enough. Every run file in a longer chain (``compat``
+        re-exporting ``compat2``'s ``pp``, or star-importing it) records the
+        same cause for its own hop, and O-2 promotion makes that file
+        production whenever a production file imports it. Reading the
+        re-export as a module attribute (``compat.pp``,
+        ``import_module("compat").pp``) is not followed (R12)."""
+        from . import py_scope as ps
+
+        path = self.modules.get(node)
+        file = self.files.get(path) if path is not None else None
+        if file is None:
+            return False
+        return any(
+            binding.get("form") == "from"
+            and str(binding.get("name") or "").split(".")[-1] == ps._PATCH
+            for bound, bindings in file.module_imports.items()
+            if name is None or bound == name
+            for binding in bindings
+        )
+
     # -- taints -----------------------------------------------------------
 
     def walk_use(
@@ -2028,6 +2168,23 @@ class _Builder:
             current = following
         if position == "value":
             whole.update(current)
+
+
+def _private_patch_tokens() -> frozenset[str]:
+    from . import py_scope as ps
+
+    return ps._PRIVATE_PATCH_TOKENS
+
+
+def _split_import_ref(ref: str) -> tuple[str, str]:
+    """``(module reference, last name)`` of an import reference
+    (:func:`_scan_imports`: ``compat.pp``, ``.pp``, ``..pkg.compat.pp``)."""
+    dots = len(ref) - len(ref.lstrip("."))
+    rest = ref[dots:]
+    if "." not in rest:
+        return "." * dots, rest
+    module, name = rest.rsplit(".", 1)
+    return "." * dots + module, name
 
 
 def _production(
@@ -2123,6 +2280,25 @@ def build_py_module_run(
         for star in bindings.get("stars", ()):
             for node in builder.targets(str(star), path):
                 whole[scope].update(builder.exposed(node))
+                if builder.exposes_patcher(node, None):
+                    # R-699-10 item 2: ``from compat import *`` hands over
+                    # a patcher under a name this file never spells as one
+                    # (``pp(f"svc.{NAME}", f)``): an ``unresolvable-writer``
+                    # of the importing file, scoped by O-2.
+                    causes.append((CAUSE_UNRESOLVABLE_WRITER, path))
+        for ref in bindings.get("imports", ()):
+            # R-699-12 item 3: ``from compat import pp`` at any scope (module,
+            # function, class body; relative too), where ``compat`` binds
+            # ``patch`` as ``pp``. A name spelled ``patch`` is the file's own
+            # W-3 rules, a private patcher its own token.
+            module, name = _split_import_ref(str(ref))
+            if name == "patch" or name in _private_patch_tokens():
+                continue
+            if any(
+                builder.exposes_patcher(start, name)
+                for start in builder.targets(module, path)
+            ):
+                causes.append((CAUSE_UNRESOLVABLE_WRITER, path))
     for scope in (True, False):
         pending = sorted(whole[scope])
         while pending:
