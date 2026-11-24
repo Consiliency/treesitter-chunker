@@ -347,6 +347,20 @@ def test_payload_inventory_matches_trusted_source():
     assert requirements["packaging"].specifier == SpecifierSet(">=25.0")
 
 
+@pytest.mark.parametrize("artifact", ["wheel", "sdist_wheel"])
+def test_wheel_documentation_url(artifacts, artifact):
+    _, contents = _metadata_paths(artifacts[artifact])
+    metadata = Parser().parsestr(contents["METADATA"].decode("utf-8"))
+    documentation = [
+        entry
+        for entry in metadata.get_all("Project-URL", [])
+        if entry.startswith("Documentation,")
+    ]
+    assert documentation == [
+        "Documentation, https://consiliency.github.io/treesitter-chunker/"
+    ]
+
+
 def test_real_wheel_matches_trusted_source(artifacts):
     expected = _source_inventory()
     for key in ("wheel", "sdist_wheel"):
