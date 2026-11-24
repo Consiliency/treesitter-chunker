@@ -5,9 +5,11 @@ import hashlib
 import json
 import math
 import pickle
+from bisect import bisect_right
 from collections import Counter, defaultdict
 from dataclasses import fields
 from datetime import datetime
+from operator import itemgetter
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any, get_type_hints
@@ -131,6 +133,17 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
 
         return keyed(old_chunks), keyed(new_chunks)
 
+    @staticmethod
+    def _occurrence_fields(chunk: CodeChunk) -> tuple[str, str, str, int, int]:
+        """Index key and row fields that can differ for identical content."""
+        return (
+            chunk.chunk_id,
+            chunk.file_path,
+            chunk.node_type,
+            chunk.start_line,
+            chunk.end_line,
+        )
+
     def _compute_chunks_diff(
         self,
         old_chunks: list[CodeChunk],
@@ -143,6 +156,7 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
         new_ids = set(new_map.keys())
         unchanged_ids = old_ids & new_ids
 
+        occurrence_updates = []
         unchanged_chunks = []
         modified_chunks = []
 
@@ -153,6 +167,10 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
                 modified_chunks.append((old_chunk, new_chunk))
             else:
                 unchanged_chunks.append(new_chunk)
+                if self._occurrence_fields(old_chunk) != self._occurrence_fields(
+                    new_chunk
+                ):
+                    occurrence_updates.append((old_chunk, new_chunk))
 
         added_ids = new_ids - old_ids
         deleted_ids = old_ids - new_ids
@@ -215,6 +233,7 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
             deleted_chunks=deleted_chunks,
             modified_chunks=modified_chunks,
             unchanged_chunks=unchanged_chunks,
+            occurrence_updates=occurrence_updates,
             summary=summary,
         )
         # Back-compat properties expected by some integration tests
@@ -237,6 +256,7 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
         old_ids = set(old_map.keys())
         new_ids = set(new_map.keys())
         unchanged_ids = old_ids & new_ids
+        occurrence_updates = []
         unchanged_chunks = []
         modified_chunks = []
         for chunk_id in unchanged_ids:
@@ -246,6 +266,10 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
                 modified_chunks.append((old_chunk, new_chunk))
             else:
                 unchanged_chunks.append(new_chunk)
+                if self._occurrence_fields(old_chunk) != self._occurrence_fields(
+                    new_chunk
+                ):
+                    occurrence_updates.append((old_chunk, new_chunk))
         added_ids = new_ids - old_ids
         deleted_ids = old_ids - new_ids
         added_chunks = [new_map[chunk_id] for chunk_id in added_ids]
@@ -332,6 +356,7 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
             deleted_chunks=deleted_chunks,
             modified_chunks=modified_chunks,
             unchanged_chunks=unchanged_chunks,
+            occurrence_updates=occurrence_updates,
             summary=summary,
         )
 
@@ -447,21 +472,32 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
         incremental_chunks: list[CodeChunk],
         changed_regions: list[tuple[int, int]],
     ) -> list[CodeChunk]:
-        """Merge incremental processing results with full chunks."""
-        changed_lines = set()
-        for start, end in changed_regions:
-            changed_lines.update(range(start, end + 1))
-        result = []
-        processed_ids = set()
-        for chunk in incremental_chunks:
-            result.append(chunk)
-            processed_ids.add(chunk.chunk_id)
+        """Replace chunks intersecting inclusive changed regions across all files.
+
+        Reversed spans are empty. Incremental chunks take precedence by occurrence
+        ID and precede retained chunks when their file and start line tie.
+        """
+        intervals: list[tuple[int, int]] = []
+        for start, end in sorted(changed_regions):
+            if end < start:
+                continue
+            if intervals and start <= intervals[-1][1] + 1:
+                left, right = intervals[-1]
+                intervals[-1] = (left, max(right, end))
+            else:
+                intervals.append((start, end))
+
+        result = list(incremental_chunks)
+        processed_ids = {chunk.chunk_id for chunk in incremental_chunks}
         for chunk in full_chunks:
             if chunk.chunk_id in processed_ids:
                 continue
-            chunk_lines = set(range(chunk.start_line, chunk.end_line + 1))
-            if not chunk_lines & changed_lines:
-                result.append(chunk)
+            if chunk.start_line <= chunk.end_line:
+                # Disjoint intervals have ascending ends as well as starts.
+                i = bisect_right(intervals, chunk.end_line, key=itemgetter(0))
+                if i and intervals[i - 1][1] >= chunk.start_line:
+                    continue
+            result.append(chunk)
         result.sort(key=lambda c: (c.file_path, c.start_line))
         return result
 
@@ -869,8 +905,13 @@ class SimpleIncrementalIndex(IncrementalIndex):
         new_chunk: CodeChunk | None,
     ) -> None:
         """Update index for a single chunk change."""
-        if old_chunk and old_chunk.chunk_id in self.index:
-            del self.index[old_chunk.chunk_id]
+        if old_chunk:
+            self.index.pop(old_chunk.chunk_id, None)
+        self._publish_update(old_chunk, new_chunk)
+
+    def _publish_update(
+        self, old_chunk: CodeChunk | None, new_chunk: CodeChunk | None
+    ) -> None:
         if new_chunk:
             self.index[new_chunk.chunk_id] = {
                 "content": new_chunk.content.lower(),
@@ -891,15 +932,21 @@ class SimpleIncrementalIndex(IncrementalIndex):
 
     def batch_update(self, diff: ChunkDiff) -> None:
         """Update index with multiple changes."""
-        for change in diff.changes:
-            self.update_chunk(change.old_chunk, change.new_chunk)
+        pairs = [(change.old_chunk, change.new_chunk) for change in diff.changes]
+        pairs.extend(diff.occurrence_updates)
+        # A destination can reuse another pair's old ID.
+        for old_chunk, _ in pairs:
+            if old_chunk:
+                self.index.pop(old_chunk.chunk_id, None)
+        for old_chunk, new_chunk in pairs:
+            self._publish_update(old_chunk, new_chunk)
 
     def get_update_cost(self, diff: ChunkDiff) -> float:
         """Estimate cost of applying updates."""
         total_chunks = len(self.index)
         if total_chunks == 0:
             return 0.0
-        changes = len(diff.changes)
+        changes = len(diff.changes) + len(diff.occurrence_updates)
         cost = min(1.0, changes / max(1, total_chunks))
         major_changes = sum(
             1

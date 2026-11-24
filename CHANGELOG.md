@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Incremental searches return current occurrence IDs and line ranges after source shifts. Merging changes uses memory proportional to chunk and interval counts, including for long spans (treesitter-chunker#754).
+
 - Incremental cache backups preserve byte spans, identities, timestamps and JSON-compatible metadata. Export rejects values that would lose their type in JSON. Rebuild unversioned backups from source (treesitter-chunker#753).
 
 - Python structural call resolution now treats a constant string as a
