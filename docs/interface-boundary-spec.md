@@ -396,11 +396,21 @@ submodule, a single conditional import, star imports and module
 globals are counted: an imported module object may only be read, called
 through, compared with `is`, or written by name; a named write (or a constant
 `mock.patch('m.t')`-style string) makes that name unprovable, and any other
-use (passed to a function, aliased, returned, `__dict__`, `vars(m)`, a
-literal `import_module('m')` or `sys.modules['m']`) makes the whole module,
-and every module it exposes, unprovable. That also applies to the written
-module's own module-level `"structural"` proofs, so `"imports"` can resolve
-fewer Python calls than `"structural"`. A Python file that may load or write
+untracked use (passing it to a function, a module-scope alias, `__dict__`,
+`vars(m)`, a literal `import_module('m')` or `sys.modules['m']`) makes the
+whole module and every module it exposes unprovable. A plain module-level
+function can return an import-rooted chain or a tuple of such values.
+When the resolver can account for the getter and its uses, it follows the
+returned modules through member calls and ordinary function-local aliases.
+A write through the result invalidates the affected name. Passing the
+result to unknown code, capturing a local alias or imported module in a
+nested scope, or exposing the getter itself invalidates proofs for the
+modules made reachable. These rules affect the written module's own
+module-level `"structural"` proofs, so `"imports"` can resolve fewer Python
+calls than `"structural"`. The getter analysis tracks writes and escapes. Calls
+through a getter result still use the ordinary resolution rules.
+
+A Python file that may load or write
 any module (`exec`, `eval`, `compile`, any of the string-code triggers
 above, a code object or closure such as `f.__code__` (reads included), a
 non-literal loader, other `importlib` uses, `runpy`, `sys.modules` other

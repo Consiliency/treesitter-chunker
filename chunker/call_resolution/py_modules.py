@@ -705,8 +705,14 @@ def _scan_imports(analysis: Any, facts: _Facts) -> None:
                     "dotted_name",
                     "identifier",
                 ):
-                    base = ".".join(ps._dotted_parts(imported, source))
+                    parts = ps._dotted_parts(imported, source)
+                    base = ".".join(parts)
                     facts.imports.add(base)
+                    if child.type == "aliased_import" and len(parts) > 1:
+                        # IMPORT_FROM reads the package attributes to bind a
+                        # dotted alias. The final attribute can be a getter
+                        # even when the submodule exists in sys.modules.
+                        facts.uses.add((parts[0], REF_POSITION, *parts[1:]))
                     private_bases = _private_import_bases(node, base, source)
                     if private_bases:
                         # The source-spelled binding cannot prove which module
@@ -2039,6 +2045,9 @@ CALL_STEPS = 3
 # result may stand for: ``p = p.parent`` in a loop would grow it without end.
 # Past the cap the value escapes.
 MAX_ALIAS_CHAIN = 6
+# Self-rebinding alternatives can grow exponentially within the length cap.
+# Once one callee has this many distinct alias paths, expose its whole result.
+MAX_ALIAS_PATHS = 32
 # The positions of a result record: ``result-<p>`` for a call whose callee
 # is reached through an import binding, ``own-<p>`` for a call of this
 # file's own getter by name.
@@ -2357,7 +2366,11 @@ def _scan_results(
     aliases = {}
     # scope id -> the ``def`` node of that alias scope.
     alias_defs: dict[int, Any] = {}
-    Source = tuple[tuple[str, tuple[str, ...]], tuple[str, ...]]
+    Ref = tuple[str, tuple[str, ...]]
+    Source = tuple[Ref, tuple[str, ...]]
+    prefixes: dict[Ref, set[tuple[str, ...]]] = {}
+    escaped: set[Ref] = set()
+    result_uses: dict[Ref, set[tuple[str, ...]]] = {}
 
     def emit(
         ref: tuple[str, tuple[str, ...]],
@@ -2367,10 +2380,15 @@ def _scan_results(
     ) -> None:
         base, callee = ref
         kind = ("own-" if base == "" else "result-") + position
-        records.add((base, kind, *callee, CALL_MARK, *prefix, *chain))
+        result_uses.setdefault(ref, set()).add(
+            (base, kind, *callee, CALL_MARK, *prefix, *chain)
+        )
 
     def handle(sources: list[Source], node: Any) -> bool:
         """Classify one use for every source; whether an alias grew."""
+        sources = [(ref, prefix) for ref, prefix in sources if ref not in escaped]
+        if not sources:
+            return False
         found = _classify_result(analysis, node, not gate)
         if found is None:
             return False
@@ -2378,12 +2396,23 @@ def _scan_results(
             _kind, scope, names, chain = found
             grew = False
             for ref, prefix in sources:
+                if ref in escaped:
+                    continue
                 full = (*prefix, *chain)
                 if _unsafe_dunder(full) or len(full) > MAX_ALIAS_CHAIN:
                     # ``ns = get().__dict__`` hands out the namespace; a chain
                     # past the cap is not followed: both escape.
                     emit(ref, prefix, "value", chain)
                     continue
+                paths = prefixes.setdefault(ref, set())
+                if full not in paths and len(paths) >= MAX_ALIAS_PATHS:
+                    # Exposure of the returned modules includes their imports
+                    # and getters. It covers every path already recorded.
+                    result_uses[ref] = set()
+                    emit(ref, (), "value", ())
+                    escaped.add(ref)
+                    continue
+                paths.add(full)
                 alias_defs[id(scope)] = scope.node
                 for name in names:
                     bucket = aliases.setdefault((id(scope), name), set())
@@ -2423,8 +2452,6 @@ def _scan_results(
             if ps._callee_call(ident) is None:
                 # The getter handed on as a value: whatever it returns escapes.
                 records.add(("", "own-value", spelling, CALL_MARK))
-    if not aliases:
-        return
     # A read of an alias is any identifier of its spelling whose lookup
     # decides in the alias's scope (closures included) or cannot say where.
     # A read from a nested scope (a closure, lambda, comprehension or class
@@ -2435,7 +2462,7 @@ def _scan_results(
     # pair is handled once.
     deciding: dict[int, Any] = {}
     done: dict[int, set[tuple[str, tuple[str, ...], tuple[str, ...]]]] = {}
-    changed = True
+    changed = bool(aliases)
     while changed:
         changed = False
         alias_names = {name for _scope, name in aliases}
@@ -2460,12 +2487,16 @@ def _scan_results(
                 )
                 for item in sorted(items - seen):
                     seen.add(item)
+                    if (item[0], item[1]) in escaped:
+                        continue
                     if nested:
                         emit((item[0], item[1]), item[2], "value", [])
                     else:
                         sources.append(((item[0], item[1]), item[2]))
             if sources and handle(sources, ident):
                 changed = True
+    for uses in result_uses.values():
+        records.update(uses)
 
 
 def _cell_read(analysis: Any, ident: Any) -> bool:
@@ -3517,6 +3548,7 @@ class _Builder:
         kind = position.split("-", 1)[1]
         if not callee:
             return
+        write_target = rest.pop() if kind == "write" and rest else None
         getters: set[tuple[str, str]] = set()
         if position.startswith("own-"):
             if callee[0] in self.getters_of(writer):
@@ -3552,6 +3584,8 @@ class _Builder:
                         for inner in self.getter_values(node, segment[-1]):
                             current |= self.returned(inner)
                 segment = []
+            if write_target is not None:
+                segment.append(write_target)
             self.walk_from(current, kind, segment, names, whole)
 
     def walk_from(

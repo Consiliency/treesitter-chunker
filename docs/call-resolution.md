@@ -40,10 +40,15 @@ A constant-key frame lookup can limit exposure to a single imported name.
 The resolver can prove a fresh module for a function local constructed with
 `types.ModuleType`. With `importlib.util.module_from_spec`, the loader can
 return an existing module, including the importer itself.
-Python can therefore resolve fewer calls in `imports` than in
-`structural`. The tool does not detect cross-file closure-cell writes or
-writes to a caller's frame locals for Tier 1 proofs. A Tier 1 edge that such
-a write makes wrong stays `resolved` in both modes.
+In Python `imports` mode a plain module-level getter can return an imported
+module, or a tuple of modules. For example, if `get()` returns `svc`, a
+function-local `m = get()` followed by `m.t()` can preserve the proof for
+a call to `t()` inside `svc`. A write such as `get().t = replacement`
+invalidates that proof. A nested function that captures the local import
+or result alias exposes the module because other code can access its cell.
+Python can therefore resolve fewer calls in `imports` than in `structural`.
+Other cross-file writes to closure cells or frame locals can still leave a
+Tier 1 edge resolved when the scan cannot associate the write with its binding.
 
 ## When import proofs are skipped
 
@@ -93,7 +98,7 @@ outside those rules.
 
 | Route | Example | Tracked in |
 | --- | --- | --- |
-| Python helpers that return imported modules | Returning an import already counts as exposing it to other code. More precise tracking is planned for which module a helper returns and how the caller uses it. | [treesitter-chunker#706](https://github.com/Consiliency/treesitter-chunker/issues/706) |
+| Python module-scope aliases | An assignment such as `spec_graph = H.spec_graph` at module scope exposes the imported module. Following subsequent uses of the alias is planned. | [treesitter-chunker#725](https://github.com/Consiliency/treesitter-chunker/issues/725) |
 
 ### Runtime behavior the source scan can miss
 

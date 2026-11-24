@@ -785,6 +785,14 @@ _PY_CALL_MARK = "()"
 _PY_CALL_STEPS = 3
 
 
+def _valid_py_module_ref(base: str) -> bool:
+    """An absolute dotted module name or a relative import, including `from .`."""
+    name = base.lstrip(".")
+    return bool(base) and (
+        not name or all(part.isidentifier() for part in name.split("."))
+    )
+
+
 def _valid_py_use(use: object) -> bool:
     """A ``uses`` record: ``[base, position, *chain]``, or a well-formed
     result record (#706) whose callee and chain are identifiers and call
@@ -795,11 +803,19 @@ def _valid_py_use(use: object) -> bool:
     if len(use) < 2:
         return False
     position = use[1]
+    if position == "ref":
+        return _valid_py_module_ref(use[0]) and all(
+            part.isidentifier() for part in use[2:]
+        )
     if position in _PY_USE_POSITIONS:
         return True
     if position not in _PY_RESULT_POSITIONS:
         return False
-    rest = use[2:]
+    # setattr/delattr accept any string as the final write target, including
+    # the spelling we use for a call step. Only the preceding path is syntax.
+    rest = use[2:-1] if position.endswith("-write") else use[2:]
+    if position.endswith("-call") and (not rest or not rest[-1].isidentifier()):
+        return False
     marks = rest.count(_PY_CALL_MARK)
     if not 1 <= marks <= _PY_CALL_STEPS:
         return False
@@ -808,9 +824,11 @@ def _valid_py_use(use: object) -> bool:
         part == _PY_CALL_MARK or part.isidentifier() for part in rest
     ):
         return False
+    if any(a == b == _PY_CALL_MARK for a, b in zip(rest, rest[1:])):
+        return False
     if position.startswith("own-"):
         return use[0] == "" and len(callee) == 1
-    return bool(use[0])
+    return _valid_py_module_ref(use[0])
 
 
 def _strings(value: object) -> bool:
@@ -845,7 +863,10 @@ def valid_py_module_bindings(value: object) -> bool:
             and isinstance(records, list)
             and bool(records)
             and all(
-                _strings(record) and bool(record) and bool(record[0])
+                _strings(record)
+                and bool(record)
+                and _valid_py_module_ref(record[0])
+                and all(part.isidentifier() for part in record[1:])
                 for record in records
             )
             for name, records in value["getters"].items()

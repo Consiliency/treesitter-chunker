@@ -354,6 +354,7 @@ def test_merge_base_policy_runs_with_full_history_in_ci() -> None:
     module = importlib.util.module_from_spec(smoke)
     smoke.loader.exec_module(module)
     assert "tests/test_call_resolution_today.py" in module.CI_SMOKE_TESTS
+    assert "tests/test_call_resolution_py_getters.py" in module.CI_SMOKE_TESTS
 
 
 def test_baseline_policy_flags_only_mixed_diffs() -> None:

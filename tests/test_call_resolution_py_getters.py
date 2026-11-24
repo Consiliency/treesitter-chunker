@@ -16,6 +16,7 @@ item 4).
 from __future__ import annotations
 
 import copy
+import json
 import os
 import random
 import subprocess
@@ -26,6 +27,7 @@ from typing import Any
 import pytest
 
 from chunker.boundary import dumps_boundary_ir, extract_boundary_ir
+from chunker.boundary.cache import load_cache_index
 from chunker.call_resolution.facts import valid_py_module_bindings
 from chunker.symbol_graph import (
     assemble_symbol_graph,
@@ -34,6 +36,7 @@ from chunker.symbol_graph import (
     has_directory_symlink,
 )
 from tests.call_resolution_py_getter_cases import CASES, SHARED
+from tests.test_call_resolution_tier2_py import _context
 
 MODE = "imports"
 # R-706-1 item 4: accepted widenings of named residuals (a frame of another
@@ -86,7 +89,9 @@ def _cpython(root: Path) -> str:
     return run.stdout.strip().splitlines()[-1]
 
 
-def _resolutions(root: Path, probe: str, reference: str = "t") -> list[str]:
+def _resolutions(
+    root: Path, probe: str, reference: str = "t", *, expected_file: str | None = None
+) -> list[str]:
     facts = [
         extract_symbol_facts_for_file(path, root, "python", call_resolution=MODE)
         for path in collect_source_files(root, "python")
@@ -98,13 +103,19 @@ def _resolutions(root: Path, probe: str, reference: str = "t") -> list[str]:
         language_filter="python",
         directory_symlinks=has_directory_symlink(root),
     )
-    return [
-        edge["resolution"]
+    edges = [
+        edge
         for edge in graph["relationships"]
         if edge["type"] == "calls"
         and edge["file"] == probe
         and edge["reference"] == reference
     ]
+    if expected_file is not None:
+        for edge in edges:
+            if edge["resolution"] == "resolved":
+                target = graph["symbol_lookup"][edge["to"]]
+                assert (target["file"], target["name"]) == (expected_file, reference)
+    return [edge["resolution"] for edge in edges]
 
 
 def _replaced(printed: str) -> bool:
@@ -129,7 +140,9 @@ def test_review_trees(tmp_path: Path, case: str) -> None:
         },
     )
     assert _cpython(root) == printed, case
-    (resolution,) = _resolutions(root, probe)
+    (resolution,) = _resolutions(
+        root, probe, expected_file="svc.py" if printed == "SVC.t" else None
+    )
     assert resolution == expected, case
     name = case.split(":", 1)[1]
     if _replaced(printed) and not name.startswith(RESIDUALS):
@@ -258,6 +271,33 @@ def test_yield_in_nested_definition_makes_getter_a_generator(
             "main.py": _MAIN,
         },
     )
+    assert _cpython(root) == "OTHER.t"
+    assert _resolutions(root, "svc.py") == ["ambiguous"]
+
+
+@pytest.mark.parametrize(
+    ("import_getter", "write"),
+    [
+        ("import fns.fetch as choose", "choose().t = other.t"),
+        ("from bridge import choose", "choose().t = other.t"),
+        ("import fns.fetch as choose", "g = choose\n    g().t = other.t"),
+    ],
+)
+def test_dotted_import_alias_can_hold_a_reexported_getter(
+    tmp_path: Path, import_getter: str, write: str
+) -> None:
+    files = {
+        "svc.py": _SVC,
+        "other.py": _OTHER,
+        "maker.py": "def choose():\n    import svc\n    return svc\n",
+        "fns/fetch.py": "",
+        "fns/__init__.py": "from . import fetch\nfrom maker import choose as fetch\n",
+        "use.py": f"{import_getter}\nimport other\ndef go():\n    {write}\n",
+        "main.py": _MAIN,
+    }
+    if "bridge" in import_getter:
+        files["bridge.py"] = "import fns.fetch as choose\n"
+    root = _write(tmp_path, files)
     assert _cpython(root) == "OTHER.t"
     assert _resolutions(root, "svc.py") == ["ambiguous"]
 
@@ -392,6 +432,8 @@ def test_a_write_through_a_result_taints_that_name_only(tmp_path: Path) -> None:
     assert _cpython(root) == "OTHER.t"
     assert _resolutions(root, "svc.py", "t") == ["ambiguous"]
     assert _resolutions(root, "svc.py", "w") == ["resolved"]
+    _, _, context = _context(root)
+    assert context.py_modules.taint_reason("svc.py", "svc.py", "t") == "reassigned"
 
 
 def test_a_write_through_a_result_attribute_taints_the_closure(
@@ -413,6 +455,9 @@ def test_a_write_through_a_result_attribute_taints_the_closure(
         },
     )
     assert _cpython(root) == "OTHER.t"
+    _, _, context = _context(root)
+    assert context.py_modules.taint_reason("svc.py", "svc.py", "dsl") == "reassigned"
+    assert context.py_modules.taint_reason("dsl.py", "dsl.py", "t") == "reassigned"
     assert _resolutions(root, "dsl.py", "t") == ["ambiguous"]
     assert _resolutions(root, "svc.py", "t") == ["resolved"]
 
@@ -525,6 +570,14 @@ def test_facts_record_getters_and_result_records(tmp_path: Path) -> None:
         lambda b: b.update(getters={"g": [[""]]}),
         lambda b: b.update(getters={"not a name": [["svc"]]}),
         lambda b: b.pop("getters"),
+        lambda b: b.update(getters={"g": [["svc", "bad member!"]]}),
+        lambda b: b.update(getters={"g": [["svc..nested"]]}),
+        lambda b: b["uses"].append(["get.", "ref", "get"]),
+        lambda b: b["uses"].append(["get", "ref", "()"]),
+        lambda b: b["uses"].append(["get.", "result-value", "get", "()"]),
+        lambda b: b["uses"].append(["get", "result-write", "get", "()", "()", "t"]),
+        lambda b: b["uses"].append(["get", "result-write", "get", "()"]),
+        lambda b: b["uses"].append(["get", "result-call", "get", "()"]),
         lambda b: b["uses"].append(["get", "result-value", "get"]),
         lambda b: b["uses"].append(["get", "result-value", "()", "t"]),
         lambda b: b["uses"].append(["", "result-value", "get", "()"]),
@@ -597,6 +650,78 @@ def _getter_tree(use: str) -> dict[str, str]:
 _SAFE_USE = "from get import get\n\n\ndef go():\n    m = get()\n    return m.w()\n"
 _WRITE_USE = "from get import get\nimport other\n\n\ndef go():\n    m = get()\n    m.t = other.t\n"
 _REF_USE = "from get import get\n\nG = get\n\n\ndef go():\n    return 1\n"
+
+
+@pytest.mark.parametrize("file", ["get.py", "use.py"])
+def test_incremental_cache_reextracts_malformed_getter_record(
+    tmp_path: Path, file: str
+) -> None:
+    root = _write(tmp_path / "tree", _getter_tree(_WRITE_USE))
+    cache = tmp_path / "cache"
+    cold = extract_boundary_ir(
+        root, incremental=True, cache_dir=cache, call_resolution=MODE
+    )
+    key = load_cache_index(cache).records[file]
+    path = cache / (key.replace(":", "_") + ".json")
+    record = json.loads(path.read_text(encoding="utf-8"))
+    bindings = record["symbol_facts"]["scope_facts"]["module_bindings"]
+    if file == "get.py":
+        bindings["getters"]["get"][0].append("bad member!")
+    else:
+        write = next(row for row in bindings["uses"] if row[1] == "result-write")
+        write.insert(write.index("()") + 1, "()")
+    path.write_text(json.dumps(record), encoding="utf-8")
+    warm = extract_boundary_ir(
+        root, incremental=True, cache_dir=cache, call_resolution=MODE
+    )
+    assert dumps_boundary_ir(warm) == dumps_boundary_ir(cold)
+    repaired = json.loads(path.read_text(encoding="utf-8"))
+    assert valid_py_module_bindings(
+        repaired["symbol_facts"]["scope_facts"]["module_bindings"]
+    )
+
+
+@pytest.mark.parametrize("attribute", ["()", "", "bad member!"])
+def test_literal_getter_write_keeps_arbitrary_attribute_name(
+    tmp_path: Path, attribute: str
+) -> None:
+    use = f"from get import get\n\ndef go():\n    setattr(get(), {attribute!r}, 1)\n"
+    root = _write(tmp_path, _getter_tree(use))
+    assert ["get", "result-write", "get", "()", attribute] in _bindings(root, "use.py")[
+        "uses"
+    ]
+    _, _, context = _context(root)
+    assert (
+        context.py_modules.taint_reason("svc.py", "svc.py", attribute) == "reassigned"
+    )
+    assert _resolutions(root, "svc.py", expected_file="svc.py") == ["resolved"]
+
+
+def test_branching_result_alias_paths_collapse_to_one_escape(tmp_path: Path) -> None:
+    # The same local can receive any earlier path at each assignment. The
+    # complete returned-module escape bounds this even for an unknown callee.
+    use = "from get import get\n\ndef go():\n    m = get()\n"
+    for member in ("organization", "billing", "profile", "preferences"):
+        use += f"    m = m.{member}\n"
+    root = _write(tmp_path, _getter_tree(use + "    return m\n"))
+    assert _bindings(root, "use.py")["uses"] == [["get", "result-value", "get", "()"]]
+    _, _, context = _context(root)
+    assert context.py_modules.taint_reason("svc.py", "svc.py", "t") == "module-escape"
+
+
+def test_branching_result_alias_escape_covers_writer(tmp_path: Path) -> None:
+    use = (
+        "from get import get\nimport other\n\ndef go(deep=False):\n"
+        "    m = get()\n    if deep:\n"
+        "        m = m.organization\n        m = m.billing\n"
+        "        m = m.profile\n        m = m.preferences\n"
+        "    m.t = other.t\n"
+    )
+    root = _write(tmp_path, _getter_tree(use))
+    uses = [row for row in _bindings(root, "use.py")["uses"] if row[0] == "get"]
+    assert uses == [["get", "result-value", "get", "()"]]
+    assert _cpython(root) == "OTHER.t"
+    assert _resolutions(root, "svc.py") == ["ambiguous"]
 
 
 def test_incremental_runs_equal_cold_runs(tmp_path: Path) -> None:
@@ -1000,7 +1125,9 @@ def _run_oracle(tmp_path: Path, seed: int, extended: float) -> tuple[int, int]:
         program = generator.build()
         root = _write(tmp_path / f"p{index}", program)
         printed = _cpython(root)
-        (resolution,) = _resolutions(root, "svc.py")
+        (resolution,) = _resolutions(
+            root, "svc.py", expected_file=None if _replaced(printed) else "svc.py"
+        )
         if _replaced(printed):
             assert resolution != "resolved", (seed, index, program["use.py"])
             closure_writes += generator.closure_write

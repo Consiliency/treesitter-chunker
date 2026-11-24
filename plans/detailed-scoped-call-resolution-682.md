@@ -2239,12 +2239,13 @@ the import proofs themselves (9.4-9.6). `structural` output is unchanged.
   getter the chain reaches (`return getter.get`). Every use of a call that may
   invoke a getter (a callee spelled like an own getter, or headed by an
   import binding) goes through the same closed allow-list as an imported
-  module object, through parentheses, one integer-literal subscript, member
+  module object, through parentheses, integer-literal subscripts before the first attribute, member
   calls (at most three call steps; a member may be a getter of the module
   the value is) and plain function-local alias bindings (`x = V`, `a, b =
   V`, not `global`/`nonlocal`, at most six chain elements, keyed by scope
-  and name; a read the lookup cannot place counts, and an unsafe dunder ahead
-  of an alias is an escape). A read of an alias from a nested scope (a
+  and name; more than 32 distinct alias paths for one callee in a file
+  expose its entire result). A read the lookup cannot place counts, and an unsafe dunder ahead
+  of an alias is an escape. A read of an alias from a nested scope (a
   closure, lambda, comprehension, class body or lazy type expression),
   including a `nonlocal` declaration or a value pattern, is an escape: the capture
   puts the alias in a cell another module may read and write
@@ -3397,8 +3398,8 @@ users.
 | P23. Bytes `%` templates, runtime-built templates and `Template` subclasses with unsupported delimiters | (b) | Documented limit | treesitter-chunker#699 |
 | P23. A formatting callback cuts `__main__` out of a larger component, such as a format spec containing `x__main__` | (b) | Documented limit (R-698-1) | treesitter-chunker#699 |
 | P23. A name joined across a replacement field, such as `f'{P():__ma{""}in__}'` | (b) | Documented limit (R-698-2) | treesitter-chunker#699 |
-| A file exposes its import bindings through its own namespace, for example through `globals()` or `locals()` | (a) | Planned (R-706-1) | treesitter-chunker#724 |
-| A helper returns an imported module and code writes through the result | (a) | Tracking of returned modules planned (R-706-1) | treesitter-chunker#706 |
+| A file exposes its import bindings through its own namespace, for example through `globals()` or `locals()` | Closed | Closed by treesitter-chunker#726 for the namespace routes in §9.10 (R-724-1 through R-724-7). | treesitter-chunker#724 |
+| A helper returns an imported module and code writes through the result | Closed | Tracked getters and function-local result aliases follow §9.10 (R-706-1 through R-706-4). The frame and loader limits are recorded under R10/R12. Module-scope aliases remain a separate follow-up. | treesitter-chunker#706, treesitter-chunker#725 |
 | A function's body is replaced through `__code__` | (b) | The definition can still be the right binding. Spelled writes of `__code__`, `__closure__`, `__defaults__` and `__kwdefaults__` already cause Tier 2 shutoff (PR 6, N-1). | treesitter-chunker#699 |
 | Cross-file submodule rebinding, including loading by a computed name in `__init__.py`, and cross-file builtin injection outside recognized triggers | (c) | Open | treesitter-chunker#699 |
 | Modules loaded under a loader-chosen name or acquired by configured plugins | (c) | Open. Named module escapes are already tracked. | treesitter-chunker#699 |
