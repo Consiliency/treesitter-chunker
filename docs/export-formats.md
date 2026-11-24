@@ -445,6 +445,42 @@ exporter.export(chunks, "output_dir/")
 #       part-0.parquet
 ```
 
+### Structured Parquet exports
+
+`StructuredParquetExporter` writes chunks and relationships separately. For
+example, read a partitioned chunks dataset directly with PyArrow:
+
+```python
+from pathlib import Path
+
+import pyarrow.dataset as ds
+from chunker.export import StructuredParquetExporter
+
+exporter = StructuredParquetExporter(partition_by=["language", "file_path"])
+exporter.export(chunks, relationships, Path("run.v1.parquet"))
+table = ds.dataset("run.v1_chunks", format="parquet").to_table()
+```
+
+The relationships are in `run.v1_relationships.parquet`. Supplying metadata
+also writes `run.v1_metadata.parquet`. Reusing a chunks root replaces matching
+leaves and retains unmatched partitions. Use a fresh destination for a clean
+snapshot. Re-export older shared-parent datasets from source to create named roots.
+
+Each directory component has the form `<column>=<value>` with UTF-8 percent
+encoding, including `%21` for a literal `!`. If the entire encoded component
+exceeds 255 ASCII bytes, its name becomes `<column>=!sha256-<digest>`, using
+the 64 lowercase hex digits of SHA-256 over the original UTF-8 value. Read
+the original typed partition fields from the leaf rows. The exporter checks
+for colliding directory names within an export before writing any leaves.
+On Windows hosts with the legacy full-path limit, pass an extended-length
+absolute root to the PyArrow reader for long paths, for example
+`ds.dataset("//?/C:/reports/run.v1_chunks", format="parquet")`. For a network
+share, use `//?/UNC/server/share/reports/run.v1_chunks`.
+
+Streaming always writes flat chunks and relationships files. Each successfully
+exhausted iterator produces a readable file with its declared schema, including
+when it yields zero rows.
+
 ### Advanced Parquet Features
 
 Parquet export requires PyArrow 21.0.0 or newer. This is the tested minimum for
