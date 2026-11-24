@@ -516,12 +516,16 @@ def test_unruled_error_tree(real_api, tmp_path, language, source, fallback):
     path = tmp_path / f"data.{language}"
     path.write_bytes(source.encode())
     assert parser.get_parser(language).parse(source.encode()).root_node.has_error
-    for result in (
-        real_api.auto_chunk_file(path),
-        real_api.chunk_text(source, language),
+    for result, expected_path in (
+        (real_api.auto_chunk_file(path), path),
+        (real_api.chunk_text(source, language), None),
     ):
-        assert result.fallback_used is fallback
-        assert bool(result.chunks) is fallback
+        if fallback:
+            assert_line_fallback(result, language, [(1, 1, source)], expected_path)
+        else:
+            assert not result.fallback_used
+            assert result.chunks == []
+            assert "fallback_reason" not in result.metadata
 
 
 @pytest.mark.parametrize(

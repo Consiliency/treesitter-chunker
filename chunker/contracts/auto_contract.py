@@ -53,7 +53,7 @@ class ZeroConfigContract(ABC):
         Args:
             file_path: Path to file
             language: Override language detection
-            token_limit: Optional token limit per chunk
+            token_limit: Optional token limit for structural chunks
 
         Returns:
             Chunking result with metadata
@@ -98,7 +98,7 @@ class ZeroConfigContract(ABC):
         Args:
             text: Text content to chunk
             language: Language of the text
-            token_limit: Optional token limit
+            token_limit: Optional token limit for structural chunks
 
         Returns:
             Chunking result
