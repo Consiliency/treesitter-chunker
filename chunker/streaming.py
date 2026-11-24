@@ -31,6 +31,8 @@ from .core import (
     _build_retrieval_metadata,
     _extract_definition_name,
     _lone_cr_parse_copy,
+    _chunk_line_offsets,
+    _physical_row,
     resolve_chunk_predicates,
 )
 from .exceptions import ParsingError
@@ -39,7 +41,7 @@ from .parser import get_parser
 from .types import CodeChunk, compute_node_id
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Callable, Iterator, Sequence
 
     from tree_sitter import Node, Parser
 
@@ -120,6 +122,7 @@ class StreamingChunker:
         include_retrieval_metadata: bool = False,
         should_chunk: Callable[[str], bool] | None = None,
         should_ignore: Callable[[str], bool] | None = None,
+        line_offsets: Sequence[int] | None = None,
     ) -> Iterator[CodeChunk]:
         """Yield chunks as they're found without building a full list in memory.
 
@@ -130,6 +133,8 @@ class StreamingChunker:
         top of the walk and threaded through recursion; ignored nodes stop
         traversal just as they do in ``chunk_file``.
         """
+        if line_offsets is None:
+            line_offsets = _chunk_line_offsets(mmap_data, self.language)
         if should_chunk is None or should_ignore is None:
             default_chunk, default_ignore = resolve_chunk_predicates(self.language)
             if should_chunk is None:
@@ -162,8 +167,16 @@ class StreamingChunker:
                 language=self.language,
                 file_path=file_path,
                 node_type=node.type,
-                start_line=start_line,
-                end_line=node.end_point[0] + 1,
+                start_line=(
+                    _physical_row(line_offsets, node.start_byte)
+                    if line_offsets
+                    else start_line
+                ),
+                end_line=(
+                    _physical_row(line_offsets, node.end_byte)
+                    if line_offsets
+                    else node.end_point[0] + 1
+                ),
                 byte_start=node.start_byte,
                 byte_end=node.end_byte,
                 parent_context=parent_ctx or "",
@@ -205,6 +218,7 @@ class StreamingChunker:
                 include_retrieval_metadata,
                 should_chunk,
                 should_ignore,
+                line_offsets,
             )
 
     def chunk_file_streaming(

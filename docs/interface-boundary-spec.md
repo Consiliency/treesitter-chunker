@@ -462,6 +462,16 @@ misses, including records whose stored schema otherwise matches, because they
 cannot supply the required per-site raw call facts. Missing or malformed
 `call_facts` in a version 3 record also causes a safe miss and re-extraction.
 
+For non-Python sources containing lone CR, the key includes a physical-row
+revision (treesitter-chunker#601). A legacy record misses once. Other files
+retain their keys and existing dependency-impact recomputation rules. Re-extract
+affected saved IR and refresh line-based joins, non-call edge IDs derived from
+lines, and document digests. Node spans report the physical rows at the start
+and exclusive end cursor. A call ends on the row of its last included byte.
+CRLF advances after LF. Call-site identities retain their owner and byte anchors.
+Synthetic Svelte template-control and reactive rows identify the source line
+that produced the chunk, while stored offsets retain their legacy calculation.
+
 Each cache key includes the installed `tree-sitter-language-pack` and
 `tree-sitter` runtime versions. Python and JavaScript keys additionally bind the
 actual selected grammar source: either the exact official distribution/version

@@ -27,6 +27,8 @@ COMMON_TESTS = [
     "tests/test_streaming.py::TestBufferOptimization::test_repeated_streaming_preserves_eager_fixture_chunks",
     "tests/test_streaming.py::TestBufferOptimization::test_file_hash_matches_sha256_for_chunk_sizes",
     "tests/test_cr_only_python_lines.py",
+    "tests/test_cr_only_source_lines.py",
+    "tests/test_boundary_physical_row_cache.py",
     "tests/test_file_reader_offsets.py",
     "tests/test_config.py",
     "tests/test_env_config.py",

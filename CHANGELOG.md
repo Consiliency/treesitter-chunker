@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Non-Python chunks, call sites and Boundary IR report physical rows in files
+  containing lone CR. Incremental Boundary extraction refreshes affected
+  records (treesitter-chunker#601).
+
 - Token-limited file reads, standard VFS chunking and repository processing
   (including watch deltas) preserve source line endings. For valid UTF-8,
   contiguous source-backed chunk spans and content refer to the original bytes.

@@ -6,6 +6,7 @@ import hashlib
 import re
 from bisect import bisect_left
 from collections import defaultdict
+from collections.abc import Sequence
 from fnmatch import fnmatchcase
 from heapq import heappop, heappush
 from pathlib import Path
@@ -20,7 +21,7 @@ from .call_resolution.facts import (
     valid_scope_facts,
     valid_symbol_entry,
 )
-from .core import _line_ending_offsets, chunk_file
+from .core import _line_ending_offsets, _physical_row, chunk_file
 from .types import (
     CALL_RESOLUTION_MODES,
     RESOLUTION_MODES,
@@ -311,10 +312,12 @@ def _call_site_id(
     return "call:" + hashlib.sha1(seed.encode("utf-8")).hexdigest()
 
 
-def _line_bounds(newline_offsets: list[int], start: int, end: int) -> tuple[int, int]:
-    start_line = bisect_left(newline_offsets, start) + 1
+def _line_bounds(
+    newline_offsets: Sequence[int], start: int, end: int
+) -> tuple[int, int]:
+    start_line = _physical_row(newline_offsets, start)
     final_byte = max(start, end - 1)
-    end_line = bisect_left(newline_offsets, final_byte) + 1
+    end_line = _physical_row(newline_offsets, final_byte)
     return start_line, end_line
 
 
@@ -482,11 +485,7 @@ def _call_facts_for_chunks(
         if current is None or selection_rank < current[0]:
             selected[key] = (selection_rank, {**observation, "owner": owner})
 
-    # Count rows as the parser does, so CR-only Python call lines match its
-    # chunk lines while spans stay raw (treesitter-chunker#471). One file's
-    # chunks share a language.
-    language = chunks[0].language if chunks else None
-    newline_offsets = _line_ending_offsets(source, language)
+    newline_offsets = _line_ending_offsets(source)
     call_facts = []
     for _, observation in sorted(
         selected.values(),

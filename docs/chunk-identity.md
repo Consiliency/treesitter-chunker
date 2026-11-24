@@ -45,10 +45,17 @@ lines, Boundary IR node spans and call-site locations (symbol-graph `calls`
 relationships and `call_facts`, and Boundary IR call edges). LF and CRLF files
 parse exactly as before.
 
-Other languages still parse the raw bytes and count only LF, so a CR-only
-file in those languages reports every chunk on line 1
-(treesitter-chunker#601). Complexity metrics
-(`lines_of_code`, `logical_lines`) count LF only (treesitter-chunker#597). Raw
+For other languages the regular, mmap and VFS streaming chunkers report physical
+source rows for nodes recognized by the existing parser. LF, CRLF and lone CR
+each advance the row once, after their final byte. This preserves grammar
+behavior, including regular Dockerfile continuation repair. Chunk endpoints
+use the start and exclusive end cursors. Call end rows describe the last
+included byte. Anonymous route anchors and Julia comment grouping retain their
+parser-row semantics. Synthetic Svelte template-control and reactive chunks
+report the source line that produced them. Their legacy identity byte offsets
+can point earlier on mixed endings or after a multibyte script tag.
+
+Complexity metrics have their own contract (treesitter-chunker#597). Raw
 spans can end between CR and LF when the parser includes CR in a token, such
 as a Python comment. Source slicing retains those exact bytes.
 
@@ -60,9 +67,9 @@ and regular/streaming selection differences are separate contracts; this change
 does not establish global API parity. CLI stdin retains text-stream newline
 handling and is not certified as raw-byte-equivalent to file input.
 
-Cached parallel processing has a separate cache-identity defect
-(treesitter-chunker#358). Use `use_cache=False` until that repair is accepted;
-newline preservation does not invalidate or repair existing cached payloads.
+The SQLite parallel directory cache includes the installed package version in
+its extraction identity. Refresh that cache or use `use_cache=False` when
+upgrading between development builds with the same version.
 
 ## Token-limited files, standard VFS and repository readers
 
