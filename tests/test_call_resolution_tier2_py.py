@@ -4659,6 +4659,35 @@ NAMESPACE_TOKEN_COST: dict[str, dict[str, str]] = {
             "    return vars(K())\n"
         ),
     },
+    # R-724-7: these loaders happen to create fresh modules at runtime.
+    "exec-module-from-spec": {
+        "probe_mod.py": "svc = None\n",
+        "use.py": (
+            "import importlib.util\n"
+            "import svc\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    spec = importlib.util.spec_from_file_location('probe', 'probe_mod.py')\n"
+            "    probe = importlib.util.module_from_spec(spec)\n"
+            "    spec.loader.exec_module(probe)\n"
+            "    return probe\n"
+        ),
+    },
+    "exec-module-from-import": {
+        "probe_mod.py": "svc = None\n",
+        "use.py": (
+            "from importlib.util import module_from_spec, spec_from_file_location\n"
+            "import svc\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    spec = spec_from_file_location('probe', 'probe_mod.py')\n"
+            "    probe = module_from_spec(spec)\n"
+            "    spec.loader.exec_module(probe)\n"
+            "    return probe\n"
+        ),
+    },
     # spec's ``ingest.py`` shape: ``exec(code, mod.__dict__)`` on a fresh
     # ``types.ModuleType`` is exempt since R-724-2, but ``eval("1", {})``
     # is not: no costed site passes a literal dict, so the allow-list leaves
@@ -4745,12 +4774,8 @@ NAMESPACE_CONTROLS: dict[str, dict[str, str]] = {
 }
 
 
-# R-724-2: the closed allow-list. Name -> files; each is a costed site's
-# shape (spec ``ingest.py``'s ``exec(code, mod.__dict__)``, Code-Index-MCP's
-# ``spec.loader.exec_module(probe)`` and ``__import__("hashlib")``), whose
-# token applies to an object the use-site lookup proves is not the file's
-# own namespace. CPython 3.14 printed ``SVC.t`` for each, and ``svc.py``'s
-# proof stays.
+# R-724-2 / R-724-7: CPython prints SVC.t for each exempt operation.
+# The loader control explicitly constructs its receiver with ModuleType.
 NAMESPACE_EXEMPT: dict[str, dict[str, str]] = {
     "dunder-import-of-a-constant": {
         "use.py": 'import svc\n\n\ndef go():\n    return __import__("json")\n',
@@ -4768,32 +4793,13 @@ NAMESPACE_EXEMPT: dict[str, dict[str, str]] = {
             "    return mod\n"
         ),
     },
-    "exec-module-from-spec": {
+    "exec-module-into-moduletype": {
         "probe_mod.py": "svc = None\n",
         "use.py": (
-            "import importlib.util\n"
-            "import svc\n"
-            "\n"
-            "\n"
-            "def go():\n"
+            "import importlib.util, types, svc\n\ndef go():\n"
             "    spec = importlib.util.spec_from_file_location('probe', 'probe_mod.py')\n"
-            "    probe = importlib.util.module_from_spec(spec)\n"
+            "    probe = types.ModuleType('probe')\n"
             "    spec.loader.exec_module(probe)\n"
-            "    return probe\n"
-        ),
-    },
-    "exec-module-from-import": {
-        "probe_mod.py": "svc = None\n",
-        "use.py": (
-            "from importlib.util import module_from_spec, spec_from_file_location\n"
-            "import svc\n"
-            "\n"
-            "\n"
-            "def go():\n"
-            "    spec = spec_from_file_location('probe', 'probe_mod.py')\n"
-            "    probe = module_from_spec(spec)\n"
-            "    spec.loader.exec_module(probe)\n"
-            "    return probe\n"
         ),
     },
     "dunder-import-constant": {
@@ -4818,6 +4824,18 @@ NAMESPACE_EXEMPT: dict[str, dict[str, str]] = {
 # ``t`` (r724-2/cases_r2b.py, FORCE_EXEMPT). CPython 3.14 printed
 # ``OTHER.t`` for each.
 NAMESPACE_EXEMPT_PINS: dict[str, dict[str, str]] = {
+    "loader-returns-importer": {
+        "use.py": (
+            "import sys, importlib.util, svc, other\n"
+            "from importlib.machinery import ModuleSpec\n\n"
+            "class Loader:\n"
+            "    def create_module(self, spec):\n"
+            "        return next(m for k, m in sys.modules.items() if k == __name__)\n\n"
+            "def go():\n"
+            "    mod = importlib.util.module_from_spec(ModuleSpec('sample', Loader()))\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
     "exec-own-module": {
         "use.py": (
             "import sys\n"
@@ -5590,24 +5608,8 @@ _FRESH = "\n\n\ndef f(code, spec):\n"
         "    exec(code, mod.__dict__)\n",
         "from types import ModuleType" + _FRESH + "    mod = ModuleType('m')\n"
         "    exec(code, mod.__dict__)\n",
-        "import importlib.util"
-        + _FRESH
-        + "    mod = importlib.util.module_from_spec(spec)\n"
-        "    exec(code, mod.__dict__)\n",
-        # The loader runs a module into a fresh module local (Code-Index-MCP).
-        "import importlib.util"
-        + _FRESH
-        + "    probe = importlib.util.module_from_spec(spec)\n"
+        "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
         "    spec.loader.exec_module(probe)\n",
-        "from importlib.util import module_from_spec"
-        + _FRESH
-        + "    probe = module_from_spec(spec)\n    spec.loader.exec_module(probe)\n",
-        "from importlib import util"
-        + _FRESH
-        + "    probe = util.module_from_spec(spec)\n    spec.loader.exec_module(probe)\n",
-        "import importlib.util as iu"
-        + _FRESH
-        + "    probe = iu.module_from_spec(spec)\n    spec.loader.exec_module(probe)\n",
         # ``__import__`` of a constant foreign module.
         "x = __import__('hashlib')\n",
         "x = __import__('os.path')\n",
@@ -5661,6 +5663,39 @@ def f(code, frame):
 @pytest.mark.parametrize(
     ("path", "source"),
     [
+        # A loader may return the importer in any import spelling.
+        (
+            "r.py",
+            "import importlib.util"
+            + _FRESH
+            + "    mod = importlib.util.module_from_spec(spec)\n"
+            "    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import importlib.util"
+            + _FRESH
+            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "    spec.loader.exec_module(probe)\n",
+        ),
+        (
+            "r.py",
+            "from importlib.util import module_from_spec"
+            + _FRESH
+            + "    probe = module_from_spec(spec)\n    spec.loader.exec_module(probe)\n",
+        ),
+        (
+            "r.py",
+            "from importlib import util"
+            + _FRESH
+            + "    probe = util.module_from_spec(spec)\n    spec.loader.exec_module(probe)\n",
+        ),
+        (
+            "r.py",
+            "import importlib.util as iu"
+            + _FRESH
+            + "    probe = iu.module_from_spec(spec)\n    spec.loader.exec_module(probe)\n",
+        ),
         # exec: arity, keywords, splats, receivers outside the closed list.
         (
             "r.py",
@@ -5829,9 +5864,9 @@ def f(code, frame):
         ),
         (
             "r.py",
-            "from x import *\nimport importlib.util"
+            "from x import *\nimport types"
             + _FRESH
-            + "    probe = importlib.util.module_from_spec(spec)\n"
+            + "    probe = types.ModuleType('m')\n"
             "    spec.loader.exec_module(probe)\n",
         ),
         (
@@ -5849,51 +5884,37 @@ def f(code, frame):
         # exec_module: arity, keywords, the receiver, the loader position.
         (
             "r.py",
-            "import importlib.util"
-            + _FRESH
-            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
             "    spec.loader.exec_module(probe, 1)\n",
         ),
         (
             "r.py",
-            "import importlib.util"
-            + _FRESH
-            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
             "    spec.loader.exec_module(module=probe)\n",
         ),
         (
             "r.py",
-            "import importlib.util"
-            + _FRESH
-            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
             "    spec.exec_module(probe)\n",
         ),
         (
             "r.py",
-            "import importlib.util"
-            + _FRESH
-            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
             "    spec.a.loader.exec_module(probe)\n",
         ),
         (
             "r.py",
-            "import importlib.util"
-            + _FRESH
-            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
             "    spec.other.exec_module(probe)\n",
         ),
         (
             "r.py",
-            "import importlib.util"
-            + _FRESH
-            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
             "    spec.loader.exec_module(*probe)\n",
         ),
         (
             "r.py",
-            "import importlib.util"
-            + _FRESH
-            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
             "    run = spec.loader.exec_module\n    run(probe)\n",
         ),
         (
@@ -6097,11 +6118,7 @@ def test_namespace_token_absent_hands_out_nothing(tmp_path: Path, source: str) -
 
 
 _R4_EXEC = "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
-_R4_LOADER = (
-    "import importlib.util"
-    + _FRESH
-    + ("    probe = importlib.util.module_from_spec(spec)\n")
-)
+_R4_LOADER = "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
 
 
 @pytest.mark.parametrize(
@@ -6124,6 +6141,11 @@ _R4_LOADER = (
             _R4_LOADER + "    spec.loader.exec_module(probe)\n    s = 'a globals b'\n",
         ),
         ("r.py", "x = __import__('hashlib')\ns = 'a globals b'\n"),
+        (
+            "r.py",
+            'import types\n\ndef f(code):\n    """Inspect the globals here."""\n'
+            "    mod = types.ModuleType('m')\n    exec(code, mod.__dict__)\n",
+        ),
         # B-2: a factory's own name as a word, any factory path name as a
         # component (a patch target, a module key).
         ("r.py", _R4_EXEC + "    exec(code, mod.__dict__)\n    s = 'a ModuleType b'\n"),

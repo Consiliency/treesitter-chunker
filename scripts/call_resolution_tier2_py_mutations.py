@@ -1543,8 +1543,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "ns-exempt-factory-list",
         PYM,
-        '    {("types", "ModuleType"), ("importlib", "util", "module_from_spec")}',
-        '    {("importlib", "util", "module_from_spec")}',
+        'return (*path, *reversed(chain)) == ("types", "ModuleType")',
+        'return (*path, *reversed(chain)) in {("types", "ModuleType"), ("importlib", "util", "module_from_spec")}',
     ),
     (
         "ns-exempt-exec-receiver",
@@ -1764,10 +1764,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "ns-exempt-void-factory-names",
         PYM,
-        "_EXEMPT_VOIDING_WORDS = _NAMESPACE_TOKENS | frozenset(\n"
-        "    path[-1] for path in _FRESH_MODULE_FACTORIES\n)",
-        "_EXEMPT_VOIDING_WORDS = _NAMESPACE_TOKENS | frozenset(\n"
-        "    path[-1] for path in () \n)",
+        '_EXEMPT_VOIDING_WORDS = _NAMESPACE_TOKENS | {"ModuleType", "module_from_spec"}',
+        "_EXEMPT_VOIDING_WORDS = _NAMESPACE_TOKENS",
     ),
     (
         "ns-exempt-void-factory-parts",

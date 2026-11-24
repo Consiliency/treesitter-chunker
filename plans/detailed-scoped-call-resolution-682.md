@@ -2170,8 +2170,9 @@ the import proofs themselves (9.4-9.6). `structural` output is unchanged.
   function (independent file-wide evaluator, frame and heap hazards still
   block this proof) whose one binding there is `X = F(...)`, with `F` proven by its
   imports (every binding of the head is one import, no star import, no
-  recorded write of the head or a chain name) to be `types.ModuleType` or
-  `importlib.util.module_from_spec`; the exempt uses are `exec(code,
+  recorded write of the head or a chain name) to be `types.ModuleType`.
+  R-724-7 excludes `module_from_spec` because the loader can return the
+  importer from `create_module`. The exempt uses are `exec(code,
   X.__dict__)` (the builtin, exactly two positional arguments) and
   `<name>.loader.exec_module(X)` (exactly one positional argument); and
   `__import__(K)` (the builtin, one positional constant absolute name `K`)

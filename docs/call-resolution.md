@@ -37,6 +37,9 @@ write `d["svc"].t` through the dictionary it received. The resolver treats
 the file's imports as exposed when it finds a namespace-reaching name such
 as `globals`, `f_locals` or `__spec__`, including in a constant string.
 A constant-key frame lookup can limit exposure to a single imported name.
+The resolver can prove a fresh module for a function local constructed with
+`types.ModuleType`. With `importlib.util.module_from_spec`, the loader can
+return an existing module, including the importer itself.
 Python can therefore resolve fewer calls in `imports` than in
 `structural`. The tool does not detect cross-file closure-cell writes or
 writes to a caller's frame locals for Tier 1 proofs. A Tier 1 edge that such

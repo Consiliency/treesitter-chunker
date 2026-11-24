@@ -311,7 +311,8 @@ logger = logging.getLogger(__name__)
 # (same version, unreleased): format-field separators, more tokens, the
 # own-name resolvers and ``request.module``, and the exemption voided by a
 # constant word or a ``__class__`` write. Only ``imports``-mode facts change;
-# the fixtures' digests change only by the version.
+# the fixtures' digests change only by the version. R-724-7 limits freshness
+# to types.ModuleType because a loader may return an existing module.
 CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "23", "python": "43"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})

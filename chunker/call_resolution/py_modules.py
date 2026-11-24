@@ -60,10 +60,10 @@ package ``__init__.py`` hands out its submodules too
 (treesitter-chunker#724, R-724-1). A closed allow-list exempts a token use
 whose object is provably not the file's namespace (R-724-2:
 ``exec(code, mod.__dict__)`` and ``spec.loader.exec_module(mod)`` on a
-fresh module local, ``__import__`` of a constant foreign module; see
+fresh ``types.ModuleType`` local, ``__import__`` of a constant foreign module; see
 :func:`_not_own_namespace`). R-724-4 voids those exemptions in a file whose
-constants spell a token or a factory name as a word, or that writes
-``__class__``, and adds resolvers given the file's own name and pytest's
+constants spell a token or a factory name as a word. A write to ``__class__``
+voids the receiver proof. R-724-4 also adds resolvers given the file's own name and pytest's
 ``request.module`` (:func:`_own_module_route`). Literal acquisitions
 (``importlib.import_module('svc')``, ``__import__('svc')``,
 ``sys.modules['svc']``) taint their target wholly; dotted constant strings
@@ -1535,29 +1535,22 @@ def _own_module_route(analysis: Any, ident: Any, name: str) -> bool:
 
 
 # R-724-2: the closed allow-list of token uses whose object the use-site
-# lookup proves is not the file's own namespace. It covers what the costed
-# sites do (spec ``ingest.py``'s ``exec(code, mod.__dict__)``,
-# Code-Index-MCP's ``spec.loader.exec_module(probe)`` and
-# ``__import__("hashlib")``) and nothing more; every other use of a token
-# stays a trigger (any frame, function or ``globals()`` route included).
-#
-# The receiver is a fresh module: a function local, decided by the lookup at
-# the use, whose one binding in its function is ``X = <one of these>(...)``,
-# the callee proven by its imports (``import types``, ``import
-# importlib.util``, ``from importlib.util import module_from_spec``).
-_FRESH_MODULE_FACTORIES = frozenset(
-    {("types", "ModuleType"), ("importlib", "util", "module_from_spec")}
-)
+# lookup proves is not the file's own namespace. This covers a constant
+# foreign import and exec or loader execution into a fresh module local.
+# The receiver's one binding in the function must call types.ModuleType,
+# with the constructor identified through its import (R-724-7).
+# module_from_spec delegates creation to the loader, which can return the
+# importing module itself. Its historical names remain voiding tokens.
 # R-724-4: a constant that spells a token or a factory's own name as a word
 # (:data:`py_scope._TOKEN_WORDS`), or any name of a factory path as a component
 # (:data:`_TOKEN_SEPARATORS`), voids every exempt use of the file. A patch
 # target or a module key may name the factory or its module
 # (``mock.patch("types.ModuleType", F)``, ``mock.patch("importlib.util",
 # U)``, ``mock.patch.dict(sys.modules, {"types": T})``).
-_EXEMPT_VOIDING_WORDS = _NAMESPACE_TOKENS | frozenset(
-    path[-1] for path in _FRESH_MODULE_FACTORIES
+_EXEMPT_VOIDING_WORDS = _NAMESPACE_TOKENS | {"ModuleType", "module_from_spec"}
+_FACTORY_PARTS = frozenset(
+    {"types", "ModuleType", "importlib", "util", "module_from_spec"}
 )
-_FACTORY_PARTS = frozenset(part for path in _FRESH_MODULE_FACTORIES for part in path)
 
 
 def _not_own_namespace(analysis: Any, ident: Any) -> bool:
@@ -1704,8 +1697,7 @@ def _foreign_import_constant(analysis: Any, ident: Any) -> bool:
 def _fresh_module_local(analysis: Any, ident: Any) -> bool:
     """Whether ``ident`` is a function local whose ONE binding in its
     function is ``ident = F(...)``, ``F`` proven by its import to be
-    ``types.ModuleType`` or ``importlib.util.module_from_spec``
-    (:data:`_FRESH_MODULE_FACTORIES`). Such a value is a new module object,
+    ``types.ModuleType``. Such a value is a new module object,
     never the file's own module: a rebinding (another assignment, a ``for``
     or ``with`` target, ``del``, a walrus, a ``nonlocal`` write from an inner
     function), a ``global`` declaration or a parameter of the name makes it
@@ -1750,11 +1742,10 @@ def _fresh_module_local(analysis: Any, ident: Any) -> bool:
 
 
 def _fresh_module_factory(analysis: Any, callee: Any) -> bool:
-    """Whether a callee is one of :data:`_FRESH_MODULE_FACTORIES`: an
+    """Whether a callee is the stdlib module constructor: an
     identifier or attribute chain whose head is bound ONLY by imports in the
     file, all denoting one absolute path, which joined with the chain is the
-    factory (``types.ModuleType``, ``importlib.util.module_from_spec``,
-    ``module_from_spec`` from ``importlib.util``). Fold 25's proof of a
+    factory (``types.ModuleType``). Fold 25's proof of a
     standard-library callee (``py_scope._stdlib_name``), which holds in a
     file whose module lookups fail closed (any ``importlib`` mention makes
     them ``dynamic-scope``): no other binding of the head anywhere (an
@@ -1795,7 +1786,7 @@ def _fresh_module_factory(analysis: Any, callee: Any) -> bool:
     if len(paths) != 1:
         return False
     (path,) = paths
-    return (*path, *reversed(chain)) in _FRESH_MODULE_FACTORIES
+    return (*path, *reversed(chain)) == ("types", "ModuleType")
 
 
 def _import_target(ident: Any) -> bool:
