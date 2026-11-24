@@ -10,8 +10,10 @@ directory must confine writes.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import multiprocessing as mp
+import os
 import pickle
 import shutil
 import sqlite3
@@ -22,6 +24,8 @@ from pathlib import Path
 import pytest
 
 import chunker._internal.cache as cache_module
+import chunker.parallel as parallel_module
+import chunker.streaming as streaming_module
 import chunker.parser as parser_module
 from chunker._internal.cache import ASTCache, chunk_cache_identity
 from chunker._internal.file_utils import get_file_metadata
@@ -85,6 +89,237 @@ def test_cached_result_matches_uncached_requested_mode(
     assert _extract(source_file, requested_mode) == uncached[requested_mode]
     # Both entries remain valid for their own mode.
     assert _extract(source_file, warm_mode) == uncached[warm_mode]
+
+
+REV_A = b"def value():\n    return 1\n"
+REV_B = b"def value():\n    return 2\n"
+
+
+def _direct(path, mode):
+    if mode == "streaming":
+        return list(streaming_module.chunk_file_streaming(path, "python"))
+    return chunk_file(path, "python")
+
+
+def _revision_row(cache):
+    with closing(sqlite3.connect(cache.db_path)) as db:
+        return db.execute("SELECT file_hash, file_size FROM chunk_cache_v3").fetchall()
+
+
+def _revision_worker(cache_dir, mode):
+    return ParallelChunker(
+        "python", num_workers=1, cache_dir=cache_dir, use_streaming=mode == "streaming"
+    )
+
+
+@pytest.mark.parametrize("mode", MODES)
+@pytest.mark.parametrize("aba", [False, True], ids=["edit-at-store", "A-B-A"])
+def test_published_revision_is_the_one_extracted(tmp_path, monkeypatch, mode, aba):
+    path = tmp_path / "value.py"
+    cache_dir = tmp_path / "cache"
+    worker = _revision_worker(cache_dir, mode)
+    path.write_bytes(REV_A)
+    initial = path.stat()
+    extracted, final = (REV_B, REV_A) if aba else (REV_A, REV_B)
+    path.write_bytes(extracted)
+    expected = _direct(path, mode)
+    path.write_bytes(REV_A)
+    lookup = worker.cache._lookup
+    store = worker.cache._store
+
+    def miss_then_edit(*args):
+        result = lookup(*args)
+        assert result is None
+        path.write_bytes(REV_B)
+        return result
+
+    def edit_then_store(*args):
+        path.write_bytes(final)
+        os.utime(path, ns=(initial.st_atime_ns, initial.st_mtime_ns))
+        return store(*args)
+
+    if aba:
+        monkeypatch.setattr(worker.cache, "_lookup", miss_then_edit)
+    else:
+        os.utime(path, ns=(initial.st_atime_ns, initial.st_mtime_ns))
+    monkeypatch.setattr(worker.cache, "_store", edit_then_store)
+    assert worker._process_single_file(path)[1] == expected
+    assert _revision_row(worker.cache) == [
+        (hashlib.sha256(extracted).hexdigest(), len(extracted))
+    ]
+    fresh = _direct(path, mode)
+    assert final.splitlines()[1].strip().decode() in fresh[0].content
+    assert _revision_worker(cache_dir, mode)._process_single_file(path)[1] == fresh
+
+
+def test_streaming_parse_and_walk_share_private_bytes(tmp_path, monkeypatch):
+    path = tmp_path / "value.py"
+    path.write_bytes(REV_A)
+    expected = _direct(path, "streaming")
+    worker = _revision_worker(tmp_path / "cache", "streaming")
+    walk = streaming_module.StreamingChunker._walk_streaming
+
+    def edit_before_walk(self, *args, **kwargs):
+        monkeypatch.setattr(streaming_module.StreamingChunker, "_walk_streaming", walk)
+        path.write_bytes(REV_B)
+        yield from walk(self, *args, **kwargs)
+
+    monkeypatch.setattr(
+        streaming_module.StreamingChunker, "_walk_streaming", edit_before_walk
+    )
+    assert worker._process_single_file(path)[1] == expected
+    assert _revision_row(worker.cache) == [
+        (hashlib.sha256(REV_A).hexdigest(), len(REV_A))
+    ]
+    assert worker._process_single_file(path)[1] == _direct(path, "streaming")
+
+
+@pytest.mark.parametrize("mode", MODES)
+@pytest.mark.parametrize("ending", [b"\n", b"\r\n", b"\r"])
+def test_revision_uses_every_raw_byte(tmp_path, monkeypatch, mode, ending):
+    worker = _revision_worker(tmp_path / "cache", mode)
+    monkeypatch.setattr(streaming_module, "_COPY_BLOCK_SIZE", 5)
+    path = tmp_path / "value.py"
+    for byte in (b"\xff", b"\xfe"):
+        raw = ending.join([b"# " + byte, b"", b"def later():", b"    return 42", b""])
+        path.write_bytes(raw)
+        expected = _direct(path, mode)
+        assert any("return 42" in c.content for c in expected)
+        assert worker._process_single_file(path)[1] == expected
+        assert _revision_row(worker.cache) == [
+            (hashlib.sha256(raw).hexdigest(), len(raw))
+        ]
+
+
+@pytest.mark.parametrize("mode", MODES)
+def test_late_writer_and_deleted_source(tmp_path, monkeypatch, mode):
+    path = tmp_path / "value.py"
+    worker = _revision_worker(tmp_path / "cache", mode)
+    path.write_bytes(REV_A)
+    original = _direct(path, mode)
+    store = worker.cache._store
+
+    def finish_after_new_revision(*args):
+        monkeypatch.setattr(worker.cache, "_store", store)
+        path.write_bytes(REV_B)
+        assert worker._process_single_file(path)[1] == _direct(path, mode)
+        path.unlink()
+        return store(*args)
+
+    monkeypatch.setattr(worker.cache, "_store", finish_after_new_revision)
+    assert worker._process_single_file(path)[1] == original
+    assert _revision_row(worker.cache) == [
+        (hashlib.sha256(REV_A).hexdigest(), len(REV_A))
+    ]
+    path.write_bytes(REV_B)
+    assert worker._process_single_file(path)[1] == _direct(path, mode)
+
+
+@pytest.mark.parametrize("mode", MODES)
+def test_upgrade_refreshes_mislabeled_revision(tmp_path, monkeypatch, mode):
+    path = tmp_path / "value.py"
+    worker = _revision_worker(tmp_path / "cache", mode)
+    path.write_bytes(REV_A)
+    stale = _direct(path, mode)
+    path.write_bytes(REV_B)
+    fresh = _direct(path, mode)
+    with monkeypatch.context() as old:
+        old.setattr(cache_module, "CACHE_VERSION", "3.0")
+        assert worker.cache.cache_chunks(path, "python", stale, extraction=mode)
+        assert worker.cache.get_cached_chunks(path, "python", extraction=mode) == stale
+    worker = _revision_worker(tmp_path / "cache", mode)
+    assert worker._process_single_file(path)[1] == fresh
+    monkeypatch.setattr(
+        parallel_module, "_chunk_file_snapshot", lambda *a: pytest.fail("cold core")
+    )
+    monkeypatch.setattr(
+        parallel_module, "_streaming_snapshot", lambda *a: pytest.fail("cold streaming")
+    )
+    assert worker._process_single_file(path)[1] == fresh
+
+
+def test_streaming_empty_stat_skips_read(tmp_path, monkeypatch):
+    path = tmp_path / "empty.py"
+    path.touch()
+    worker = _revision_worker(tmp_path / "cache", "streaming")
+    empty = path.stat()
+    assert worker._process_single_file(path)[1] == []
+    path.write_bytes(REV_A)
+    real_stat = Path.stat
+    monkeypatch.setattr(
+        Path, "stat", lambda p, **kw: empty if p == path else real_stat(p, **kw)
+    )
+    assert worker._process_single_file(path)[1] == _direct(path, "streaming") == []
+    assert _revision_row(worker.cache) == []
+
+
+def test_streaming_empty_copy_skips_mapping(tmp_path, monkeypatch):
+    path = tmp_path / "empty.py"
+    path.write_bytes(REV_A)
+    worker = _revision_worker(tmp_path / "cache", "streaming")
+
+    def empty_after_lookup(*args):
+        path.write_bytes(b"")
+
+    monkeypatch.setattr(worker.cache, "_lookup", empty_after_lookup)
+    assert worker._process_single_file(path)[1] == []
+    assert _revision_row(worker.cache) == []
+
+
+def test_snapshot_write_failure_falls_back(tmp_path, monkeypatch):
+    path = tmp_path / "value.py"
+    path.write_bytes(REV_A)
+    expected = _direct(path, "streaming")
+    worker = _revision_worker(tmp_path / "cache", "streaming")
+    snapshot = streaming_module.tempfile.TemporaryFile("w+b", buffering=0)
+    write = snapshot.write
+
+    def fail_second_block(data):
+        if snapshot.tell():
+            raise OSError("scratch full")
+        return write(data)
+
+    monkeypatch.setattr(streaming_module, "_COPY_BLOCK_SIZE", 4)
+    monkeypatch.setattr(snapshot, "write", fail_second_block)
+    monkeypatch.setattr(
+        streaming_module.tempfile, "TemporaryFile", lambda **kw: snapshot
+    )
+    assert worker._process_single_file(path)[1] == expected
+    assert snapshot.closed
+    assert _revision_row(worker.cache) == []
+
+
+def test_partial_streaming_error_is_propagated(tmp_path, monkeypatch):
+    path = tmp_path / "value.py"
+    path.write_bytes(REV_A)
+    worker = _revision_worker(tmp_path / "cache", "streaming")
+    walk = streaming_module.StreamingChunker._walk_streaming
+    snapshot = streaming_module.tempfile.TemporaryFile("w+b", buffering=0)
+    monkeypatch.setattr(
+        streaming_module.tempfile, "TemporaryFile", lambda **kw: snapshot
+    )
+    mapping = []
+    error = OSError("walk failed")
+
+    def fail_after_one(self, node, data, *args, **kwargs):
+        monkeypatch.setattr(streaming_module.StreamingChunker, "_walk_streaming", walk)
+        mapping.append(data)
+        yield next(walk(self, node, data, *args, **kwargs))
+        raise error
+
+    monkeypatch.setattr(
+        streaming_module.StreamingChunker, "_walk_streaming", fail_after_one
+    )
+    monkeypatch.setattr(
+        parallel_module,
+        "chunk_file_streaming",
+        lambda *a: pytest.fail("unexpected fallback"),
+    )
+    with pytest.raises(OSError) as raised:
+        worker._process_single_file(path)
+    assert raised.value is error
+    assert snapshot.closed and mapping[0].closed
+    assert _revision_row(worker.cache) == []
 
 
 def test_warm_entry_is_reused_for_its_own_mode(tmp_path, isolated_home, source_file):

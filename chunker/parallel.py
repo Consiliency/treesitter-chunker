@@ -4,6 +4,7 @@ import logging
 import multiprocessing as mp
 import os
 import sqlite3
+import stat
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -12,9 +13,9 @@ from multiprocessing import util as mp_util
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ._internal.cache import ASTCache
-from .core import chunk_file
-from .streaming import chunk_file_streaming
+from ._internal.cache import ASTCache, _identity_or_none
+from .core import _chunk_file_snapshot, chunk_file, ensure_regular_file
+from .streaming import _streaming_snapshot, chunk_file_streaming
 
 if TYPE_CHECKING:
     from .types import CodeChunk
@@ -87,35 +88,41 @@ class ParallelChunker:
     def _process_single_file(self, file_path: Path) -> tuple[Path, list[CodeChunk]]:
         """Process a single file, using cache if available."""
         extraction = "streaming" if self.use_streaming else "core"
-        # Check cache first
-        if self.cache:
-            try:
-                cached_chunks = self.cache.get_cached_chunks(
-                    file_path, self.language, extraction=extraction
-                )
-            except sqlite3.OperationalError as exc:
-                if exc.sqlite_errorcode not in (
-                    sqlite3.SQLITE_BUSY,
-                    sqlite3.SQLITE_LOCKED,
-                ):
-                    raise
-                logger.warning("Cache busy reading %s; parsing file", file_path)
-                cached_chunks = None
-            if cached_chunks is not None:
-                return file_path, cached_chunks
+        identity = _identity_or_none(self.language, extraction) if self.cache else None
+        if self.cache is None or identity is None:
+            if self.use_streaming:
+                return file_path, list(chunk_file_streaming(file_path, self.language))
+            return file_path, chunk_file(file_path, self.language)
 
-        # Process file
         if self.use_streaming:
-            chunks = list(chunk_file_streaming(file_path, self.language))
+            info = file_path.stat()
+            if info.st_size == 0:
+                return file_path, []
+            if not stat.S_ISREG(info.st_mode):
+                return file_path, list(chunk_file_streaming(file_path, self.language))
         else:
-            chunks = chunk_file(file_path, self.language)
+            ensure_regular_file(file_path)
 
-        # Cache results
-        if self.cache and chunks:
+        try:
+            cached_chunks = self.cache._lookup(file_path, self.language, identity)
+        except sqlite3.OperationalError as exc:
+            if exc.sqlite_errorcode not in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
+                raise
+            logger.warning("Cache busy reading %s; parsing file", file_path)
+            cached_chunks = None
+        if cached_chunks is not None:
+            return file_path, cached_chunks
+
+        if self.use_streaming:
+            snapshot = _streaming_snapshot(file_path, self.language)
+            if snapshot is None:
+                return file_path, list(chunk_file_streaming(file_path, self.language))
+            chunks, metadata = snapshot
+        else:
+            chunks, metadata = _chunk_file_snapshot(file_path, self.language)
+        if chunks:
             try:
-                self.cache.cache_chunks(
-                    file_path, self.language, chunks, extraction=extraction
-                )
+                self.cache._store(metadata, self.language, extraction, identity, chunks)
             except sqlite3.OperationalError as exc:
                 if exc.sqlite_errorcode not in (
                     sqlite3.SQLITE_BUSY,
