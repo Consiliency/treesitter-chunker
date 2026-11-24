@@ -4,6 +4,8 @@ Tests for enhanced CLI features.
 
 from __future__ import annotations
 
+import csv
+import io
 import json
 import os
 import subprocess
@@ -375,6 +377,194 @@ def test_installed_help_with_cp1252_output():
         )
         assert result.returncode == 0, result.stderr
         assert "Tree-sitter-based code-chunker CLI" in result.stdout
+
+
+@pytest.fixture
+def run_batch(tmp_path):
+    suffix = ".exe" if os.name == "nt" else ""
+    cli = Path(sysconfig.get_path("scripts")) / f"treesitter-chunker{suffix}"
+
+    def invoke(args, input=None):
+        return subprocess.run(
+            [str(cli), "batch", *args],
+            cwd=tmp_path,
+            capture_output=True,
+            input=input.encode("utf-8") if input is not None else None,
+            env={**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"},
+            timeout=60,
+            check=False,
+        )
+
+    return invoke
+
+
+@pytest.mark.parametrize("stdin", [False, True])
+@pytest.mark.parametrize("quiet", [False, True])
+def test_batch_missing_inputs(tmp_path, run_batch, stdin, quiet):
+    source = "def valid(): return 42"
+    (tmp_path / "valid.py").write_text(source, encoding="utf-8")
+    names = ["[red]missing.py", "valid.py", "absent.unknown"]
+    args = ["--jsonl", "--parallel", "1"]
+    if quiet:
+        args.append("--quiet")
+    result = run_batch(
+        args + (["--stdin"] if stdin else names),
+        input="\r\n".join(["", ".", *names, ""]) if stdin else None,
+    )
+    assert result.returncode == 1
+    for missing in (names[0], names[2]):
+        assert (
+            result.stderr.decode("utf-8")
+            .splitlines()
+            .count(f"Error: {missing}: file not found")
+            == 1
+        )
+    (record,) = [json.loads(line) for line in result.stdout.splitlines()]
+    assert (record["file_path"], record["node_type"], record["content"]) == (
+        "valid.py",
+        "function_definition",
+        source,
+    )
+
+
+@pytest.mark.parametrize("stdin", [False, True])
+def test_batch_missing_only_and_filtered_inputs(tmp_path, run_batch, stdin):
+    (tmp_path / "src").mkdir()
+    valid = Path("src/valid.py")
+    (tmp_path / valid).write_text("def valid(): return 42", encoding="utf-8")
+    missing = "missing.xyz"
+
+    def invoke(paths, *filters):
+        args = ["--json", "--parallel", "1", "--quiet", *filters]
+        if stdin:
+            return run_batch(args + ["--stdin"], input="\r\n".join(paths))
+        return run_batch(args + paths)
+
+    result = invoke([missing])
+    assert result.returncode == 1
+    assert json.loads(result.stdout) == []
+    assert result.stderr.decode("utf-8").splitlines() == [
+        f"Error: {missing}: file not found"
+    ]
+    for filters in (["--include", "*.py"], ["--exclude", "*.xyz"]):
+        paths = [missing, "src"]
+        if stdin:
+            paths.extend(["", str(valid)])
+        result = invoke(paths, *filters)
+        assert result.returncode == 0
+        assert result.stderr == b""
+        assert [r["file_path"] for r in json.loads(result.stdout)] == [str(valid)]
+
+    if stdin:
+        result = invoke(["", " ", "src", ""])
+        assert result.returncode == 0
+        assert json.loads(result.stdout) == []
+        assert result.stderr == b""
+
+
+def test_batch_invalid_stdin_preserves_sibling(tmp_path, run_batch):
+    (tmp_path / "valid.py").write_text("def valid(): return 42", encoding="utf-8")
+    result = run_batch(
+        ["--stdin", "--json", "--quiet", "-j1"], input="bad\0name.py\nvalid.py\n"
+    )
+    assert result.returncode == 1
+    assert result.stderr.startswith(b"Error: bad\0name.py: ")
+    assert b"Traceback" not in result.stderr
+    assert [r["file_path"] for r in json.loads(result.stdout)] == ["valid.py"]
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX file names")
+def test_batch_missing_filename_control_characters(run_batch):
+    name = "with\ttab\rand-cr.py"
+    result = run_batch([name, "--json", "--quiet", "-j1"])
+    assert result.returncode == 1
+    assert result.stderr == f"Error: {name}: file not found\n".encode()
+    assert json.loads(result.stdout) == []
+
+
+def test_batch_dangling_symlink(tmp_path):
+    link = tmp_path / "dangling.py"
+    try:
+        link.symlink_to(tmp_path / "missing.py")
+    except OSError as exc:
+        pytest.skip(f"symlink unavailable: {exc}")
+    result = runner.invoke(app, ["batch", str(link), "--json", "--quiet", "-j1"])
+    assert result.exit_code == 1
+    assert result.stderr.splitlines() == [f"Error: {link}: file not found"]
+    assert json.loads(result.stdout) == []
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX ENOTDIR")
+def test_batch_stat_error_preserves_cause(tmp_path):
+    valid = tmp_path / "valid.py"
+    valid.write_text("def valid(): return 42", encoding="utf-8")
+    bad = valid / "child.py"
+    with pytest.raises(NotADirectoryError) as error:
+        bad.stat()
+    result = runner.invoke(
+        app, ["batch", str(bad), str(valid), "--json", "--quiet", "-j1"]
+    )
+    assert result.exit_code == 1
+    assert str(bad) in result.stderr and error.value.strerror in result.stderr
+    assert [r["file_path"] for r in json.loads(result.stdout)] == [str(valid)]
+
+
+CSV_FIELDS = [
+    "file_path",
+    "language",
+    "node_type",
+    "start_line",
+    "end_line",
+    "size",
+    "parent_context",
+]
+
+
+@pytest.mark.parametrize(
+    "name",
+    ["plain.py", "a,b.py"]
+    + (['"quoted.py', "a\nb.py", "a\rb.py", "a\r\nb.py"] if os.name == "posix" else []),
+)
+def test_batch_csv_fields(tmp_path, monkeypatch, name):
+    monkeypatch.chdir(tmp_path)
+    Path(name).write_bytes(b"class Parent:\r\n    def method(self): return 42\r\n")
+    args = ["batch", name, "--quiet", "-j1"]
+    result = runner.invoke(app, args + ["--json"])
+    assert result.exit_code == 0
+    chunks = json.loads(result.stdout)
+    assert len(chunks) == 2
+    assert any(chunk["parent_context"] for chunk in chunks)
+    result = runner.invoke(app, args + ["-o", "csv"])
+    assert result.exit_code == 0
+    header, *rows = csv.reader(
+        io.StringIO(result.stdout_bytes.decode("utf-8"), newline=""), strict=True
+    )
+    assert header == CSV_FIELDS
+    assert rows == [
+        [name]
+        + [
+            str(chunk[field]) if chunk[field] is not None else ""
+            for field in CSV_FIELDS[1:]
+        ]
+        for chunk in chunks
+    ]
+    empty = runner.invoke(app, args + ["-o", "csv", "--types", "never_matches"])
+    assert empty.exit_code == 0 and empty.stdout_bytes == b""
+
+
+def test_installed_batch_csv_pipe(tmp_path, run_batch):
+    name = "a,b.py"
+    (tmp_path / name).write_bytes(b"def func():\r\n    return 42\r\n")
+    proc = run_batch([name, "-o", "csv", "--quiet", "-j1"])
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stderr == b""
+    assert proc.stdout.decode("utf-8") == os.linesep.join(
+        [
+            ",".join(CSV_FIELDS),
+            '"a,b.py",python,function_definition,1,2,2,',
+            "",
+        ]
+    )
 
 
 class TestConfigLoading:
