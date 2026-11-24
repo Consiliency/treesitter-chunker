@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Structured batch and streaming exports now apply registered transformers in
+  registration order after filtering. Hooks can replace exported content,
+  metadata and relationship types while preserving source IDs, spans and edge
+  endpoints. Invalid hook results raise `ChunkerError`. A streaming writer may
+  have emitted earlier records when a hook fails (treesitter-chunker#762).
+
 - Python structural call resolution now treats a constant string as a
   `__main__` self-reference when a component split on format and attribute
   punctuation or whitespace (or a default `string.Template` identifier) is
