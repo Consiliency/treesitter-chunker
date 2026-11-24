@@ -367,3 +367,12 @@ def test_dart_declaration_includes_body_on_remapped_input(tmp_path):
     assert (declaration.byte_start, declaration.byte_end) == (start, end)
     assert declaration.content.encode() == source[start:end]
     assert (declaration.start_line, declaration.end_line) == (3, 5)
+
+
+def test_call_free_graph_skips_line_index(tmp_path):
+    path = tmp_path / "no_calls.js"
+    path.write_bytes(b"function f(){}" + b"\r" * 512)
+    with patch("chunker.symbol_graph._line_ending_offsets", side_effect=AssertionError):
+        graph = extract_symbol_graph(path, fail_fast=True)
+    assert graph["symbols"]
+    assert graph["call_facts"] == []

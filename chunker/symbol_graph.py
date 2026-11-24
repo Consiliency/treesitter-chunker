@@ -485,6 +485,9 @@ def _call_facts_for_chunks(
         if current is None or selection_rank < current[0]:
             selected[key] = (selection_rank, {**observation, "owner": owner})
 
+    if not selected:
+        return []
+
     newline_offsets = _line_ending_offsets(source)
     call_facts = []
     for _, observation in sorted(
