@@ -85,7 +85,11 @@ class LanguageNotFoundError(LanguageError):
             "   1. Install tree-sitter-language-pack: pip install tree-sitter-language-pack",
         )
         guidance_parts.append(
-            f"   2. Or compile grammars: chunker-grammar setup {language}",
+            "   2. Or build a supported grammar with\n"
+            f"      treesitter-chunker setup grammars {language}\n"
+            "      Pin the compiled library's approved SHA-256 in the user-config "
+            "trusted-artifacts.json. To inspect it with a separate pin file, run\n"
+            f"      python -m chunker.cli grammar --trusted-artifacts PATH info {language}",
         )
 
         # Check if this is a common language that should be available

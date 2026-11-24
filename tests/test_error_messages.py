@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
+import argparse
+import re
+import shlex
+from importlib.metadata import distribution
 
+from typer.testing import CliRunner
+
+from chunker.cli.grammar_commands import setup_grammar_parser
 from chunker.exceptions import LanguageNotFoundError
 
 
@@ -28,12 +35,31 @@ class TestLanguageNotFoundErrorMessages:
         # Should suggest installing the language pack
         assert "tree-sitter-language-pack" in error_str or "language-pack" in error_str
 
-    def test_error_includes_grammar_compile_guidance(self):
-        """Test that error message mentions grammar compilation option."""
-        error = LanguageNotFoundError("unknown_lang", [])
-        error_str = str(error)
-        # Should mention compiling grammars as an alternative
-        assert "grammar" in error_str.lower() or "compile" in error_str.lower()
+    def test_guidance_names_registered_cli_commands(self):
+        guidance = str(LanguageNotFoundError("rust", []))
+        commands = re.findall(
+            r"(?<![\w/-])((?:treesitter-chunker|tsc) [^\n]+)", guidance
+        )
+        assert commands, "Missing installed grammar build command"
+        scripts = distribution("treesitter-chunker").entry_points.select(
+            group="console_scripts"
+        )
+        for command in commands:
+            program, *arguments = shlex.split(command)
+            result = CliRunner().invoke(scripts[program].load(), [*arguments, "--help"])
+            assert result.exit_code == 0, f"{command}\n{result.output}"
+
+    def test_guidance_explains_pin_sources(self):
+        guidance = str(LanguageNotFoundError("rust", []))
+        assert "SHA-256" in guidance and "trusted-artifacts.json" in guidance
+        command = re.search(r"python -m chunker\.cli ([^\n]+)", guidance)
+        assert command
+        parser = argparse.ArgumentParser()
+        setup_grammar_parser(parser.add_subparsers())
+        args = parser.parse_args(shlex.split(command[1]))
+        assert args.grammar_command == "info"
+        assert args.language == "rust"
+        assert args.trusted_artifacts is not None
 
     def test_error_includes_available_count(self):
         """Test that error message includes count of available languages."""

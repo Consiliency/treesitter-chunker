@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Missing-language guidance now gives the installed grammar build command and
+  explains where to pin the compiled library's SHA-256 (treesitter-chunker#582).
 - Python structural call resolution now treats a constant string as a
   `__main__` self-reference when a component split on format and attribute
   punctuation or whitespace (or a default `string.Template` identifier) is
