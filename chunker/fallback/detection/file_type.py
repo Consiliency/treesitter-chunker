@@ -314,7 +314,5 @@ class FileTypeDetector(FallbackStrategy):
             text_chars = bytearray({7, 8, 9, 10, 12, 13, 27} | set(range(32, 256)))
             non_text = sum(1 for byte in chunk if byte not in text_chars)
             return non_text / len(chunk) > 0.3
-        except OSError:
-            return False
         except (RuntimeError, ValueError):
             return True

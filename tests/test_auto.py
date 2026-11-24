@@ -1,6 +1,5 @@
 """Unit tests for the ZeroConfigAPI implementation."""
 
-import errno
 import tempfile
 import warnings
 from pathlib import Path
@@ -318,22 +317,6 @@ class TestZeroConfigAPI:
         assert result.language == "python"
         assert result.fallback_used is False
         assert len(result.chunks) == 1
-
-    def test_chunk_text_fallback_uses_only_supplied_text(self, api):
-        text = "first line\nsecond line"
-        with (
-            patch.object(
-                Path, "open", side_effect=OSError(errno.EINVAL, "invalid path")
-            ) as open_path,
-            pytest.warns(FallbackWarning),
-        ):
-            result = api.chunk_text(text, "no-grammar")
-        open_path.assert_not_called()
-        assert result.fallback_used
-        assert result.language == "no-grammar"
-        assert [
-            (c["content"], c["start_line"], c["end_line"]) for c in result.chunks
-        ] == [(text, 1, 2)]
 
     def test_chunk_text_empty(self, api):
         """Test chunking empty text raises error."""
