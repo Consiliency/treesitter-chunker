@@ -1,7 +1,9 @@
 """Tests for fallback chunking functionality."""
 
+import errno
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -82,6 +84,14 @@ class TestFileTypeDetection:
         assert detector.detect_file_type("data.csv") == FileType.CSV
         assert detector.detect_file_type("config.yaml") == FileType.YAML
         assert detector.detect_file_type("notes.txt") == FileType.TEXT
+
+    def test_uninspectable_path(self):
+        detector = FileTypeDetector()
+        with patch.object(
+            Path, "open", side_effect=OSError(errno.EINVAL, "invalid path")
+        ):
+            assert not detector._is_binary("<text>")
+            assert detector.detect_file_type("<text>") == FileType.UNKNOWN
 
     @classmethod
     def test_content_detection(cls):

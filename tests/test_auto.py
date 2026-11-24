@@ -1,5 +1,6 @@
 """Unit tests for the ZeroConfigAPI implementation."""
 
+import errno
 import tempfile
 import warnings
 from pathlib import Path
@@ -318,6 +319,22 @@ class TestZeroConfigAPI:
         assert result.fallback_used is False
         assert len(result.chunks) == 1
 
+    def test_chunk_text_fallback_uses_only_supplied_text(self, api):
+        text = "first line\nsecond line"
+        with (
+            patch.object(
+                Path, "open", side_effect=OSError(errno.EINVAL, "invalid path")
+            ) as open_path,
+            pytest.warns(FallbackWarning),
+        ):
+            result = api.chunk_text(text, "no-grammar")
+        open_path.assert_not_called()
+        assert result.fallback_used
+        assert result.language == "no-grammar"
+        assert [
+            (c["content"], c["start_line"], c["end_line"]) for c in result.chunks
+        ] == [(text, 1, 2)]
+
     def test_chunk_text_empty(self, api):
         """Test chunking empty text raises error."""
         with pytest.raises(ValueError, match="Text cannot be empty"):
@@ -336,11 +353,7 @@ class TestZeroConfigAPI:
         ):
             warnings.simplefilter("ignore", FallbackWarning)
             from_file = api.auto_chunk_file(source)
-            # The text fallback's own file-type detection opens its pseudo-path
-            # "<text>", which Windows rejects (treesitter-chunker#585); the
-            # fallback itself is not under test here.
-            with patch.object(api._fallback_chunker, "chunk_text", return_value=[]):
-                from_text = api.chunk_text("def hello\nend\n", "ruby")
+            from_text = api.chunk_text("def hello\nend\n", "ruby")
         assert not api.registry.is_language_installed("ruby")
         for result in (from_file, from_text):
             assert result.language == "ruby"
