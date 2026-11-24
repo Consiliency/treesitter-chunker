@@ -9,6 +9,91 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Python reference lookup excludes def splat parameters and
+  assignment-expression targets while retaining reads of the same names
+  (treesitter-chunker#544).
+- JavaScript reference lookup excludes declared rest, renamed pattern, catch,
+  loop and generator parameter bindings (treesitter-chunker#545).
+- JavaScript parent context includes signatures of enclosing generator
+  declarations and expressions in outer-to-inner order (treesitter-chunker#552).
+- Python definition lookup returns the owning bindings for imports, unpacking,
+  loops, with and exception aliases, splat parameters, and assignment
+  expressions (treesitter-chunker#554).
+- Python reference lookup excludes tuple and list unpacking targets and
+  preserves reads in the assignment expression (treesitter-chunker#555).
+- Missing-language guidance now gives the installed grammar build command and
+  explains where to pin the compiled library's SHA-256 (treesitter-chunker#582).
+- Fixed in-memory text fallback on Windows for languages without an installed
+  grammar. When file type detection needs to inspect content, it now returns
+  `UNKNOWN` for directories and other paths it cannot read (treesitter-chunker#585).
+- Python chunk metadata and the complexity analyzer now recognize lone CR
+  line endings in `lines_of_code` and `logical_lines` (treesitter-chunker#597).
+- Non-Python chunks, call sites and Boundary IR report physical rows in files
+  containing lone CR. Incremental Boundary extraction refreshes affected
+  records (treesitter-chunker#601).
+- yEd GraphML node labels now put the name on a separate line and show only
+  the structural type when the name is empty or missing. NetworkX yEd imports
+  expose the same label text (treesitter-chunker#603).
+- `ZeroConfigAPI.auto_chunk_file` and `ZeroConfigAPI.chunk_text` now recover text
+  with `fallback_reason="no_chunk_rules"` when the loaded grammar has no chunk
+  rules. Languages with partial rules retain their empty structural results
+  (treesitter-chunker#716).
+- Default changed-file discovery returns a renamed file's current path when
+  comparing HEAD with its first parent (treesitter-chunker#740).
+- Graph cuts now retain edges between selected nodes when the source or target
+  uses `source_id` or `target_id` (treesitter-chunker#741).
+- Reloading a plugin configuration clears obsolete language filters and overrides.
+  A failed reload preserves the last loaded settings (treesitter-chunker#742).
+- HTTP `/graph/xref` uses the same language detection as `/chunk/file`,
+  including JSX, and returns HTTP 400 for unknown extensions or unavailable
+  parsers. `/graph/cut`
+  honors zero radius and budget and rejects negative bounds (treesitter-chunker#743).
+- Grammar fetch now reports an invalid existing destination as failed for that
+  language and preserves its contents (treesitter-chunker#744).
+- Zero-config file and text results now report the installed Tree-sitter runtime
+  version after successful parsing (treesitter-chunker#745).
+- The package's Documentation link now opens the project's GitHub Pages site
+  (treesitter-chunker#746).
+- Token-limited chunks preserve long literals, whitespace and class content in
+  order and split oversized methods. Budgets must be positive. A Unicode
+  scalar that alone exceeds the budget is preserved and flagged in chunk
+  metadata (treesitter-chunker#747).
+- Structured Parquet batch exports now isolate partitioned chunks under
+  `<base>_chunks/`. Partition directory names longer than 255 encoded bytes
+  use a SHA-256 digest, with original typed values preserved in the rows.
+  Empty streaming exports now create or replace both schema-correct Parquet
+  files (treesitter-chunker#749).
+- A failed SQLite re-export preserves the previous snapshot. SQLite and PostgreSQL
+  query helpers now return executable examples for their respective export schemas
+  (treesitter-chunker#750).
+- Parallel chunking caches the source revision it extracted. After an edit, the
+  next call reads the updated content. Existing chunk-cache entries refresh on
+  first use (treesitter-chunker#752).
+- Incremental cache backups preserve byte spans, identities, timestamps and JSON-compatible metadata. Export rejects values that would lose their type in JSON. Rebuild unversioned backups from source (treesitter-chunker#753).
+- Incremental searches return current occurrence IDs and line ranges after source shifts. Merging changes uses memory proportional to chunk and interval counts, including for long spans (treesitter-chunker#754).
+- The repository ignore matcher applies nested `.gitignore` rules relative to
+  their declaring directory and respects excluded parent directories. A rule
+  `/generated.py` in `pkg/.gitignore` now excludes `pkg/generated.py` while
+  leaving root and sibling copies eligible (treesitter-chunker#755).
+- Token-limited file reads, standard VFS chunking and repository processing
+  (including watch deltas) preserve source line endings. For valid UTF-8,
+  contiguous source-backed chunk spans and content refer to the original bytes.
+  Oversized functions retain LF, CRLF and lone CR across token splits.
+  Standard VFS source decoding uses UTF-8 on all platforms. Rechunk affected
+  files to refresh occurrence IDs and parent links (treesitter-chunker#758).
+- Structured batch and streaming exports now apply registered transformers in
+  registration order after filtering. Hooks can replace exported content,
+  metadata and relationship types while preserving source IDs, spans and edge
+  endpoints. Invalid hook results raise `ChunkerError`. A streaming writer may
+  have emitted earlier records when a hook fails (treesitter-chunker#762).
+- Batch recursive patterns now respect their directory prefix. A missing explicit
+  path from arguments or stdin now returns status 1 after successful inputs are
+  emitted, and its diagnostic appears on stderr even in quiet mode. Batch CSV
+  now quotes fields containing delimiters, quotes or line breaks
+  (treesitter-chunker#763).
+- Pull requests containing a valid Git pathname with non-UTF-8 bytes now run all
+  PR checks, including the three-platform matrix (treesitter-chunker#765).
+
 - Python chunk metadata now lists each decorator call site once in `calls` and
   `call_spans` (treesitter-chunker#604).
 - Python structural call resolution now treats a constant string as a
