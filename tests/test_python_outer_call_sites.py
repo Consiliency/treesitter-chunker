@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from chunker import chunk_file, get_parser, symbol_graph
+from chunker import chunk_file, extract_boundary_ir, get_parser, symbol_graph
 
 MODES = ("permissive", "strict")
 
@@ -190,6 +190,63 @@ def test_decorator_outer_call_site(tmp_path):
     ]
     assert rows[0]["resolution"] == "resolved"
     assert_unresolved(rows[1], raw)
+
+
+@pytest.mark.parametrize(
+    ("definition", "decorator", "references"),
+    [
+        ("def target():", "f()", ["f"]),
+        ("class Target:", "f()()", ["f()", "f"]),
+        ("def method(self):", "mod.f()", ["mod.f"]),
+    ],
+)
+def test_decorator_metadata_has_one_entry_per_call_site(
+    tmp_path, definition, decorator, references
+):
+    prefix = "# π\n"
+    indent = ""
+    if definition == "def method(self):":
+        prefix += "class Target:\n"
+        indent = "    "
+    path, raw = write(
+        tmp_path,
+        f"{prefix}{indent}@{decorator}\n{indent}{definition}\n"
+        f"{indent}    work()\n{indent}    work()\n",
+    )
+    start = raw.index(b"@") + 1
+    first = raw.index(b"work()")
+    second = raw.index(b"work()", first + 1)
+    expected = [expected_site(raw, ref, start) for ref in references]
+    expected.extend(expected_site(raw, "work", pos) for pos in (first, second))
+
+    (chunk,) = [
+        c for c in chunk_file(path, "python") if c.node_type == "decorated_definition"
+    ]
+    names = [site["reference"].split(".")[-1] for site in expected]
+    assert chunk.metadata["calls"] == names
+    assert [
+        (span["name"], span["raw_reference"], span["start"], span["end"])
+        for span in chunk.metadata["call_spans"]
+    ] == [
+        (name, site["reference"], site["byte_start"], site["byte_end"])
+        for name, site in zip(names, expected, strict=True)
+    ]
+
+    graph = symbol_graph.extract_symbol_graph(path, "python", fail_fast=True)
+    ir = extract_boundary_ir(path, "python", fail_fast=True)
+    for rows in (graph["relationships"], ir["edges"]):
+        assert sorted(
+            (
+                row["reference"],
+                row["location"]["byte_start"],
+                row["location"]["byte_end"],
+            )
+            for row in rows
+            if row["type"] == "calls"
+        ) == sorted(
+            (site["reference"], site["byte_start"], site["byte_end"])
+            for site in expected
+        )
 
 
 def test_chunk_metadata_keeps_inner_and_outer_names(tmp_path):

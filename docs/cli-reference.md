@@ -102,8 +102,10 @@ uses stderr so stdout remains parseable JSON.
 `--cache-dir` selects the persistent Boundary IR cache directory. `--force-rebuild`
 bypasses cache reads and refreshes records for the current snapshot.
 
-`--call-resolution` is experimental (treesitter-chunker#682). `name`, the
-default, is the usual name-only resolution. `structural` narrows `ambiguous`
+`--call-resolution` is experimental (treesitter-chunker#682). See
+[Call resolution](call-resolution.md) for the modes, test scoping and known
+limits. `name`, the default, is the usual name-only resolution.
+`structural` narrows `ambiguous`
 call edges whose callee is a bare identifier in a Python, JavaScript, TypeScript
 or TSX file. For JavaScript, TypeScript and TSX callers it resolves an edge
 when a lexical binding in the caller's file proves its one target
@@ -122,7 +124,9 @@ import (`from m import t`, `m.t()`) resolve when the module name resolves from
 the extraction root to exactly one file and leads to one proven definition;
 other files' writes to a module's globals make it unprovable, so for Python
 `imports` can resolve fewer calls than `structural`, and a file that may load
-or write any module (`exec`, a non-literal `import_module`, `sys.path`
+or write any module (`exec`, `compile`, `pickle.loads`, a code object such
+as `f.__code__`, heap walking with `gc`, a frame's `f_locals`, a `.patch`
+call with a computed target, a non-literal `import_module`, `sys.path`
 changes, ...) turns Python Tier 2 off. Run `boundary` without
 `--lang` for Tier 2, since a language filter leaves other variants uncollected.
 Narrowed edges carry

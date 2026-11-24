@@ -244,6 +244,9 @@ definition can change resolution without changing call-site IDs.
 
 ### Call resolution extension (experimental)
 
+For a guide to the modes, test scoping and known limits, see
+[Call resolution](call-resolution.md).
+
 `call_resolution` is an opt-in, experimental option on `extract_symbol_graph`,
 `extract_boundary_ir` and the `symbols extract` and `boundary` CLI commands
 (`--call-resolution`), orthogonal to `resolution_mode`
@@ -272,9 +275,22 @@ For Python callers it proves bindings through the LEGB scope chain
 redefinitions narrow to their group and never resolve; module-scope and
 class-body lookups in a file that may bind names at run time (`exec`,
 `globals`, `sys.modules` and the like) or has a star import prove nothing, as
-do module-level definitions of builtin names, class-body lookups in a class
+do module-level definitions of builtin names (and of the names
+`gettext.install()` puts into `builtins`), class-body lookups in a class
 with a base or keyword argument, and every lookup in a file that mentions
-`f_locals`; monkeypatching from other modules is not tracked.
+`f_locals` or runs code from a string, a payload or an annotation (`exec`,
+`eval`, `compile`, `breakpoint()`, `cProfile`/`pdb`/`timeit`-style helpers,
+`pickle.loads`, `shelve`, `marshal`, `get_type_hints`, string annotations
+that call, `__annotations__` writes, `runpy` with `init_globals`, a loader's
+`get_code`) or walks the heap (`gc` other than its collector controls and
+counters, `get_referents`, `get_referrers` or `get_objects` anywhere). A
+`.patch` call on any receiver with a target that is not a constant string,
+`.patch` handed on, a constant string exactly `"patch"` in any position, a
+name imported as `patch` from any module and applied to such a target, or a
+private `unittest.mock` patcher (`_patch`, `_patch_multiple`,
+`_patch_object`, `_patch_dict`) or `_get_target` spelled anywhere (any
+identifier role or a word of a constant string) makes the file's lookups
+prove nothing; monkeypatching from other modules is not tracked.
 
 With `"imports"`, everything `"structural"` does applies, and a JavaScript,
 TypeScript or TSX call whose callee a relative ES import binds (`import { t }`,
@@ -290,10 +306,54 @@ are compared by their exact string value. A sibling `<stem>.<segment>.<ext>`
 (a platform or module suffix such as `svc.ios.ts`) leaves the edge unchanged
 unless the segment is on a closed list of names no resolver uses (`test`,
 `spec`, `stories`, `types`, …). Some files can rewrite any module's exports
-object: a code evaluator, a non-literal `require` or `import()`, `createRequire`,
+object: a code evaluator, a non-literal `require` or `import()`, a write to
+the CommonJS wrapper's `require` (including a destructuring element, default
+or `for…of`/`for…in` head, which declares nothing), `createRequire`,
 `mainModule`, `getBuiltinModule` or an import of `module`, the CommonJS
-`module` object handed on, or an unparsed file whose text spells one. Any such
-file in production code turns Tier 2 off for the whole run, and the cause is
+`module` object handed on, a stack-introspection trigger, a `with` statement,
+or an unparsed JS/TS file. Stack-introspection triggers include the global
+`Error.prepareStackTrace` hook, identifier tokens spelled `caller` or
+`getFunction` in any role, cooked string or template tokens equal to either
+name, and regular-expression patterns containing either name. Variable and
+parameter names count too, because a function's inferred `.name` and export
+keys expose them. JSX text containing either name, and JSX attribute strings
+equal to either name, match after HTML character references are decoded.
+
+Node loads of `vm`, `repl`, `inspector`, and `inspector/promises` are
+evaluator causes. A `process` identifier or property name, a cooked string
+or template token equal to `process`, JSX text containing `process` or an
+attribute value equal to it after entity decoding, or a regular-expression
+pattern containing `process` is a module-system cause. This includes lexical
+bindings, since anonymous functions and classes can infer their runtime name
+from the binding. An unbound `process` identifier is exempt as an operand of
+`typeof`, of `===` or `!==`, of `==` or `!=` against a `null` literal (other
+loose comparisons call an inherited `valueOf` or `toString` on `process`),
+as the left operand of `&&`, or as the receiver of a plain or optional dot
+access to `argv`, `cwd`, `env`, `exit`, `on`, `once`, `platform`, or `send`.
+`on` and `once` return `process` and call each listener with `this` set to
+`process`, so they are exempt only in a call statement whose result is
+discarded and whose listeners are all arrow functions. A write to any of
+these members (assignment, compound or logical assignment, `++`/`--`,
+`delete`, a `for…in`/`for…of` head, or a destructuring target) is a cause,
+since a method installed there runs with `this` set to `process`.
+Constructor access and dynamic indexing through these members can still
+disable Tier 2. A load of `process` or `node:process` is a module-system
+cause unless it is a static `import` whose bound names are used only in these
+closed positions, in a file where no scope binds `require` (a CommonJS emit
+calls the program-scope `require` with the specifier). A default or namespace
+binding named `process` is not exempt: `import process from "node:process"`
+is a cause, while `import proc from "node:process"` can be exempt. A `require` call or
+`import … = require(…)` of either specifier is always a cause: in an ES
+module a free `require` is a lookup on the global object, which another file
+can set. The exempt members are safe unless a built-in prototype is patched:
+`send` (outside an IPC child), `on`, `once` and `exit` reach `process` through
+inherited lookups on `Object.prototype` or `EventEmitter.prototype`, which
+Node's own code also performs with no `process` token, and with
+`esModuleInterop` the emitted `this.__importDefault` helper lookup falls
+through to `Object.prototype` and receives the static import's `process`
+(plan risk R12).
+
+Any such file in production code turns Tier 2 off for the whole run, and the cause is
 logged. Three uses are exempt by closed lists: an import of only
 `builtinModules` or `isBuiltin` from `module`; `const r = createRequire(…)`
 used only as `r('<literal>')` (which counts as a `require` of that path) or
@@ -341,9 +401,22 @@ literal `import_module('m')` or `sys.modules['m']`) makes the whole module,
 and every module it exposes, unprovable. That also applies to the written
 module's own module-level `"structural"` proofs, so `"imports"` can resolve
 fewer Python calls than `"structural"`. A Python file that may load or write
-any module (`exec`, `eval`, a non-literal loader, other `importlib` uses,
-`runpy`, `sys.modules` other than a literal key, `sys.path` changes,
-`__globals__`, frame globals, `builtins`, `__main__`) or that tree-sitter and
+any module (`exec`, `eval`, `compile`, any of the string-code triggers
+above, a code object or closure such as `f.__code__` (reads included), a
+non-literal loader, other `importlib` uses, `runpy`, `sys.modules` other
+than a literal key, `sys.path` changes, `__globals__`, frame globals,
+any frame-locals spelling (`f_locals` reads included, `getargvalues`,
+`getgeneratorlocals`, `getcoroutinelocals`, `getasyncgenlocals`,
+`curframe_locals`, `getclosurevars`), `locals` or `vars` as a value, an
+attribute name, an imported name or a constant string, a closure cell's
+`cell_contents` other than a read, heap walking with `gc`, a `.patch` call
+with a computed target on any receiver, a constant string exactly `"patch"`
+in any position, a private `unittest.mock` patcher or `_get_target` spelled
+anywhere, a name imported as `patch` from any module, a re-export of `patch`
+under another name reached by a from-import at any scope or a star import
+(only those are followed; a module attribute read such as `compat.pp` is
+not), a class-pattern keyword spelled `patch` or as a `MonkeyPatch` method,
+`builtins`, `__main__`) or that tree-sitter and
 CPython may read differently turns Python Tier 2 off, scoped like the
 JavaScript causes (test files: `test_*.py`, `*_test.py`, `conftest.py`, or a
 `tests` or `test` directory). On the real trees measured for

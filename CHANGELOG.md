@@ -7,6 +7,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Python chunk metadata now lists each decorator call site once in `calls` and
+  `call_spans` (treesitter-chunker#604).
+- Python structural call resolution now treats a constant string as a
+  `__main__` self-reference when a component split on format and attribute
+  punctuation or whitespace (or a default `string.Template` identifier) is
+  `__main__`, so templates stored in a variable and later formatted with
+  `str.format`, `format_map`, `%`, `string.Template` or logging fail closed.
+  An f-string or t-string counts when `__main__` occurs anywhere in its
+  source text after escape decoding (literal parts, format specs,
+  expressions, debug text and comments alike), so no difference in how
+  tree-sitter and CPython split such a string can hide one; a part that is
+  not UTF-8 fails closed (treesitter-chunker#698). `imports` mode uses the same rule
+  for its run-wide `__main__` cause, so such a string in any run file shuts
+  off Tier 2 as a plain `'__main__'` does. Escapes in string literals are
+  decoded without `ast.literal_eval`, so call resolution facts no longer
+  depend on the process warning filters (for example
+  `-W error::SyntaxWarning`).
+- Python call resolution no longer trusts a patcher alias (`p = mock.patch`)
+  or a pytest-mock `mocker` parameter local to a function whose locals can be
+  read as a dict: `locals()` or a no-argument `vars()` in the function
+  (comprehensions and nested functions included), `locals`/`vars` as a
+  value, an attribute, an imported name or in any constant string anywhere
+  in the file (`attrgetter('__self__.locals')`, `N = 'locals'`), or a frame's
+  `f_locals`. Such a patcher can be handed out and patch a module from
+  another file, so the run's Tier 2 proofs fail closed
+  (treesitter-chunker#707).
+- Python call resolution now fails closed on four more routes that can make
+  a proven call run other code (treesitter-chunker#699):
+  - `gc` used other than through its collector controls and counters
+    (`collect`, `disable`, `get_count`, `set_debug`, `is_tracked`, ...),
+    or `get_referents`, `get_referrers` or `get_objects` spelled anywhere,
+    resolves no call in that file, function-local ones included, and is a
+    run-wide `module-object` cause in `imports` mode;
+  - `.patch` is a patcher on any receiver: `X.patch(...)` with a target that
+    is not a constant string, `X.patch` handed on, and a constant `"patch"`
+    naming a member by string (`getattr(X, "patch")`) fail closed, and in
+    `imports` mode are an `unresolvable-writer` cause. So are:
+    - a constant string exactly `"patch"` in any position: an argument, a
+      list or tuple element, `__match_args__`, a mapping-pattern key, a
+      comparison;
+    - `unittest.mock`'s private patchers `_patch`, `_patch_multiple`,
+      `_patch_object`, `_patch_dict` and their target resolver
+      `_get_target`, spelled anywhere: a name, an attribute on any
+      receiver (read or written), an import or alias name, a keyword, a
+      class-pattern keyword, or a word of any constant string;
+    - a name imported as `patch` from any module under any alias;
+    - a re-export of `patch` under another name, followed through
+      from-imports at any scope (module, function, class body, relative)
+      and star imports only. A re-export read as a module attribute
+      (`import compat; compat.pp(...)`) is not followed;
+    - a match-statement class pattern that reads `patch` or a `MonkeyPatch`
+      method (`case object(patch=p)`).
+
+    `@router.patch("/items")` with a constant route is unaffected;
+  - **cost in production code:** in a production file, any of these turns
+    Python Tier 2 off for the whole run, not only for that file:
+    - a `"patch"` string in any position;
+    - a `.patch` call whose first argument is not a constant string;
+    - a read or write of an attribute named like a private patcher, such
+      as `self._patch.start()` or `self._patch = ...`.
+
+    Examples are an argparse subcommand `sub.add_parser("patch")`, a semver
+    field list `["major", "minor", "patch"]`, an HTTP method list
+    `["get", "patch"]`, an HTTP call `requests.patch(f"…/{i}")` or
+    `session.request(method="patch", url=u)`. In a test file the same
+    spelling costs only the proofs of test callers. In `structural` mode a
+    `"patch"` string or a private patcher name makes every lookup in that
+    file prove nothing. On the four trees measured for this change the
+    production cost is 0 resolved edges and the test cost is 26 edges (one
+    pmcp test file holds `"FROM_PATCH": "patch"`);
+  - in `imports` mode, any spelling of a frame's `f_locals` (reads
+    included) or of the frame-locals proxies `getargvalues`,
+    `getgeneratorlocals`, `getcoroutinelocals`, `getasyncgenlocals` and
+    `curframe_locals`, `inspect.getclosurevars`, `locals` or `vars` used
+    as a value, an attribute name, an imported name or a constant string,
+    and a closure cell's `cell_contents` other than a plain read are
+    run-wide `module-object` causes, so a file that
+    reads another file's frame (`gi_frame`, `cr_frame`, `tb_frame`,
+    `inspect.trace()`) and applies a patcher found there shuts off Tier 2.
+
 ### Added
 
 - **Experimental:** opt-in scope-aware call resolution, `call_resolution`
@@ -72,6 +154,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     resolve, nor does a module-level name that any receiver's attribute write
     (`x.name = v`, `setattr`, `__dict__.update`) may rebind, and neither does a
     private name (`__x`) looked up inside a class, which CPython mangles.
+    A file that runs code from a string, a payload or an annotation
+    (`exec`, `eval`, `compile`, `breakpoint()`, `cProfile`/`pdb`/`trace`/
+    `timeit`/`doctest`-style helpers, `pickle` loads, `shelve`, `marshal`,
+    loader `get_code`/`exec_module`, `runpy` with `init_globals`,
+    `get_type_hints`, `singledispatch`, string annotations that call,
+    `__annotations__` writes; a module-level variable of a code builtin's
+    name, `compile = compile`, does not hide the builtin, and neither does a
+    Python 2 form CPython 3 reads differently, such as `except A, exec:`;
+    `code`, `trace` or `profile` imported from another package count unless
+    every use reads a name the stdlib module lacks, so `from opentelemetry
+    import trace` stays inert; a module named by any constant passed to
+    `import_module`/`__import__`, its `package` argument and `globals`
+    included, counts) resolves no call at all, function-local ones included, because such code
+    can write its caller's locals through the frame; in `imports` mode it is
+    also a run-wide `evaluator` cause, and any code-object source (`__code__`,
+    `__closure__`, `FunctionType`, ...; reads included) a `module-object`
+    cause (treesitter-chunker#699).
     A file that mentions `f_locals`, which writes function locals, resolves
     nothing. Monkeypatching from other modules is not tracked (plan risk
     R10). Wherever no binding proves a candidate, only
@@ -109,8 +208,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     rewrite any module's exports object (a code evaluator, a non-literal
     `require` or `import()`, `createRequire`, `mainModule`,
     `getBuiltinModule`, an import of `module`, the `module` object handed on,
-    or an unparsed file whose text spells one): Tier 2 is then off for the
-    run, and the cause is logged. This holds within the run only (plan risk
+    stack introspection through `caller`, `getFunction` or
+    `Error.prepareStackTrace`, a `with` statement (treesitter-chunker#718),
+    or an unparsed JS/TS file): Tier 2 records the cause and disables
+    cross-module resolution for the affected callers. Identifiers spelled
+    `caller` or `getFunction`, cooked string or template tokens equal to
+    either name, and regex patterns containing either name trigger the
+    cause, as do variable and parameter bindings with either name (a
+    function's inferred `.name` and export keys expose them). JSX text
+    containing either name, and JSX attribute strings equal to either
+    name, match after HTML character references decode.
+    Node evaluator loads and non-exempt `process` tokens also disable
+    cross-module resolution (treesitter-chunker#702). The process rule
+    allows specific static members and operand positions on the unbound
+    global and checks the uses of aliases bound by a static import of the
+    process module, in a file where no scope binds `require`; a `require`
+    call of it always disables cross-module resolution, and so does a
+    write to the CommonJS `require`, including a destructuring element,
+    default or loop head such as `[require] = [f]`.
+    Writes to those members, `on`/`once` other than a discarded call with
+    arrow listeners, and loose equality other than against `null` still
+    disable it, since each can hand `process` to user code.
+    Causes confined to test files apply only to test callers (O-2). This
+    holds within the run only (plan risk
     R12, treesitter-chunker#702).
     In Python files `"imports"` also resolves calls bound by an import:
     `from m import t`, relative forms, a function-local import, and member
@@ -160,29 +280,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Call resolution, `"imports"` mode (experimental): a Python file in which
-  any token spells a namespace-reaching name (`globals`, `locals`, `vars`,
-  `f_globals`, `f_locals`, `f_builtins`, `__globals__`, `__import__`,
-  `getmodule`, `getclosurevars`, `__loader__`, `__spec__`, `load_module`,
-  `exec_module`, `get_field`, `builtins`, the annotation evaluators such as
-  `typing.get_type_hints`), as a name, attribute, keyword or constant
-  string, or that uses a bare `eval`/`exec` or imports `__main__`, now
-  counts as handing out every module it imports, so another file writing
-  through that namespace (`d["svc"].t = f`) makes the module's own calls
-  unprovable instead of resolving them wrongly (treesitter-chunker#724). A
-  package `__init__.py` hands out its submodules too, and a handed-out
-  `sys`, `importlib` or `builtins` shuts off cross-file resolution like
-  passing it on. Three uses are exempt because the object they apply to is
-  provably not the file's own namespace: `exec(code, mod.__dict__)` and
-  `spec.loader.exec_module(mod)` on a module the function itself creates
-  with `types.ModuleType` or `importlib.util.module_from_spec`, and
-  `__import__` of a constant name that is not the file's own package or a
-  module-system module such as `sys`; a file whose constants spell a listed
-  name or the module factory as a word, or that sets `__class__`, gets no
-  exemption. `inspect.getmembers`, `doctest.DocTestFinder` and `globs`,
-  `rlcompleter`, `__builtins__`, `PyEval_GetGlobals`, a resolver given the
-  file's own name (`pkgutil.resolve_name(__name__)`) and pytest's
-  `request.module` count too. The Python fact version moves to 39.
 - Symbol graph extraction orders source files by case-sensitive path components
   on every platform (treesitter-chunker#687).
 - Automatic detection uses the language pack's `rst` and `asm` grammar

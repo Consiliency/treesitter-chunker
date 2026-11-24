@@ -54,9 +54,9 @@ interface and a function of one name merge.
     The file was collected through a symbolic link (E5-5).
 ``shutoff``
     Run-wide causes (E5-3): ``evaluator``, ``dynamic-loader``,
-    ``module-system``, ``module-object``, ``unparsed-file`` (text scan of a
-    file with parse errors). Under O-2 a cause in a test file applies only
-    to callers in test files.
+    ``module-system``, ``module-object``, ``unparsed-file``,
+    ``unresolvable-writer``, and ``dynamic-scope``. Under O-2 a cause in a
+    test file applies only to callers in test files unless production reaches it.
 
 Uses of the sensitive values (a namespace import, ``require``, ``module``)
 are classified by a closed allow-list after unwrapping parentheses and TS
@@ -72,6 +72,7 @@ from typing import TYPE_CHECKING, Any
 from .js_strings import (
     cook_template,
     decode_js_string_sloppy,
+    decode_jsx_text,
     decode_string_literal,
     module_export_name,
 )
@@ -120,6 +121,7 @@ CAUSE_MODULE_SYSTEM = "module-system"
 CAUSE_MODULE_OBJECT = "module-object"
 CAUSE_UNPARSED_FILE = "unparsed-file"
 CAUSE_UNRESOLVABLE_WRITER = "unresolvable-writer"
+CAUSE_DYNAMIC_SCOPE = "dynamic-scope"
 SHUTOFF_CAUSES = (
     CAUSE_EVALUATOR,
     CAUSE_DYNAMIC_LOADER,
@@ -127,6 +129,7 @@ SHUTOFF_CAUSES = (
     CAUSE_MODULE_OBJECT,
     CAUSE_UNPARSED_FILE,
     CAUSE_UNRESOLVABLE_WRITER,
+    CAUSE_DYNAMIC_SCOPE,
 )
 # ``import.meta`` reads that load nothing.
 _IMPORT_META_READS = frozenset(
@@ -146,7 +149,71 @@ MODULE_MOCKS: dict[str, frozenset[str]] = {
 MOCK_PACKAGES = {"jest": "@jest/globals", "vi": "vitest"}
 # Names that reach the CommonJS module system from anywhere.
 _MODULE_SYSTEM_NAMES = frozenset({"mainModule", "createRequire", "getBuiltinModule"})
+_MODULE_SYSTEM_TOKEN_NAMES = frozenset({"caller", "getFunction", "process"})
+_MODULE_SYSTEM_NAME_TOKENS = frozenset(
+    {
+        "identifier",
+        "property_identifier",
+        "shorthand_property_identifier",
+        "shorthand_property_identifier_pattern",
+        "statement_identifier",
+        "type_identifier",
+    }
+)
+# Pieces of one JSX text run (R-718-3).
+_JSX_TEXT_PARTS = frozenset({"jsx_text", "html_character_reference"})
 _MODULE_SYSTEM_SPECIFIERS = frozenset({"module", "node:module"})
+_PROCESS_SPECIFIERS = frozenset({"process", "node:process"})
+_INERT_PROCESS_MEMBERS = frozenset(
+    {
+        "argv",  # Command-line argument strings.
+        "cwd",  # Returns the current directory's path.
+        "env",  # Reads and writes environment strings.
+        "exit",  # Terminates the process.
+        "on",  # Registers a process event listener.
+        "once",  # Registers a one-shot process event listener.
+        "platform",  # Platform name string.
+        "send",  # Sends an IPC message to the parent and reports send status.
+    }
+)
+# R-699-4 item 1: members that return ``process`` (EventEmitter returns
+# ``this``) and call each listener with ``this === process``. They are
+# exempt only as a discarded statement call with arrow listeners.
+_PROCESS_LISTENER_MEMBERS = frozenset({"on", "once"})
+# Node types that may spell a use of a binding (``_uses``).
+_USE_NAME_TOKENS = frozenset(
+    {
+        "identifier",
+        "shorthand_property_identifier_pattern",
+        "shorthand_property_identifier",
+    }
+)
+# R-699-4 item 2: steps from a member access up to the assignment, update,
+# ``delete`` or ``for…in/of`` that writes it, through patterns (and their
+# expression spellings, which tree-sitter sometimes gives a pattern).
+_WRITE_PATTERN_STEPS = frozenset(
+    {
+        "array_pattern",
+        "array",
+        "object_pattern",
+        "object",
+        "rest_pattern",
+        "spread_element",
+    }
+)
+# Steps that write only when the access is their ``left`` (a default value
+# on the right is a read) or their ``value`` (a key is not written).
+_WRITE_FIELD_STEPS = {
+    "assignment_pattern": "left",
+    "object_assignment_pattern": "left",
+    "pair_pattern": "value",
+    "pair": "value",
+}
+_EVALUATOR_SPECIFIERS = frozenset(
+    prefix + name
+    for prefix in ("", "node:")
+    for name in ("vm", "repl", "inspector", "inspector/promises")
+)
 # Fold 3, item 1: the only names an import from ``module`` may bind without
 # a run-wide cause (with ``createRequire`` under item 2). ``builtinModules``
 # is an array of names and ``isBuiltin(name)`` returns a boolean: neither
@@ -207,6 +274,10 @@ def _has_token(node: Any, token: str) -> bool:
     return any(not child.is_named and child.type == token for child in node.children)
 
 
+def _parent_type(node: Any) -> str | None:
+    return node.parent.type if node.parent is not None else None
+
+
 def _text(node: Any, source: bytes) -> str:
     return source[node.start_byte : node.end_byte].decode("utf-8", errors="replace")
 
@@ -253,6 +324,8 @@ class _ModuleFacts:
         # Edges whose targets cannot be computed (fold 4): a production file
         # with one promotes every test file (O-2).
         self.uncomputable = False
+        self._names: dict[str, list[Any]] | None = None
+        self._rebound: bool | None = None
         # P5-13: literal targets of ``createRequire(__filename)``.
         self.filename_taints: set[str] = set()
         self.ns_uses: set[tuple[str, str, str]] = set()
@@ -382,6 +455,9 @@ class _ModuleFacts:
 
     def _reexport(self, statement: Any, source_node: Any) -> None:
         specifier = decode_string_literal(source_node, self.source)
+        type_only = _has_token(statement, "type")
+        if not type_only:
+            self._mark_node_builtin_load(specifier)
         if specifier is None or any(
             child.type == "import_attribute" for child in statement.named_children
         ):
@@ -395,7 +471,6 @@ class _ModuleFacts:
         self.imports.add(specifier)
         if specifier in _MODULE_SYSTEM_SPECIFIERS:
             self.shutoff.add(CAUSE_MODULE_SYSTEM)
-        type_only = _has_token(statement, "type")
         for child in statement.named_children:
             if child.type == "namespace_export":
                 # ``export * as x from``: a namespace object, never callable.
@@ -483,19 +558,51 @@ class _ModuleFacts:
 
     # -- CommonJS reach, taints and run-wide causes ------------------------
 
+    def _mark_node_builtin_load(self, specifier: str | None) -> None:
+        if specifier in _EVALUATOR_SPECIFIERS:
+            self.shutoff.add(CAUSE_EVALUATOR)
+        elif specifier in _PROCESS_SPECIFIERS:
+            self.shutoff.add(CAUSE_MODULE_SYSTEM)
+
     def module_system(self) -> None:
         analysis = self.analysis
         handled: set[int] = set()
         for node in _walk(analysis.root):
             kind = node.type
-            if kind == "call_expression":
+            if kind in _MODULE_SYSTEM_NAME_TOKENS:
+                self._name(node, handled)
+            elif kind == "call_expression":
                 self._loader_call(node, handled)
+            elif kind == "with_statement":
+                # Lookups in this body can reach properties on the with object
+                # before consulting lexical bindings.
+                self.shutoff.add(CAUSE_DYNAMIC_SCOPE)
             elif kind == "import_require_clause":
-                self._taint_literal(node.child_by_field_name("source"))
+                source_node = node.child_by_field_name("source")
+                specifier = _literal_value(source_node, self.source)
+                if specifier is not None and specifier not in _MODULE_SYSTEM_SPECIFIERS:
+                    if not _has_token(node.parent, "type"):
+                        # ``import p = require('process')`` is never exempt:
+                        # ``--module preserve`` emits a free ``require`` call,
+                        # a global lookup in an ES module (R-699-7).
+                        self._mark_node_builtin_load(specifier)
+                    self.taints.add(specifier)
+                else:
+                    self.shutoff.add(CAUSE_MODULE_SYSTEM)
             elif kind == "import_statement":
                 source_node = node.child_by_field_name("source")
                 if source_node is not None:
                     specifier = decode_string_literal(source_node, self.source)
+                    if specifier in _PROCESS_SPECIFIERS and not _has_token(
+                        node, "type"
+                    ):
+                        self._mark_process_load(
+                            source_node,
+                            self._process_import_names(node),
+                            handled,
+                        )
+                    elif not _has_token(node, "type"):
+                        self._mark_node_builtin_load(specifier)
                     if specifier is None or (
                         specifier in _MODULE_SYSTEM_SPECIFIERS
                         and not self._inert_module_import(node)
@@ -503,28 +610,41 @@ class _ModuleFacts:
                         self.shutoff.add(CAUSE_MODULE_SYSTEM)
                     elif specifier not in _MODULE_SYSTEM_SPECIFIERS:
                         self.imports.add(specifier)
-            elif kind in (
-                "identifier",
-                "shorthand_property_identifier",
-                "shorthand_property_identifier_pattern",
-            ):
-                self._name(node, handled)
-            elif kind == "property_identifier":
-                if _text(node, self.source) in _MODULE_SYSTEM_NAMES:
-                    # A property cannot be looked up (its receiver may be an
-                    # alias of ``process``): matched by name.
+            elif kind in ("jsx_text", "html_character_reference"):
+                self._jsx_text(node)
+            elif kind == "string" and _parent_type(node) == "jsx_attribute":
+                # A JSX attribute string decodes HTML character references,
+                # not JS escapes (R-718-3).
+                if any(
+                    value in _MODULE_SYSTEM_NAMES or value in _MODULE_SYSTEM_TOKEN_NAMES
+                    for value in decode_jsx_text(_text(node, self.source)[1:-1])
+                ):
                     self.shutoff.add(CAUSE_MODULE_SYSTEM)
-            elif kind == "string":
+            elif kind == "string" and node.id not in handled:
                 # Matched on the value sloppy code gives the literal (legacy
                 # octal escapes decode); a malformed literal fails closed.
                 value = decode_js_string_sloppy(_text(node, self.source))
-                if value is None or value in _MODULE_SYSTEM_NAMES:
-                    self.shutoff.add(CAUSE_MODULE_SYSTEM)
-            elif kind == "template_string":
-                cooked = cook_template(node, self.source)
-                if cooked is None or any(
-                    name in part for part in cooked for name in _MODULE_SYSTEM_NAMES
+                if (
+                    value is None
+                    or value in _MODULE_SYSTEM_NAMES
+                    or value in _MODULE_SYSTEM_TOKEN_NAMES
+                    or self._stack_trace_hook(node, value)
                 ):
+                    self.shutoff.add(CAUSE_MODULE_SYSTEM)
+            elif kind == "template_string" and node.id not in handled:
+                cooked = cook_template(node, self.source)
+                if (
+                    cooked is None
+                    or any(
+                        name in part for part in cooked for name in _MODULE_SYSTEM_NAMES
+                    )
+                    or any(part in _MODULE_SYSTEM_TOKEN_NAMES for part in cooked)
+                    or (len(cooked) == 1 and self._stack_trace_hook(node, cooked[0]))
+                ):
+                    self.shutoff.add(CAUSE_MODULE_SYSTEM)
+            elif kind == "regex_pattern":
+                pattern = _text(node, self.source)
+                if any(name in pattern for name in _MODULE_SYSTEM_TOKEN_NAMES):
                     self.shutoff.add(CAUSE_MODULE_SYSTEM)
             elif kind == "meta_property":
                 if not self._inert_import_meta(node):
@@ -537,8 +657,74 @@ class _ModuleFacts:
             # (``var``, a function, ...) still names the CommonJS wrapper's
             # object in sloppy code, whose ``arguments[1]`` is ``require``.
             self.shutoff.add(CAUSE_DYNAMIC_LOADER)
+        for target in self.analysis.assignment_targets:
+            # R-699-9: a write to the CommonJS wrapper's ``require`` through a
+            # pattern element, a default or a loop head (``[require] = [f]``,
+            # ``({ a: require } = o)``, ``for ([require] of xs)``) declares
+            # nothing, yet ``f`` then receives every later static import's
+            # specifier, ``"process"`` included.
+            if _text(target, self.source) == "require" and self._free_or_top(
+                target, "require"
+            ):
+                self.shutoff.add(CAUSE_DYNAMIC_LOADER)
         self._import_writes()
         self._namespace_uses()
+
+    def _jsx_text(self, node: Any) -> None:
+        """Substring-match one run of JSX text after entity decoding.
+
+        tree-sitter splits a run at each character reference; the run is
+        one string child at runtime. JSX whitespace folding only trims or
+        joins lines with a space, so it never makes a new substring."""
+        if _parent_type(node) not in ("jsx_element", "jsx_fragment"):
+            return
+        previous = node.prev_named_sibling
+        if previous is not None and previous.type in _JSX_TEXT_PARTS:
+            return
+        last = node
+        while (
+            last.next_named_sibling is not None
+            and last.next_named_sibling.type in _JSX_TEXT_PARTS
+        ):
+            last = last.next_named_sibling
+        raw = self.source[node.start_byte : last.end_byte].decode(
+            "utf-8", errors="replace"
+        )
+        if any(
+            name in value
+            for value in decode_jsx_text(raw)
+            for name in (*_MODULE_SYSTEM_TOKEN_NAMES, *_MODULE_SYSTEM_NAMES)
+        ):
+            self.shutoff.add(CAUSE_MODULE_SYSTEM)
+
+    def _stack_trace_hook(self, node: Any, name: str) -> bool:
+        """Match a stack-formatting hook only on the global Error receiver."""
+        if name != "prepareStackTrace" or _in_type_position(node):
+            return False
+        outer = _climb_wrappers(node)
+        parent = outer.parent
+        return (
+            parent is not None
+            and (parent.type, _field_of(parent, outer))
+            in (("member_expression", "property"), ("subscript_expression", "index"))
+            and self._global_builtin(parent.child_by_field_name("object"), "Error")
+        )
+
+    def _global_builtin(self, node: Any, name: str) -> bool:
+        from .js_scope import unwrap
+
+        node = unwrap(node)
+        if node is None:
+            return False
+        if node.type == "identifier":
+            return _text(node, self.source) == name and self.analysis._refers_to_global(
+                node, name
+            )
+        return self.analysis._member_key(
+            node
+        ) == name and self.analysis._is_global_object(
+            node.child_by_field_name("object"), receiver=True
+        )
 
     def _inert_import_meta(self, node: Any) -> bool:
         """``import.meta.url`` and other plain reads; Bun's
@@ -600,6 +786,11 @@ class _ModuleFacts:
         if specifier in _MODULE_SYSTEM_SPECIFIERS:
             self.shutoff.add(CAUSE_MODULE_SYSTEM)
             return
+        # No ``require`` call of ``process`` is exempt (R-699-7): in an ES
+        # module a free ``require`` is a global lookup that another file can
+        # set (``globalThis.require = f``), and ``f`` then receives the
+        # literal. Only a static import is the loader in either goal.
+        self._mark_node_builtin_load(specifier)
         # A literal ``require`` taints whatever binds the name: an AMD
         # ``require`` parameter loads modules too.
         self.taints.add(specifier)
@@ -653,17 +844,29 @@ class _ModuleFacts:
                 return str(imported)
         return None
 
-    def _taint_literal(self, node: Any) -> None:
-        specifier = _literal_value(node, self.source)
-        if specifier is None or specifier in _MODULE_SYSTEM_SPECIFIERS:
-            self.shutoff.add(CAUSE_MODULE_SYSTEM)
-            return
-        self.taints.add(specifier)
-
     def _name(self, node: Any, handled: set[int]) -> None:
         from .js_scope import _declaration_name
 
         text = _text(node, self.source)
+        if text in _MODULE_SYSTEM_TOKEN_NAMES:
+            # Any role (R-718-3): a variable or parameter name also reaches
+            # runtime as a string, through a function's inferred ``.name``
+            # or an export key.
+            if text == "process":
+                if node.type == "identifier" and (
+                    self.analysis._binding_scope(node, text) is None
+                    and self._inert_process_operand(node)
+                ):
+                    return
+            self.shutoff.add(CAUSE_MODULE_SYSTEM)
+            return
+        if node.type == "property_identifier":
+            # A property cannot be looked up: match the name.
+            if text in _MODULE_SYSTEM_NAMES or self._stack_trace_hook(node, text):
+                self.shutoff.add(CAUSE_MODULE_SYSTEM)
+            return
+        if node.type in ("statement_identifier", "type_identifier"):
+            return
         if node.type == "identifier" and _declaration_name(node):
             return
         if text in _MODULE_SYSTEM_NAMES:
@@ -712,6 +915,185 @@ class _ModuleFacts:
 
     # -- fold 3: closed allow-lists for ``module`` imports and createRequire
 
+    def _mark_process_load(
+        self, literal: Any, names: list[Any], handled: set[int]
+    ) -> None:
+        """Exempt a process load only if every bound name stays in safe uses."""
+        if not names or self._require_rebound():
+            self.shutoff.add(CAUSE_MODULE_SYSTEM)
+            return
+        for name in names:
+            if name is None or name.type != "identifier":
+                self.shutoff.add(CAUSE_MODULE_SYSTEM)
+                return
+            text = _text(name, self.source)
+            scope = self.analysis._binding_scope(name, text)
+            uses = self._uses(scope, text) if scope is not None else None
+            if not uses or not all(self._inert_process_operand(use) for use in uses):
+                self.shutoff.add(CAUSE_MODULE_SYSTEM)
+                return
+        handled.add(literal.id)
+
+    def _require_rebound(self) -> bool:
+        """R-699-7 item 1: whether any scope of the file binds ``require``.
+
+        A CommonJS emit routes the file's static imports through the
+        program-scope ``require``, so such a binding receives the literal
+        ``"process"`` and no process load in the file is exempt. A
+        type-only import and an ambient declaration bind no runtime value.
+        """
+        if self._rebound is None:
+            from .js_scope import TYPE_ONLY
+
+            self._rebound = any(
+                binding.cls != TYPE_ONLY and not binding.ambient
+                for scope in self.analysis.scopes.values()
+                for binding in scope.bindings.get("require", ())
+            )
+        return self._rebound
+
+    def _process_import_names(self, statement: Any) -> list[Any]:
+        if any(child.type == "import_attribute" for child in statement.named_children):
+            return []
+        names = []
+        for clause in statement.named_children:
+            if clause.type != "import_clause":
+                continue
+            for part in clause.named_children:
+                if part.type == "identifier":
+                    names.append(part)
+                elif part.type == "namespace_import":
+                    names.extend(
+                        c for c in part.named_children if c.type == "identifier"
+                    )
+                elif part.type == "named_imports":
+                    for spec in part.named_children:
+                        if spec.type == "import_specifier" and not _has_token(
+                            spec, "type"
+                        ):
+                            names.append(
+                                spec.child_by_field_name("alias")
+                                or spec.child_by_field_name("name")
+                            )
+        return names
+
+    def _inert_process_operand(self, node: Any) -> bool:
+        outer = _climb_wrappers(node)
+        parent = outer.parent
+        if parent is None:
+            return False
+        if parent.type == "unary_expression":
+            return self._operator(parent) == "typeof"
+        if parent.type == "binary_expression":
+            operator = self._operator(parent)
+            if operator in ("===", "!=="):
+                return True
+            if operator in ("==", "!="):
+                # R-699-4 item 3: loose equality runs ToPrimitive(process),
+                # which calls an inherited valueOf/toString with ``this ===
+                # process``, unless the other side is ``null``.
+                return self._null_literal(parent, outer)
+            return operator == "&&" and _same(parent.child_by_field_name("left"), outer)
+        if parent.type != "member_expression" or not _same(
+            parent.child_by_field_name("object"), outer
+        ):
+            return False
+        prop = parent.child_by_field_name("property")
+        name = _text(prop, self.source) if prop is not None else ""
+        if name not in _INERT_PROCESS_MEMBERS:
+            return False
+        member = _climb_wrappers(parent)
+        if self._member_written(member):
+            # R-699-4 item 2: an installed method runs with ``this ===
+            # process`` when anyone calls the member.
+            return False
+        if name in _PROCESS_LISTENER_MEMBERS:
+            return self._discarded_arrow_listen(member)
+        access = member.parent
+        # E5-3 already covers constructor and escaped keys. A dynamic key
+        # on this receiver has no known spelling for that check.
+        return not (
+            access is not None
+            and access.type == "subscript_expression"
+            and _same(access.child_by_field_name("object"), member)
+            and self.analysis._member_key(access) is None
+        )
+
+    def _operator(self, node: Any) -> str:
+        operator = node.child_by_field_name("operator")
+        return _text(operator, self.source) if operator is not None else ""
+
+    def _null_literal(self, comparison: Any, operand: Any) -> bool:
+        """Whether the other operand of ``comparison`` is ``null``, where
+        IsLooselyEqual returns before ToPrimitive. ``undefined`` is not
+        taken: it is an identifier a parameter may rebind."""
+        from .js_scope import unwrap
+
+        left = comparison.child_by_field_name("left")
+        other = unwrap(
+            comparison.child_by_field_name("right") if _same(left, operand) else left
+        )
+        return other is not None and other.type == "null"
+
+    def _member_written(self, member: Any) -> bool:
+        """Whether ``member`` is the target of an assignment (plain,
+        compound or logical), ``++``/``--``, ``delete`` or a ``for…in/of``
+        head, directly or inside a destructuring pattern."""
+        current = member
+        while True:
+            parent = current.parent
+            if parent is None:
+                return False
+            kind = parent.type
+            if kind in _WRAPPERS or kind in _WRITE_PATTERN_STEPS:
+                current = parent
+                continue
+            field = _WRITE_FIELD_STEPS.get(kind)
+            if field is not None:
+                if not _same(parent.child_by_field_name(field), current):
+                    return False
+                current = parent
+                continue
+            if kind in (
+                "assignment_expression",
+                "augmented_assignment_expression",
+                "for_in_statement",
+            ):
+                return _same(parent.child_by_field_name("left"), current)
+            if kind == "update_expression":
+                return True
+            if kind == "unary_expression":
+                return self._operator(parent) == "delete"
+            return False
+
+    def _discarded_arrow_listen(self, member: Any) -> bool:
+        """R-699-4 item 1: ``process.on(event, () => …);`` as a statement.
+        The call returns ``process`` (discarded here) and calls each listener
+        with ``this === process`` (an arrow keeps its lexical ``this``)."""
+        from .js_scope import unwrap
+
+        call = member.parent
+        if call is None or call.type != "call_expression":
+            return False
+        statement = _climb_wrappers(call).parent
+        if statement is None or statement.type != "expression_statement":
+            return False
+        arguments = call.child_by_field_name("arguments")
+        named = (
+            [child for child in arguments.named_children if child.type != "comment"]
+            if arguments is not None and arguments.type == "arguments"
+            else []
+        )
+        return (
+            len(named) >= 2
+            and named[0].type != "spread_element"
+            and all(
+                (listener := unwrap(argument)) is not None
+                and listener.type == "arrow_function"
+                for argument in named[1:]
+            )
+        )
+
     def _uses(self, scope: Any, name: str) -> list[Any] | None:
         """Every use of the binding of ``name`` in ``scope``, found by the
         ordinary lookup at each use site; ``None`` when the scope binds the
@@ -721,17 +1103,7 @@ class _ModuleFacts:
         if len(scope.bindings.get(name, ())) != 1:
             return None
         uses: list[Any] = []
-        for node in _walk(self.analysis.root):
-            if (
-                node.type
-                not in (
-                    "identifier",
-                    "shorthand_property_identifier",
-                    "shorthand_property_identifier_pattern",
-                )
-                or _text(node, self.source) != name
-            ):
-                continue
+        for node in self._name_index().get(name, ()):
             if node.type == "identifier" and _declaration_name(node):
                 continue
             if self.analysis._binding_scope(node, name) is not scope:
@@ -740,6 +1112,17 @@ class _ModuleFacts:
                 return None
             uses.append(node)
         return uses
+
+    def _name_index(self) -> dict[str, list[Any]]:
+        """Identifier-like nodes by spelling, in source order, from one walk
+        of the file (R-699-4 item 5: no full scan per bound name)."""
+        if self._names is None:
+            index: dict[str, list[Any]] = {}
+            for node in _walk(self.analysis.root):
+                if node.type in _USE_NAME_TOKENS:
+                    index.setdefault(_text(node, self.source), []).append(node)
+            self._names = index
+        return self._names
 
     def _written(self, node: Any) -> bool:
         return any(_same(node, target) for target in self.analysis.assignment_targets)
@@ -867,6 +1250,7 @@ class _ModuleFacts:
             literal = self._single_literal(arguments)
             if literal is None or literal in _MODULE_SYSTEM_SPECIFIERS:
                 return False
+            self._mark_node_builtin_load(literal)
             literals.append(literal)
         if own_base == "filename":
             # P5-13 (c), P5-20: the engine taints these only if no run file

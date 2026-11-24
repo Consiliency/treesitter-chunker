@@ -2176,7 +2176,7 @@ def test_graphml_text_normalization(
             label = node.find(
                 f"{ns}data/{{http://www.yworks.com/xml/graphml}}ShapeNode/{{http://www.yworks.com/xml/graphml}}NodeLabel"
             )
-            assert label.text == f"function_definition\\n{expected}"
+            assert label.text == f"function_definition\n{expected}"
     edge = graph.find(f"{ns}edge")
     data = {item.get("key"): item.text for item in edge.findall(f"{ns}data")}
     assert data["e_caller"] == expected and data["edge_label"] == expected

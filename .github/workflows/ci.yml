@@ -230,17 +230,27 @@ jobs:
           uv run --locked --all-extras mypy --follow-imports=silent --allow-untyped-defs --allow-incomplete-defs --allow-untyped-calls --check-untyped-defs --no-pretty --no-error-summary --show-error-codes tools/sync_governed_test_transport.py
 
       - name: Pytest
+        id: pytest
         env:
           # The full tier runs on dedicated hosted runners, so it admits the
           # 4-worker scaling measurement; the smoke tier and local runs do not
           # (treesitter-chunker#669).
           CHUNKER_PERF_ADMITTED_SCALING: ${{ needs.changes.outputs.full == 'true' && '1' || '0' }}
+          CHUNKER_PYTEST_SKIP_REPORT: ${{ runner.temp }}/full-suite-skips.json
         run: |
           if [ "$GITHUB_EVENT_NAME" = "schedule" ] || [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
             uv run --locked --all-extras python scripts/run_full_suite.py
           else
             uv run --locked --all-extras python scripts/run_ci_smoke.py
           fi
+
+      - name: Upload Linux full-suite skip report
+        if: ${{ !cancelled() && needs.changes.outputs.full == 'true' && (steps.pytest.outcome == 'success' || steps.pytest.outcome == 'failure') }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: full-suite-skips-linux
+          path: ${{ runner.temp }}/full-suite-skips.json
+          if-no-files-found: warn
 
   platform:
     if: ${{ needs.changes.outputs.code == 'true' }}
@@ -479,17 +489,37 @@ jobs:
       run: uv run --locked --all-extras python scripts/run_builder_mutations.py
 
     - name: Run platform core tests
+      id: platform-core
+      env:
+        CHUNKER_PYTEST_SKIP_REPORT: ${{ runner.temp }}/platform-core-skips.json
       run: |
         uv run --locked --all-extras python scripts/run_platform_core.py --platform ${{ matrix.platform-family }}
 
+    - name: Upload platform-core skip report
+      if: ${{ !cancelled() && (steps.platform-core.outcome == 'success' || steps.platform-core.outcome == 'failure') }}
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: platform-core-skips-${{ matrix.platform-family }}
+        path: ${{ runner.temp }}/platform-core-skips.json
+        if-no-files-found: warn
 
     - name: Full suite on primary Python
+      id: full-suite
       if: needs.changes.outputs.full == 'true' && matrix.platform-family != 'linux'
       env:
         # Dedicated hosted runner: admit the 4-worker scaling measurement
         # (treesitter-chunker#669).
         CHUNKER_PERF_ADMITTED_SCALING: '1'
+        CHUNKER_PYTEST_SKIP_REPORT: ${{ runner.temp }}/full-suite-skips.json
       run: uv run --locked --all-extras python scripts/run_full_suite.py
+
+    - name: Upload platform full-suite skip report
+      if: ${{ !cancelled() && (steps.full-suite.outcome == 'success' || steps.full-suite.outcome == 'failure') }}
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: full-suite-skips-${{ matrix.platform-family }}
+        path: ${{ runner.temp }}/full-suite-skips.json
+        if-no-files-found: warn
 
     - name: Upload coverage
       if: runner.os == 'Linux'
