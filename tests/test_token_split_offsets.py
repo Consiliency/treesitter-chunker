@@ -14,11 +14,7 @@ def test_split_chunk_offsets_slice_the_original_utf8_content():
         parent_context="",
         content="def café():\n    return 1\n",
     )
-    part = TreeSitterTokenAwareChunker()._create_sub_chunk(
-        original,
-        "    return 1\n",
-        1,
-    )
+    _, part = TreeSitterTokenAwareChunker()._split_large_chunk(original, 5, "gpt-4")
     source = b"x" * 40 + original.content.encode("utf-8")
 
     assert source[part.byte_start : part.byte_end].decode("utf-8") == part.content

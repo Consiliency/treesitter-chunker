@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Standard VFS source decoding uses UTF-8 on all platforms. Rechunk affected
   files to refresh occurrence IDs and parent links (treesitter-chunker#758).
 
+- Token-limited chunks preserve long literals, whitespace and class content in
+  order and split oversized methods. Budgets must be positive. A Unicode
+  scalar that alone exceeds the budget is preserved and flagged in chunk
+  metadata (treesitter-chunker#747).
+
 - Python structural call resolution now treats a constant string as a
   `__main__` self-reference when a component split on format and attribute
   punctuation or whitespace (or a default `string.Template` identifier) is

@@ -32,9 +32,9 @@ def chunk_text_with_token_limit(
 ) -> list[CodeChunk]:
     """Parse text and return chunks that respect token limits.
 
-    This function chunks code using tree-sitter and ensures no chunk exceeds
-    the specified token limit. Large chunks are automatically split while
-    preserving code structure when possible.
+    Split each semantic parent's content losslessly under a positive budget.
+    A single over-budget Unicode scalar is flagged with token_limit_exceeded.
+    The budget covers content. Any parent_context is additional prompt text.
 
     Args:
         text: Source code text to chunk
@@ -48,6 +48,8 @@ def chunk_text_with_token_limit(
     Returns:
         List of CodeChunk objects with token counts in metadata
     """
+    if max_tokens <= 0:
+        raise ValueError("max_tokens must be positive")
     # First get regular chunks
     chunks = chunk_text(
         text,
@@ -88,9 +90,9 @@ def chunk_file_with_token_limit(
 ) -> list[CodeChunk]:
     """Parse file and return chunks that respect token limits.
 
-    This function chunks a file using tree-sitter and ensures no chunk exceeds
-    the specified token limit. Large chunks are automatically split while
-    preserving code structure when possible.
+    Split each semantic parent's content losslessly under a positive budget.
+    A single over-budget Unicode scalar is flagged with token_limit_exceeded.
+    The budget covers content. Any parent_context is additional prompt text.
 
     Args:
         path: Path to the file to chunk
@@ -103,6 +105,8 @@ def chunk_file_with_token_limit(
     Returns:
         List of CodeChunk objects with token counts in metadata
     """
+    if max_tokens <= 0:
+        raise ValueError("max_tokens must be positive")
     # errors="replace" so a file with invalid UTF-8 bytes chunks instead of
     # crashing the token-limited path (matches core.chunk_file; COREFIX).
     if language == "baml":
