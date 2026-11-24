@@ -285,12 +285,17 @@ class StructuredExportOrchestrator(StructuredExporter):
     def _create_metadata(
         self,
         fmt: ExportFormat,
-        chunks: list[CodeChunk],
+        chunks: list[Any],
         relationships: list[ChunkRelationship],
         transformer_count: int,
     ) -> ExportMetadata:
         """Create export metadata."""
-        source_files = list({chunk.file_path for chunk in chunks})
+        source_files = list(
+            {
+                (c.file_path if hasattr(c, "file_path") else c.get("file_path", ""))
+                for c in chunks
+            },
+        )
         return ExportMetadata(
             fmt=fmt,
             version="1.0",

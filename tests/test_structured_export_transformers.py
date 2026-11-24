@@ -512,3 +512,14 @@ def test_input_iterator_exception(tmp_path):
     with pytest.raises(LookupError) as error:
         export.export_streaming(source(), iter([]), tmp_path / "test.json")
     assert error.value is failure
+
+
+def test_no_hooks_batch_json_accepts_dictionary_records(tmp_path):
+    records = [{"file_path": "legacy.py", "content": "first"}, {"content": "second"}]
+    edges = [{"source_chunk_id": "legacy", "target_chunk_id": "external"}]
+    path = tmp_path / "legacy.json"
+    pipeline(StructuredJSONExporter()).export(records, edges, path)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert data["chunks"] == records
+    assert data["relationships"] == edges
+    assert set(data["metadata"]["source_files"]) == {"legacy.py", ""}
