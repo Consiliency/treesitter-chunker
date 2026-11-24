@@ -66,6 +66,7 @@ COMMON_TESTS = [
     "tests/test_user_grammar_publication.py",
     "tests/test_git_aware_linked_worktree.py",
     "tests/test_git_aware_contract.py",
+    "tests/test_repo_ignore_scope.py",
     "tests/test_python_version_hints_contract.py",
     "tests/test_python_reference_oracle_contract.py",
     "tests/test_javascript_version_hints_contract.py",
