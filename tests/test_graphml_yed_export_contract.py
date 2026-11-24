@@ -57,6 +57,7 @@ def test_yed_caller_labels_remain_distinct_from_structural_graphics(pretty, use_
     exporter.add_chunks(chunks[:2])
     for chunk in chunks[:2]:
         exporter.nodes[chunk.node_id].properties["label"] = "caller node 中文 &<>"
+        exporter.nodes[chunk.node_id].properties["name"] = ""
     exporter.add_relationship(chunks[0], chunks[1], "CALLS", {"label": "caller edge"})
     root = ET.fromstring(exporter.export_string(pretty_print=pretty, use_yed=use_yed))
     keys = [key.get("id") for key in root.findall(f"{GRAPHML}key")]
@@ -76,7 +77,7 @@ def test_yed_caller_labels_remain_distinct_from_structural_graphics(pretty, use_
             assert shape is not None
             label = shape.find(f"{YED}NodeLabel")
             assert label is not None and label.text is not None
-            assert label.text.startswith(chunk.node_type)
+            assert label.text == chunk.node_type
         else:
             assert shape is None
     edge = graph.find(f"{GRAPHML}edge")

@@ -95,7 +95,7 @@ all = ["treesitter-chunker[dev,viz,docs,profile,api,templates,advanced]"]
 
 [project.urls]
 Homepage = "https://github.com/Consiliency/treesitter-chunker"
-Documentation = "https://treesitter-chunker.readthedocs.io"
+Documentation = "https://consiliency.github.io/treesitter-chunker/"
 Repository = "https://github.com/Consiliency/treesitter-chunker"
 Issues = "https://github.com/Consiliency/treesitter-chunker/issues"
 Changelog = "https://github.com/Consiliency/treesitter-chunker/blob/main/CHANGELOG.md"

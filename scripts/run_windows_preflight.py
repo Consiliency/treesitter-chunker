@@ -12,6 +12,7 @@ WINDOWS_PREFLIGHT_TESTS = [
     "tests/test_config_advanced_scenarios.py",
     "tests/test_exceptions.py",
     "tests/test_export_integration_advanced.py",
+    "tests/test_phase12_integration.py::TestSQLiteExporter::test_live_publication",
     "tests/test_fallback_chunking.py",
     "tests/test_registry_fallback.py",
     "tests/test_config.py",
