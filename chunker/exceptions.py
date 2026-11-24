@@ -90,7 +90,7 @@ class LanguageNotFoundError(LanguageError):
             f"      treesitter-chunker setup grammars {language}\n"
             "   Pin the compiled library's approved SHA-256 in the user-config "
             "trusted-artifacts.json. See Approved pins in the grammar guide:\n"
-            "   https://consiliency.github.io/treesitter-chunker/grammar_management/#approved-pins",
+            "   https://github.com/Consiliency/treesitter-chunker/blob/main/docs/grammar_management.md#approved-pins",
         )
 
         # Check if this is a common language that should be available

@@ -59,7 +59,7 @@ class TestLanguageNotFoundErrorMessages:
             "SHA-256" in guidance and "user-config trusted-artifacts.json" in guidance
         )
         assert (
-            "https://consiliency.github.io/treesitter-chunker/grammar_management/#approved-pins"
+            "https://github.com/Consiliency/treesitter-chunker/blob/main/docs/grammar_management.md#approved-pins"
             in guidance
         )
 
