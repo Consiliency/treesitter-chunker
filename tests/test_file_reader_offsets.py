@@ -125,6 +125,53 @@ def test_token_file_split_offsets(tmp_path, endings, budget):
     assert cursor == len(prefix) + len(body)
 
 
+@pytest.mark.parametrize("newline", [b"\n", b"\r", b"\r\n"], ids=["lf", "cr", "crlf"])
+def test_class_parts_group_methods_at_physical_lines(tmp_path, newline):
+    path = tmp_path / "c.py"
+    prefix = "# préface".encode() + newline
+    header = b"class C:" + newline
+    first = b"    def a(self):" + newline + b"        return 1" + newline
+    last = b"    def b(self):" + newline + b"        return 2"
+    source = prefix + header + first + last + newline
+    path.write_bytes(source)
+    parts = [
+        part
+        for part in chunk_file_with_token_limit(path, "python", 12)
+        if part.node_type.startswith("class_definition_part_")
+    ]
+    start = len(prefix)
+    for part, expected, rows in zip(
+        parts, (header, first, last), ((2, 3), (3, 5), (5, 6)), strict=True
+    ):
+        end = start + len(expected)
+        assert (
+            part.content.encode() == expected == source[part.byte_start : part.byte_end]
+        )
+        assert (part.byte_start, part.byte_end) == (start, end)
+        assert (part.start_line, part.end_line) == rows
+        assert part.parent_context == "class C:"
+        start = end
+
+
+@pytest.mark.parametrize("newline", ["\n", "\r", "\r\n"], ids=["lf", "cr", "crlf"])
+def test_class_parts_oversized_preamble_first_physical_line(tmp_path, newline):
+    path = tmp_path / "c.py"
+    # U+2028 in a comment is ordinary source text on this physical line.
+    header = "class C:  # one\u2028two"
+    path.write_bytes(
+        newline.join(
+            [header, "    # " + "word " * 40, "    def a(self):", "        pass"]
+        ).encode()
+    )
+    parts = [
+        part
+        for part in chunk_file_with_token_limit(path, "python", 12)
+        if part.node_type.startswith("class_definition_part_")
+    ]
+    assert parts
+    assert all(part.parent_context == header for part in parts)
+
+
 # Captured from treesitter-chunker#766 (c593ce47) using the same relative paths.
 @pytest.mark.parametrize(
     ("name", "source", "budget", "expected"),

@@ -202,7 +202,7 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
         """
         content = chunk.content
         method_starts = []
-        for match in re.finditer(r"[^\n]+", content):
+        for match in re.finditer(r"[^\r\n]+", content):
             line = match.group()
             stripped = line.strip()
             if any(
@@ -224,10 +224,10 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
         def fits(part: str) -> bool:
             return self.token_counter.count_tokens(part, model) <= max_tokens
 
-        header = content[: method_starts[0]].removesuffix("\n")
+        header = content[: method_starts[0]].removesuffix("\n").removesuffix("\r")
         if not fits(header):
             # Avoid repeating an oversized preamble on every serialized part.
-            first_line = header.partition("\n")[0]
+            first_line = re.split(r"[\r\n]", header, maxsplit=1)[0]
             header = first_line if fits(first_line) else ""
         context = chunk.parent_context
         if header:
