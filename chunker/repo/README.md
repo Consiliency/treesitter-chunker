@@ -115,17 +115,22 @@ processor = RepoProcessorImpl(
 
 ## Gitignore Support
 
-The module fully respects `.gitignore` patterns:
+The filesystem matcher combines chunker defaults (such as `*.pyc`) with
+`.gitignore` rules. Each file applies below its own directory. Later lines
+override earlier ones, and a deeper file can override its ancestors. An
+excluded directory hides its descendants, including its own `.gitignore`.
+
+With `/generated.py` in `pkg/.gitignore`:
 
 ```python
-from chunker.repo.patterns import load_gitignore_patterns
+from pathlib import Path
+from chunker.repo import load_gitignore_patterns
 
-# Load all .gitignore patterns from repository
-matcher = load_gitignore_patterns(repo_path)
-
-# Check if file should be ignored
-if not matcher.should_ignore(file_path):
-    # Process file
+matcher = load_gitignore_patterns(Path("repository"))
+assert matcher.should_ignore("pkg/generated.py")
+assert not matcher.should_ignore("generated.py")
+assert not matcher.should_ignore("pkg/deep/generated.py")
+assert not matcher.should_ignore("pkg2/generated.py")
 ```
 
 ## Architecture
