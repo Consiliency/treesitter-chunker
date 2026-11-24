@@ -6,7 +6,9 @@ import hashlib
 import os
 import re
 import stat
-from collections.abc import Callable
+from array import array
+from bisect import bisect_left
+from collections.abc import Callable, Iterator, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -67,18 +69,19 @@ def _lone_cr_parse_copy(source: bytes | mmap.mmap, language: str) -> bytes | Non
     return parse_copy
 
 
-def _line_ending_offsets(source: bytes, language: str | None) -> list[int]:
-    """Return the offset of the last byte of each line ending in raw ``source``.
+def _line_ending_offsets(source: bytes | mmap.mmap) -> array[int]:
+    """Index the final byte of each complete physical terminator."""
+    return array("Q", (m.end() - 1 for m in re.finditer(_LINE_ENDING_PATTERN, source)))
 
-    Rows derived from these offsets match the rows the parser reports for
-    ``source``: for languages whose lone CR is parsed as a line ending (see
-    :func:`_lone_cr_parse_copy`), LF, CRLF and lone CR each end one line;
-    elsewhere only LF does, as Tree-sitter counts rows.
-    """
-    pattern = (
-        _LINE_ENDING_PATTERN if language in _LONE_CR_LINE_ENDING_LANGUAGES else b"\n"
-    )
-    return [match.end() - 1 for match in re.finditer(pattern, source)]
+
+def _chunk_line_offsets(source: bytes | mmap.mmap, language: str) -> Sequence[int]:
+    if language != "python" and _LONE_CR.search(source):
+        return _line_ending_offsets(source)
+    return ()
+
+
+def _physical_row(offsets: Sequence[int], cursor: int) -> int:
+    return 1 + bisect_left(offsets, cursor)
 
 
 def _extract_definition_name(
@@ -423,13 +426,30 @@ def _apply_retrieval_metadata(chunks: list[CodeChunk]) -> None:
         chunk.metadata.update(_build_retrieval_metadata(chunk))
 
 
-def _svelte_control_flow_chunks(source: bytes) -> list[CodeChunk]:
+def _svelte_lines(
+    text: str, start_line: int, physical: bool
+) -> Iterator[tuple[int, str]]:
+    # Preserve splitlines' historical selection even for Unicode separators.
+    # Only CR/LF segments advance the displayed row on remapped inputs.
+    if not physical:
+        yield from enumerate(text.splitlines(), start_line)
+        return
+    for segment in text.splitlines(keepends=True):
+        yield start_line, segment.splitlines()[0]
+        if segment.endswith(("\r", "\n")):
+            start_line += 1
+
+
+def _svelte_control_flow_chunks(
+    source: bytes, physical: bool = False
+) -> list[CodeChunk]:
     """Extract template control-flow blocks once from the Svelte root."""
     chunks = []
     byte_start = 0
-    for line_number, line in enumerate(
-        source.decode("utf-8", errors="replace").splitlines(),
-        start=1,
+    for line_number, line in _svelte_lines(
+        source.decode("utf-8", errors="replace"),
+        1,
+        physical,
     ):
         node_type = next(
             (
@@ -562,6 +582,7 @@ def _walk(
     parent_route: list[str] | None = None,
     parent_qualified_route: list[str] | None = None,
     depth: int = 0,
+    line_offsets: Sequence[int] = (),
 ) -> list[CodeChunk]:
     """Walk the AST and extract chunks based on language configuration."""
     if depth >= 900:
@@ -570,10 +591,12 @@ def _walk(
     # streaming walker so streaming selects the SAME per-language node types).
     should_chunk, should_ignore = resolve_chunk_predicates(language)
 
+    if depth == 0:
+        line_offsets = _chunk_line_offsets(source, language)
     chunks: list[CodeChunk] = []
     is_svelte_root = language == "svelte" and node.type in {"document", "source_file"}
     if is_svelte_root:
-        chunks.extend(_svelte_control_flow_chunks(source))
+        chunks.extend(_svelte_control_flow_chunks(source, bool(line_offsets)))
     current_chunk = None
     current_qualified_route: list[str] | None = None
 
@@ -813,7 +836,7 @@ def _walk(
             start_line=start_line,
             end_line=(
                 node.end_point[0] + 1
-                if span_end == node.end_byte
+                if line_offsets or span_end == node.end_byte
                 else source.count(b"\n", 0, span_end) + 1
             ),
             byte_start=span_start,
@@ -987,21 +1010,27 @@ def _walk(
                 if gt != -1 and end_tag != -1 and gt + 1 < end_tag:
                     body = script_text[gt + 1 : end_tag]
                     body_offset = gt + 1
-                lines = body.splitlines()
+                first_row = current_chunk.start_line
+                if line_offsets:
+                    body_byte = node.start_byte + len(
+                        script_text[:body_offset].encode()
+                    )
+                    first_row = _physical_row(line_offsets, body_byte)
+                reactive_lines = _svelte_lines(body, first_row, bool(line_offsets))
                 # FILE-ABSOLUTE byte offset per line so two byte-identical `$:`
                 # lines in DIFFERENT script blocks (module vs instance) never
                 # collide to one chunk_id (IDENTITY panel: body-relative offsets
                 # reset per <script> and collided across blocks).
                 _line_byte = node.start_byte + body_offset
-                for idx, line in enumerate(lines):
+                for row, line in reactive_lines:
                     stripped = line.strip()
                     if stripped.startswith("$:"):
                         reactive_chunk = CodeChunk(
                             language=language,
                             file_path="",
                             node_type="reactive_statement",
-                            start_line=current_chunk.start_line + idx,
-                            end_line=current_chunk.start_line + idx,
+                            start_line=row,
+                            end_line=row,
                             byte_start=_line_byte,
                             byte_end=_line_byte + len(line.encode("utf-8")),
                             parent_context="script_element",
@@ -1074,21 +1103,41 @@ def _walk(
                 parent_route=parent_route,
                 parent_qualified_route=parent_qualified_route,
                 depth=depth + 1,
+                line_offsets=line_offsets,
             ),
         )
 
     # Julia-specific post-processing: merge preceding comments with definitions
     if language == "julia":
-        chunks = _merge_julia_comments_with_definitions(chunks)
+        chunks = _merge_julia_comments_with_definitions(
+            chunks, source if line_offsets else None
+        )
 
     # MATLAB-specific post-processing: detect scripts
     if language == "matlab":
         chunks = _detect_matlab_scripts(chunks, node, source, parent_chunk)
 
+    if depth == 0 and line_offsets:
+        # Selection, Julia merging and anonymous identity use parser rows.
+        for chunk in chunks:
+            if (
+                language == "svelte"
+                and not chunk.qualified_route
+                and (
+                    chunk.parent_context == "template"
+                    or chunk.node_type == "reactive_statement"
+                )
+            ):
+                continue  # Synthetic rows use the source line that produced them.
+            chunk.start_line = _physical_row(line_offsets, chunk.byte_start)
+            chunk.end_line = _physical_row(line_offsets, chunk.byte_end)
+
     return chunks
 
 
-def _merge_julia_comments_with_definitions(chunks: list[CodeChunk]) -> list[CodeChunk]:
+def _merge_julia_comments_with_definitions(
+    chunks: list[CodeChunk], physical_source: bytes | None
+) -> list[CodeChunk]:
     """Merge Julia comment chunks with following definition chunks."""
     if not chunks:
         return chunks
@@ -1122,8 +1171,14 @@ def _merge_julia_comments_with_definitions(chunks: list[CodeChunk]) -> list[Code
                 current_chunk.end_line + 1 == next_chunk.start_line
                 or current_chunk.end_line == next_chunk.start_line
             ):
-                # Merge the comment content with the definition content
-                merged_content = current_chunk.content + "\n" + next_chunk.content
+                # Parser-adjacent nodes can span several physical rows on lone CR.
+                # Keep their intervening bytes when reporting physical spans.
+                if physical_source is not None:
+                    merged_content = physical_source[
+                        current_chunk.byte_start : next_chunk.byte_end
+                    ].decode()
+                else:
+                    merged_content = current_chunk.content + "\n" + next_chunk.content
 
                 # Create a new chunk with the merged content
                 merged_chunk = CodeChunk(

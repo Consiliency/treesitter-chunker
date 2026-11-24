@@ -13,7 +13,7 @@ from typing import Any
 from chunker.auto import ZeroConfigAPI
 from chunker._internal.registry import baml_companion_available
 from chunker.call_resolution.facts import fact_version, valid_scope_facts
-from chunker.core import chunk_file
+from chunker.core import _LONE_CR, chunk_file
 from chunker.exceptions import ParserInitError
 from chunker.parser import get_language_info
 from chunker.symbol_graph import (
@@ -34,6 +34,7 @@ from chunker.types import (
 
 from .cache import (
     BoundaryCacheRecord,
+    _base_key_fields,
     build_boundary_cache_key,
     load_cache_index,
     load_cache_record,
@@ -50,7 +51,6 @@ from .impact import (
 from .serialization import canonicalize_boundary_ir
 from .semantic import SemanticEdge, SemanticResolver, SemanticResolverContext
 from .types import (
-    BOUNDARY_CACHE_KEY_FIELDS,
     BOUNDARY_CACHE_KEY_PREFIX,
     BOUNDARY_IR_SCHEMA_VERSION,
     BOUNDARY_IR_SEMANTIC_SCHEMA_VERSION,
@@ -92,8 +92,14 @@ def _detect_language(file_path: Path, fallback: str | None) -> str | None:
     return ZeroConfigAPI.EXTENSION_MAP.get(file_path.suffix.lower())
 
 
-def _content_hash(file_path: Path) -> str:
-    return "sha1:" + hashlib.sha1(file_path.read_bytes()).hexdigest()
+def _content_hash(source: bytes) -> str:
+    return "sha1:" + hashlib.sha1(source).hexdigest()
+
+
+def _cache_source_identity(path: Path, language: str | None) -> tuple[str, bool]:
+    source = path.read_bytes()
+    physical_rows = language not in (None, "python") and bool(_LONE_CR.search(source))
+    return _content_hash(source), physical_rows
 
 
 def _stable_hash(*values: object) -> str:
@@ -484,7 +490,7 @@ def _build_boundary_cache_key(payload: dict[str, Any]) -> str:
     }
     if payload.get("semantic_schema_version") is None and not call_resolution_fields:
         return build_boundary_cache_key(payload)
-    key_payload = {field: payload.get(field) for field in BOUNDARY_CACHE_KEY_FIELDS}
+    key_payload = _base_key_fields(payload)
     if payload.get("semantic_schema_version") is not None:
         key_payload.update(
             {
@@ -1261,7 +1267,7 @@ def extract_boundary_ir(
                 "id": file_id,
                 "path": display_path,
                 "language": detected_language,
-                "content_hash": _content_hash(file_path),
+                "content_hash": _content_hash(file_path.read_bytes()),
                 "parser": (
                     f"tree-sitter-{detected_language}" if detected_language else None
                 ),
@@ -1446,7 +1452,9 @@ def _extract_boundary_ir_incremental(
     for file_path in files:
         display_path = normalize_boundary_path(_display_path(file_path, root))
         detected_language = _detect_language(file_path, language)
-        content_hash = _content_hash(file_path)
+        content_hash, physical_rows = _cache_source_identity(
+            file_path, detected_language
+        )
         try:
             payload = _cache_key_payload(
                 display_path=display_path,
@@ -1476,6 +1484,8 @@ def _extract_boundary_ir_incremental(
                 semantic_min_confidence=semantic_min_confidence,
                 call_resolution=call_resolution,
             )
+        if physical_rows:
+            payload["physical_row_version"] = 1
         cache_key = _build_boundary_cache_key(payload)
         current_payloads[display_path] = payload
         current_keys[display_path] = cache_key

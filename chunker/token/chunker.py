@@ -269,7 +269,7 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
         start_line = parent.start_line
         # Index the parent so a cut between CR and LF advances the row only
         # after the LF. Offsets are relative to the parent's UTF-8 source.
-        line_endings = _line_ending_offsets(parent.content.encode(), parent.language)
+        line_endings = _line_ending_offsets(parent.content.encode())
         if (
             parent.content.endswith("\r")
             and len(line_endings) > parent.end_line - start_line

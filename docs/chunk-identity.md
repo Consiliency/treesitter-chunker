@@ -47,10 +47,19 @@ parse exactly as before. Python complexity metadata uses the same physical
 lines for `lines_of_code` and for scanning code in `logical_lines`
 (treesitter-chunker#597).
 
-Other languages still parse the raw bytes and count only LF, so a CR-only
-file in those languages reports every chunk on line 1
-(treesitter-chunker#601). Raw
-spans can end between CR and LF when the parser includes CR in a token, such
+For non-Python files containing a lone CR, the regular, mmap and VFS streaming
+chunkers report physical rows for nodes recognized by the existing parser. LF, CRLF and lone CR
+each advance the row once, after their final byte. This preserves grammar
+behavior, including regular Dockerfile continuation repair. Chunk endpoints
+use the start and exclusive end cursors. Call end rows describe the last
+included byte. Anonymous route anchors and Julia comment grouping retain their
+parser-row semantics. On these files a grouped Julia definition includes the
+original bytes between its comment and declaration, so token-split parts span
+the same physical rows as their parent. Synthetic Svelte template-control and reactive chunks
+report the source line that produced them. Their legacy identity byte offsets
+can point earlier on mixed endings or after a multibyte script tag.
+
+Raw spans can end between CR and LF when the parser includes CR in a token, such
 as a Python comment. Source slicing retains those exact bytes.
 
 An explicit `identity_path` still determines regular chunk identities independently
@@ -61,9 +70,9 @@ and regular/streaming selection differences are separate contracts; this change
 does not establish global API parity. CLI stdin retains text-stream newline
 handling and is not certified as raw-byte-equivalent to file input.
 
-Cached parallel processing has a separate cache-identity defect
-(treesitter-chunker#358). Use `use_cache=False` until that repair is accepted;
-newline preservation does not invalidate or repair existing cached payloads.
+The SQLite parallel directory cache includes the installed package version in
+its extraction identity. Refresh that cache or use `use_cache=False` when
+upgrading between development builds with the same version.
 
 ## Token-limited files, standard VFS and repository readers
 
