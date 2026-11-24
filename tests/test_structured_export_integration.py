@@ -1,7 +1,10 @@
 """Integration tests for structured export functionality."""
 
+import hashlib
 import json
+import os
 import sqlite3
+from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.dataset as ds
@@ -404,6 +407,7 @@ def test_parquet_named_partition_roots_and_sidecars(tmp_path):
     first = [
         parquet_chunk("first-py", file_path="first.py"),
         parquet_chunk("first-js", "javascript", "first.js"),
+        parquet_chunk("more-py", file_path="more.py"),
     ]
     second = [parquet_chunk("second", file_path="second.py")]
     orch.export(
@@ -414,13 +418,14 @@ def test_parquet_named_partition_roots_and_sidecars(tmp_path):
     assert partition_rows(tmp_path / "first_chunks") == [
         ("first-js", "first.js", "javascript"),
         ("first-py", "first.py", "python"),
+        ("more-py", "more.py", "python"),
     ]
     assert partition_rows(tmp_path / "second_chunks") == [
         ("second", "second.py", "python")
     ]
     assert not (tmp_path / "language=python/data.parquet").exists()
     for name, source, target, files in [
-        ("first", "first-py", "first-js", ["first.js", "first.py"]),
+        ("first", "first-py", "first-js", ["first.js", "first.py", "more.py"]),
         ("second", "second", "second", ["second.py"]),
     ]:
         assert pq.read_table(
@@ -469,6 +474,47 @@ def test_parquet_encoded_ordered_partition_values(tmp_path):
     assert partition_rows(reports / "other_chunks") == [
         ("other", "sample.py", "python")
     ]
+
+
+def test_parquet_partition_component_length(tmp_path):
+    # "file_path=" accounts for ten of the 255 bytes available to the name.
+    at_limit = "a" * 245
+    over_limit = "a" * 246
+    multibyte = "src/" + "界" * 28 + ".py"
+    digest_name = "!sha256-" + hashlib.sha256(over_limit.encode()).hexdigest()
+    unicode_name = "!sha256-" + hashlib.sha256(multibyte.encode()).hexdigest()
+    names = {
+        at_limit: at_limit,
+        over_limit: digest_name,
+        multibyte: unicode_name,
+        digest_name: "%21" + digest_name[1:],
+    }
+
+    exporter = StructuredParquetExporter(partition_by=["file_path"])
+    exporter.export(
+        [parquet_chunk(str(i), file_path=value) for i, value in enumerate(names)],
+        [],
+        tmp_path / "length.parquet",
+    )
+    root = tmp_path / "length_chunks"
+    if os.name == "nt":
+        # On hosts with legacy MAX_PATH, readers also need the extended path.
+        absolute = root.as_posix()
+        if absolute.startswith("//") and not absolute.startswith("//?/"):
+            absolute = "//?/UNC/" + absolute[2:]
+        elif not absolute.startswith("//?/"):
+            absolute = "//?/" + absolute
+        root = Path(absolute)
+    assert sorted(
+        ds.dataset(root, format="parquet").to_table()["file_path"].to_pylist()
+    ) == sorted(names)
+    assert {entry.name for entry in root.iterdir()} == {
+        f"file_path={name}" for name in names.values()
+    }
+    for value, name in names.items():
+        with pq.ParquetFile(root / f"file_path={name}" / "data.parquet") as reader:
+            assert reader.schema_arrow.field("file_path").type == pa.string()
+            assert reader.read()["file_path"].to_pylist() == [value]
 
 
 def test_parquet_partition_collision_precedes_writes(tmp_path):

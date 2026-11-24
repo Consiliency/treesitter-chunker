@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
@@ -23,6 +25,29 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from chunker.types import CodeChunk
+
+
+def _partition_component(column: str, value: Any) -> str:
+    raw = str(value).encode("utf-8")
+    encoded = quote(raw, safe="")
+    # quote preserves periods, but Windows trims them at the end of a name.
+    stem = encoded.rstrip(".")
+    component = f"{column}={stem}" + "%2E" * (len(encoded) - len(stem))
+    if len(component) > 255:
+        # Literal exclamation marks in the short form are always encoded as %21.
+        return f"{column}=!sha256-{hashlib.sha256(raw).hexdigest()}"
+    return component
+
+
+def _partition_root(path: Path) -> Path:
+    # A valid 255-byte component plus its parent and leaf can exceed MAX_PATH.
+    if os.name == "nt":
+        absolute = path.resolve().as_posix()
+        if absolute.startswith("//") and not absolute.startswith(("//?/", "//./")):
+            return Path("//?/UNC") / absolute[2:]
+        if not absolute.startswith("//"):
+            return Path("//?/" + absolute)
+    return path
 
 
 class StructuredParquetExporter(StructuredExporter):
@@ -59,7 +84,9 @@ class StructuredParquetExporter(StructuredExporter):
         metadata is supplied. With recognized partition columns, read chunks
         using pyarrow.dataset.dataset("run.v1_chunks", format="parquet").
         Each leaf retains the typed partition columns. Directory values use
-        UTF-8 percent encoding. Case-insensitive component collisions within
+        UTF-8 percent encoding. Components exceeding 255 encoded bytes use
+        <column>=!sha256-<digest> of the original UTF-8 value. Read the
+        partition value from the leaf. Case-insensitive component collisions within
         one export raise ChunkerError before any leaf is written.
 
         Reusing a root replaces matching leaves and retains other partitions.
@@ -223,7 +250,7 @@ class StructuredParquetExporter(StructuredExporter):
                 pq.write_table(table, sink, compression=self.compression)
             return
 
-        root = Path(output_path).with_suffix("")
+        root = _partition_root(Path(output_path).with_suffix(""))
         partitions: dict[tuple[Any, ...], list[int]] = {}
         partition_columns = [table.column(col) for col in columns]
         for index, values in enumerate(zip(*partition_columns, strict=True)):
@@ -237,9 +264,7 @@ class StructuredParquetExporter(StructuredExporter):
         for key, indices in partitions.items():
             directory = root
             for column, value in zip(columns, key, strict=True):
-                encoded = quote(str(value), safe="")
-                stem = encoded.rstrip(".")
-                component = f"{column}={stem}" + "%2E" * (len(encoded) - len(stem))
+                component = _partition_component(column, value)
                 alias = (directory, component.lower())
                 if seen.setdefault(alias, value) != value:
                     raise ChunkerError(
