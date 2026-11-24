@@ -284,6 +284,8 @@ class JavaScriptContextExtractor(BaseContextExtractor):
             if grandparent and grandparent.type in {
                 "function_declaration",
                 "function_expression",
+                "generator_function_declaration",
+                "generator_function",
                 "arrow_function",
                 "method_definition",
             }:
@@ -309,9 +311,18 @@ class JavaScriptContextExtractor(BaseContextExtractor):
             return parent.child_by_field_name("name") == identifier_node
         if parent.type == "arrow_function":
             return parent.child_by_field_name("parameter") == identifier_node
-        if parent.type == "array_pattern" or (
-            parent.type == "assignment_pattern"
-            and parent.child_by_field_name("left") == identifier_node
+        if parent.type in {"catch_clause", "for_in_statement"}:
+            return JavaScriptContextExtractor._is_declared_pattern(identifier_node)
+        if (
+            parent.type in {"array_pattern", "rest_pattern"}
+            or (
+                parent.type == "pair_pattern"
+                and parent.child_by_field_name("value") == identifier_node
+            )
+            or (
+                parent.type == "assignment_pattern"
+                and parent.child_by_field_name("left") == identifier_node
+            )
         ):
             return JavaScriptContextExtractor._is_declared_pattern(parent)
         return False

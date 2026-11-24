@@ -76,6 +76,25 @@ def test_293_binding_identifiers_are_not_references_and_uses_are() -> None:
     assert mismatches == []
 
 
+def test_545_declaration_and_assignment_references() -> None:
+    case = reference_case("javascript", "declaration_reads")
+    entries = case.entries("occurrences", "treesitter-chunker#545")
+    assert entries
+    resolver = ContextFactory.create_symbol_resolver("javascript")
+    extractor = ContextFactory.create_context_extractor("javascript")
+    extracted = extractor._find_references_in_node(case.root, case.source)
+    for name in {entry["name"] for entry in entries} | {"staticKey"}:
+        expected = {
+            case.occurrence(entry)
+            for entry in entries
+            if entry["name"] == name and entry["role"] == "use"
+        }
+        assert set(resolver.find_symbol_references(name, case.root)) == expected, name
+        assert {
+            node for spelling, node in extracted if spelling == name
+        } == expected, name
+
+
 def test_552_generator_parent_context_matches_oracle() -> None:
     from chunker.interfaces.context import ContextType
 
