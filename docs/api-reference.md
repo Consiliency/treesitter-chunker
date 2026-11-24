@@ -163,7 +163,7 @@ Represents a semantic chunk of code extracted from a file.
 
 ### JavaScript reference lookup
 
-The resolver returned by `ContextFactory.create_symbol_resolver("javascript")` finds references by spelling across the supplied tree. It excludes declared binding targets in parameters, catch clauses, loop declarations and destructuring. Writes to existing variables in loops and destructuring assignments remain references.
+The resolver returned by `ContextFactory.create_symbol_resolver("javascript")` finds references by spelling across the supplied tree. It excludes declared binding targets in parameters, catch clauses, loop declarations and destructuring. A bare loop write such as `for (x of xs)` remains a reference to `x`. So do rest writes such as `[...x] = xs` and renamed property writes such as `({key: x} = obj)`.
 
 ## Parser Management
 
