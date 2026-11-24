@@ -324,7 +324,7 @@ class TestZeroConfigAPI:
         source = "def hello():\n    return 42"
         if entry_point == "file":
             path = tmp_path / "example.py"
-            path.write_text(source, encoding="utf-8")
+            path.write_text(source, encoding="utf-8", newline="\n")
             result = api.auto_chunk_file(path)
         else:
             result = api.chunk_text(source, "python")
