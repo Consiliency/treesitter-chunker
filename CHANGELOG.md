@@ -9,11 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- The repository ignore matcher applies nested `.gitignore` rules relative to
-  their declaring directory and respects excluded parent directories. A rule
-  `/generated.py` in `pkg/.gitignore` now excludes `pkg/generated.py` while
-  leaving root and sibling copies eligible (treesitter-chunker#755).
-
+- Python chunk metadata now lists each decorator call site once in `calls` and
+  `call_spans` (treesitter-chunker#604).
 - Python structural call resolution now treats a constant string as a
   `__main__` self-reference when a component split on format and attribute
   punctuation or whitespace (or a default `string.Template` identifier) is
