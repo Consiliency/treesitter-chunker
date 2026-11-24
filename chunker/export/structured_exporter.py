@@ -18,7 +18,6 @@ from chunker.interfaces.export import (
     RelationshipType,
     StructuredExporter,
 )
-
 from chunker.types import CodeChunk
 
 if TYPE_CHECKING:
@@ -43,12 +42,12 @@ def _same_field(original: Any, value: Any) -> bool:
 
 def _apply_field(record: CodeChunk | ChunkRelationship, name: str, value: Any) -> None:
     if name == "metadata":
-        if isinstance(record, ChunkRelationship) and value is None:
-            record.metadata = value
-        elif isinstance(value, dict) and all(isinstance(k, str) for k in value):
-            record.metadata = deepcopy(value)
-        else:
+        nullable = isinstance(record, ChunkRelationship) and value is None
+        if not nullable and not (
+            isinstance(value, dict) and all(isinstance(key, str) for key in value)
+        ):
             raise ValueError("expected string-keyed metadata")
+        record.metadata = deepcopy(value)
     elif isinstance(record, CodeChunk) and name == "content":
         if not isinstance(value, str):
             raise ValueError("expected string content")
