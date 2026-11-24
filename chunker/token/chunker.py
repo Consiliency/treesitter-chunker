@@ -220,18 +220,21 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
         if not method_starts:
             return self._split_by_lines(chunk, max_tokens, model)
 
+        def fits(part: str) -> bool:
+            return self.token_counter.count_tokens(part, model) <= max_tokens
+
         header = content[: method_starts[0]].removesuffix("\n")
+        if not fits(header):
+            # Avoid repeating an oversized preamble on every serialized part.
+            first_line = header.partition("\n")[0]
+            header = first_line if fits(first_line) else ""
         context = chunk.parent_context
         if header:
             context = f"{header}\n{context}" if context else header
 
         ends = [pos for pos in method_starts if pos] + [len(content)]
         parts = []
-        for block, accepted in _group_ranges(
-            content,
-            ends,
-            lambda part: self.token_counter.count_tokens(part, model) <= max_tokens,
-        ):
+        for block, accepted in _group_ranges(content, ends, fits):
             if accepted:
                 parts.append(block)
             else:

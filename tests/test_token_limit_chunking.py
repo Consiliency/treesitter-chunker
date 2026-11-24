@@ -257,11 +257,15 @@ def test_semantic_parent_reconstruction(code, budget):
     parents = chunk_text(code, "python")
     result = chunk_text_with_token_limit(code, "python", budget)
     assert parents
+    accounted = []
     for parent in parents:
         if len(enc.encode(parent.content)) <= budget:
-            assert any(child.chunk_id == parent.chunk_id for child in result)
+            (intact,) = [child for child in result if child.chunk_id == parent.chunk_id]
+            assert intact.content == parent.content
+            accounted.append(intact)
             continue
         parts = assert_partition(parent, result, code.encode(), budget, enc, "gpt-4")
+        accounted.extend(parts)
         if parent.node_type == "class_definition" and "def " in code:
             assert all("class C:" in part.parent_context for part in parts)
             if SMALL_METHOD in code:
@@ -272,6 +276,25 @@ def test_semantic_parent_reconstruction(code, budget):
             assert [
                 p.content for p in parts if p.metadata.get("token_limit_exceeded")
             ] == ["🌍"]
+    assert accounted == result
+
+
+@pytest.mark.parametrize(
+    "class_name", ["C", "LongName" * 40], ids=["short-declaration", "long-declaration"]
+)
+def test_large_preamble_context_size(class_name):
+    declaration = f"class {class_name}:"
+    code = declaration + "\n    value = '" + "aZ" * 1000 + "'\n" + SMALL_METHOD
+    parent = next(
+        c for c in chunk_text(code, "python") if c.node_type == "class_definition"
+    )
+    result = chunk_text_with_token_limit(code, "python", 20)
+    enc = tiktoken.get_encoding("cl100k_base")
+    parts = assert_partition(parent, result, code.encode(), 20, enc, "gpt-4")
+    header = declaration if len(enc.encode(declaration)) <= 20 else ""
+    expected = "\n".join(filter(None, [header, parent.parent_context]))
+    assert sum(len(p.parent_context) for p in parts) == len(parts) * len(expected)
+    assert all(p.parent_context == expected for p in parts)
 
 
 @pytest.mark.parametrize(

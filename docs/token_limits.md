@@ -171,8 +171,11 @@ Depending on the budget, the returned content might be grouped as follows.
 - Chunk 2: `method2`
 
 The physical header occurs once in the ordered content. Class parts also
-carry the header in `parent_context`. Budget separately for context if you
-include it in a prompt. Oversized methods and preambles are subdivided.
+carry the preamble before the first detected method in `parent_context` when
+it fits. For a larger preamble, only its first line is added when that line
+fits. Otherwise the parts keep the original parent context. Budget separately
+for context if you include it in a prompt. Oversized methods and preambles
+are subdivided in the content.
 
 ### Function Splitting
 
