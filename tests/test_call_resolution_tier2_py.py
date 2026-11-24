@@ -5774,6 +5774,13 @@ def f(code, frame):
             "    eval(code, mod.__dict__)\n",
         ),
         (
+            # The parameter is a callback, so S2's builtin evaluator check
+            # cannot mask the handout rule's exec-only callee check.
+            "r.py",
+            "import types\n\ndef f(code, eval):\n    mod = types.ModuleType('m')\n"
+            "    eval(code, mod.__dict__)\n",
+        ),
+        (
             "r.py",
             "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
             "    exec(code, mod.__class__)\n",
