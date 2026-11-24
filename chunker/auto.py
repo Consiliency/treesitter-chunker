@@ -417,7 +417,7 @@ class ZeroConfigAPI(ZeroConfigContract):
         except (LanguageNotFoundError, ParserError, IndexError, KeyError):
             if language == "baml":
                 raise
-        code_chunks = self._fallback_chunker.chunk_text(text, "<text>")
+        code_chunks = self._fallback_chunker.chunk_in_memory(text)
         chunks = []
         for chunk in code_chunks:
             chunk_dict = {
