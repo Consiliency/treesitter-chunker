@@ -9,11 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `ZeroConfigAPI.auto_chunk_file` and `ZeroConfigAPI.chunk_text` now recover text
-  with `fallback_reason="no_chunk_rules"` when the loaded grammar has no chunk
-  rules. Languages with partial rules retain their empty structural results
-  (treesitter-chunker#716).
-
+- Python chunk metadata now lists each decorator call site once in `calls` and
+  `call_spans` (treesitter-chunker#604).
 - Python structural call resolution now treats a constant string as a
   `__main__` self-reference when a component split on format and attribute
   punctuation or whitespace (or a default `string.Template` identifier) is
