@@ -238,6 +238,30 @@ _OTHER = 'def t():\n    return "OTHER.t"\n\n\ndef w():\n    return 2\n'
 _MAIN = "import use\nimport svc\n\nuse.go()\nprint(svc.u())\n"
 
 
+@pytest.mark.parametrize(
+    "definition",
+    ["def inner(x=(yield)): pass", "lambda x=(yield): x", "class C((yield)): pass"],
+)
+def test_yield_in_nested_definition_makes_getter_a_generator(
+    tmp_path: Path, definition: str
+) -> None:
+    root = _write(
+        tmp_path,
+        {
+            "svc.py": _SVC,
+            "other.py": _OTHER,
+            "get.py": "import svc\ndef get():\n"
+            f"    if False:\n        {definition}\n    return svc\n",
+            "use.py": "from get import get\nimport other\ndef go():\n"
+            "    try: get().send(None)\n"
+            "    except StopIteration as stop: stop.value.t = other.t\n",
+            "main.py": _MAIN,
+        },
+    )
+    assert _cpython(root) == "OTHER.t"
+    assert _resolutions(root, "svc.py") == ["ambiguous"]
+
+
 @pytest.mark.parametrize("holder", ["m = get()", "import svc as m"])
 @pytest.mark.parametrize(
     ("capture", "evaluator"),

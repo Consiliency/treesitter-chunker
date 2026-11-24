@@ -2048,14 +2048,18 @@ def _scope_node(node: Any) -> Any:
 
 def _own_yield(function: Any) -> bool:
     """Whether a function's own body (not a nested scope) has a ``yield``."""
-    stack = list(function.named_children)
+    body = function.child_by_field_name("body")
+    stack = [body] if body is not None else []
     while stack:
         node = stack.pop()
-        if node.type in ("function_definition", "lambda", "class_definition"):
-            continue
         if node.type == "yield":
             return True
-        stack.extend(node.named_children)
+        if node.type in ("function_definition", "lambda", "class_definition"):
+            # Defaults and class bases execute in the enclosing function.
+            nested_body = node.child_by_field_name("body")
+            stack.extend(child for child in node.named_children if child != nested_body)
+        else:
+            stack.extend(node.named_children)
     return False
 
 
