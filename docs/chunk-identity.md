@@ -43,12 +43,13 @@ content are the physical bytes, including each CR. Reported lines count every
 LF, CRLF or lone CR line ending, as Python itself does. That covers chunk
 lines, Boundary IR node spans and call-site locations (symbol-graph `calls`
 relationships and `call_facts`, and Boundary IR call edges). LF and CRLF files
-parse exactly as before.
+parse exactly as before. Python complexity metadata uses the same physical
+lines for `lines_of_code` and for scanning code in `logical_lines`
+(treesitter-chunker#597).
 
 Other languages still parse the raw bytes and count only LF, so a CR-only
 file in those languages reports every chunk on line 1
-(treesitter-chunker#601). Complexity metrics
-(`lines_of_code`, `logical_lines`) count LF only (treesitter-chunker#597). Raw
+(treesitter-chunker#601). Raw
 spans can end between CR and LF when the parser includes CR in a token, such
 as a Python comment. Source slicing retains those exact bytes.
 

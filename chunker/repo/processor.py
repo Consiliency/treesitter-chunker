@@ -602,7 +602,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
 
         Args:
             repo_path: Path to repository root
-            since_commit: Commit hash or reference (HEAD~1, etc.)
+            since_commit: Commit hash or reference (defaults to HEAD~1)
             branch: Branch to compare against (default: current branch)
 
         Returns:
@@ -619,9 +619,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
                     diff = repo.commit(since_commit).diff(repo.head.commit)
                 elif repo.head.is_valid():
                     try:
-                        # Check if HEAD~1 exists
-                        repo.commit("HEAD~1")
-                        diff = repo.head.commit.diff("HEAD~1")
+                        diff = repo.commit("HEAD~1").diff(repo.head.commit)
                     except (self.git.BadName, self.git.GitCommandError):
                         # No previous commit (initial commit scenario)
                         return []
