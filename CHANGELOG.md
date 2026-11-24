@@ -9,9 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Parallel chunking caches the source revision it extracted. After an edit, the
-  next call reads the updated content. Existing chunk-cache entries refresh on first use.
-
+- Python chunk metadata now lists each decorator call site once in `calls` and
+  `call_spans` (treesitter-chunker#604).
 - Python structural call resolution now treats a constant string as a
   `__main__` self-reference when a component split on format and attribute
   punctuation or whitespace (or a default `string.Template` identifier) is
