@@ -136,7 +136,18 @@ class GrammarManager(GrammarManagerContract):
             """Fetch a single grammar repository."""
             repo_url = validate_grammar_source(self._grammar_sources[lang])
             target_dir = self._grammars_dir / f"tree-sitter-{lang}"
-            if target_dir.exists():
+            if target_dir.exists(follow_symlinks=False):
+                git_marker = target_dir / ".git"
+                if not target_dir.is_dir(follow_symlinks=False) or not (
+                    git_marker.is_dir()
+                    or git_marker.is_file()
+                    or (target_dir / "grammar.js").is_file()
+                    or (target_dir / "src" / "parser.c").is_file()
+                ):
+                    logger.error(
+                        "Invalid grammar fetch destination for %s: %s", lang, target_dir
+                    )
+                    return lang, False
                 logger.info(
                     "[skip] %s already present at %s",
                     lang,

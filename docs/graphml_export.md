@@ -166,7 +166,9 @@ With NetworkX 3.6.1, plain and delegated (`use_yed=False`) imports expose the
 structural label as `label` and the caller label as `caller_label`. A yEd import
 also exposes `caller_label`, but NetworkX replaces `label` with the yEd
 `NodeLabel`/`EdgeLabel` graphics text, which is the reader's own yEd handling.
-The node graphics text currently contains a literal backslash-`n` separator
+The yEd node label shows the structural type on the first line. A nonempty
+`name` property follows on the next line, separated by a real line break.
+With an empty or missing name, the label contains just the structural type
 (treesitter-chunker#603).
 
 This is a BREAKING change for name-keyed consumers in 7.0.0: read the caller `label` metadata as `caller_label` (and `caller_label` as

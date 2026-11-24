@@ -513,6 +513,10 @@ class SlidingWindowFallback(FallbackChunker):
             ) as e:
                 logger.error("Failed to load processor from %s: %s", file_path, e)
 
+    def chunk_in_memory(self, content: str) -> list[CodeChunk]:
+        """Chunk supplied text without inspecting a source file."""
+        return super().chunk_text(content, "<text>")
+
     def chunk_text(
         self,
         content: str,

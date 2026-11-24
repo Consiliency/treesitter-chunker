@@ -73,9 +73,7 @@ def hello_world():
         for chunk in chunks:
             assert self.counter.count_tokens(chunk) <= 50
 
-        # Concatenated chunks should preserve the original text (minus some whitespace)
-        rejoined = "".join(chunks)
-        assert len(rejoined) > 0
+        assert "".join(chunks) == long_text
 
     def test_split_preserves_lines(self):
         """Test that splitting tries to preserve line boundaries."""

@@ -18,6 +18,7 @@ import pytest
 from chunker import chunk_file, chunk_text, get_parser
 from chunker.boundary import extract_boundary_ir
 from chunker.core import _lone_cr_parse_copy
+from chunker.metadata import MetadataExtractorFactory
 from chunker.streaming import chunk_file_streaming
 from chunker.symbol_graph import extract_symbol_graph
 from chunker.vfs import LocalFileSystem
@@ -154,6 +155,53 @@ def test_lf_and_crlf_results_are_unchanged(tmp_path: Path, newline: bytes):
 # A multiline call whose lines are separated by each line-ending kind.
 CALL_TEMPLATE = b"def alpha():\r    beta(\r        1)\r\rdef beta(x):\r    return x\r"
 NEWLINES = {"lf": b"\n", "cr": b"\r", "crlf": b"\r\n"}
+
+
+@pytest.mark.parametrize("newline", [*NEWLINES, "mixed"])
+def test_complexity_line_metrics(tmp_path: Path, newline: str):
+    # The four executable lines are the definition, the if and both returns.
+    # U+2028 inside the string is data, and the final comment may own a CR.
+    lines = [
+        b"def alpha(x):",
+        b'    """Doc',
+        b'    more."""',
+        b"",
+        b"    if x:",
+        b'        return "one\xe2\x80\xa8two"',
+        b"    return 1",
+        b"    # end",
+    ]
+    if newline == "mixed":
+        endings = [b"\n", b"\r", b"\r\n", b"\n", b"\r", b"\r", b"\n", b"\r\n"]
+    else:
+        endings = [NEWLINES[newline]] * len(lines)
+    raw = (
+        b"# preamble"
+        + endings[0]
+        + b"".join(line + ending for line, ending in zip(lines, endings, strict=True))
+    )
+    path = tmp_path / "metrics.py"
+    path.write_bytes(raw)
+    (chunk,) = [
+        c for c in chunk_file(path, "python") if c.node_type == "function_definition"
+    ]
+    start = physical_line(raw, raw.index(lines[0]))
+    end = physical_line(raw, raw.index(lines[-1]) + len(lines[-1]))
+    assert (chunk.start_line, chunk.end_line) == (start, end)
+    metrics = chunk.metadata["complexity"]
+    assert (metrics["lines_of_code"], metrics["logical_lines"]) == (end - start + 1, 4)
+
+
+@pytest.mark.parametrize("newline", sorted(NEWLINES))
+def test_raw_python_complexity_line_metrics(newline: str):
+    raw = b"def f(): return (1" + NEWLINES[newline] + b"+ 2)"
+    tree = get_parser("python").parse(raw)
+    (node,) = tree.root_node.named_children
+    assert node.type == "function_definition" and not node.has_error
+    analyzer = MetadataExtractorFactory.create_analyzer("python")
+    assert analyzer is not None
+    metrics = analyzer.analyze_complexity(node, raw)
+    assert (metrics.lines_of_code, metrics.logical_lines) == (2, 2)
 
 
 def call_oracle(raw: bytes) -> tuple[int, int, int, int]:

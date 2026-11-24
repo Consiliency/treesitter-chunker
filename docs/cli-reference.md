@@ -38,13 +38,20 @@ walk directories and skip non-regular entries. `batch` applies `--include` and
 To chunk piped input, use `chunk --stdin --lang <language>` or save it to a
 file first.
 
-### Batch process a directory
+### Batch input selection
 
 ```bash
 treesitter-chunker batch src/ --recursive
+treesitter-chunker batch --pattern "src/**/*.py"
 # Include / exclude patterns
 treesitter-chunker batch src/ --include "**/*.py" --exclude "**/tests/**,**/*.tmp"
 ```
+
+Positional directories are walked recursively by default. Use `--no-recursive`
+for their immediate children. With no positional paths, `--pattern` selects
+matching files relative to the invocation directory. `batch --stdin` takes
+precedence and reads one path per line, skipping blank lines and directories.
+Include and exclude filters apply to discovered files and explicit file names.
 
 ### Automatic language detection
 
@@ -55,7 +62,8 @@ treesitter-chunker chunk example.py --json
 treesitter-chunker batch src/ --quiet --output-format jsonl
 ```
 
-For stdin, pass `--lang` explicitly. Detection is not a promise of text fallback
+For `chunk --stdin` source text, pass `--lang` explicitly. With `batch --stdin`,
+language detection uses each file name. Detection is not a promise of text fallback
 for every unknown extension; see [language coverage](language-coverage.md).
 There are no `auto-chunk` or `auto-batch` commands.
 
@@ -192,7 +200,14 @@ on stderr, including with `--quiet`. Structured stdout contains only chunks:
 JSON emits `[]` when none succeeded; JSONL emits no lines in that case. A batch
 continues after individual failures, emits successful chunks, and returns 1 if
 any selected input failed. Successful empty structured extraction returns 0.
-Unmapped extensions still warn and skip rather than failing extraction.
+Each missing explicit file from arguments or stdin that passes the filters is
+reported on stderr even with `--quiet` and contributes to the final status 1.
+A pattern with no matches or a directory with no selected files succeeds.
+CSV emits a header only when there are chunks, followed by records ordered as
+`file_path,language,node_type,start_line,end_line,size,parent_context`. Fields
+containing commas, double quotes or line breaks are quoted, embedded double
+quotes are doubled, and an absent parent is an empty field.
+Existing regular files with unmapped extensions still warn and skip.
 `.baml` files select BAML automatically. Install `treesitter-chunker[baml]`
 to parse them; a missing companion produces installation guidance and status 1.
 Implicit ZeroConfigAPI detection separately retains its text fallback when the

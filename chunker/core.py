@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import os
 import re
 import stat
 from array import array
@@ -10,6 +12,7 @@ from collections.abc import Callable, Iterator, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from ._internal.file_utils import FileMetadata
 from .languages import language_config_registry
 
 __all__ = [
@@ -1433,6 +1436,32 @@ def chunk_file(
             # Fallback: replace invalid bytes to avoid crashing on bad encodings
             src = p.read_bytes().decode("utf-8", errors="replace")
 
+    return _chunk_file_text(
+        src, p, language, identity, extract_metadata, include_retrieval_metadata
+    )
+
+
+def _chunk_file_snapshot(
+    path: Path, language: str
+) -> tuple[list[CodeChunk], FileMetadata]:
+    ensure_regular_file(path)
+    with path.open("rb") as source:
+        raw = source.read()
+        mtime = os.fstat(source.fileno()).st_mtime
+    metadata = FileMetadata(path, len(raw), hashlib.sha256(raw).hexdigest(), mtime)
+    src = raw.decode("utf-8", errors="strict" if language == "baml" else "replace")
+    del raw
+    return _chunk_file_text(src, path, language, str(path), True, False), metadata
+
+
+def _chunk_file_text(
+    src: str,
+    p: Path,
+    language: str,
+    identity: str,
+    extract_metadata: bool,
+    include_retrieval_metadata: bool,
+) -> list[CodeChunk]:
     # Special handling for R Markdown: extract embedded R code blocks
     if language == "r" and p.suffix.lower() in {".rmd", ".rmarkdown"}:
         from .multi_language import (  # local import to avoid cycle

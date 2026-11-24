@@ -174,12 +174,12 @@ def demonstrate_cache_persistence():
     cache1 = DefaultChunkCache(".cache1")
     cache1.store("example.py", chunks, "hash123")
 
-    # Export cache
+    # Export a v1 snapshot. Metadata uses JSON values with string keys and finite numbers.
     export_file = "cache_export.json"
     cache1.export_cache(export_file)
     print(f"Exported cache to {export_file}")
 
-    # Import into new cache
+    # Import replaces the destination after validation. Rebuild legacy backups from source.
     cache2 = DefaultChunkCache(".cache2")
     cache2.import_cache(export_file)
     print(f"Imported cache from {export_file}")

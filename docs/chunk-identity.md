@@ -43,7 +43,9 @@ content are the physical bytes, including each CR. Reported lines count every
 LF, CRLF or lone CR line ending, as Python itself does. That covers chunk
 lines, Boundary IR node spans and call-site locations (symbol-graph `calls`
 relationships and `call_facts`, and Boundary IR call edges). LF and CRLF files
-parse exactly as before.
+parse exactly as before. Python complexity metadata uses the same physical
+lines for `lines_of_code` and for scanning code in `logical_lines`
+(treesitter-chunker#597).
 
 For non-Python files containing a lone CR, the regular, mmap and VFS streaming
 chunkers report physical rows for nodes recognized by the existing parser. LF, CRLF and lone CR
@@ -55,8 +57,7 @@ parser-row semantics. Synthetic Svelte template-control and reactive chunks
 report the source line that produced them. Their legacy identity byte offsets
 can point earlier on mixed endings or after a multibyte script tag.
 
-The complexity metrics `lines_of_code` and `logical_lines` count LF only
-(treesitter-chunker#597). Raw spans can end between CR and LF when the parser includes CR in a token, such
+Raw spans can end between CR and LF when the parser includes CR in a token, such
 as a Python comment. Source slicing retains those exact bytes.
 
 An explicit `identity_path` still determines regular chunk identities independently

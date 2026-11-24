@@ -37,7 +37,7 @@ from pathlib import Path
 
 from chunker.types import CodeChunk
 
-from .file_utils import get_file_metadata
+from .file_utils import FileMetadata, get_file_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,8 @@ logger = logging.getLogger(__name__)
 # Earlier layouts (``file_cache``, and ``chunk_cache`` from unreleased
 # development builds) are never read, changed or dropped, so concurrent
 # openers never race over a migration; they only run CREATE ... IF NOT EXISTS.
-CACHE_VERSION = "3.0"
+# 3.1 binds automatic publications to the source consumed by extraction.
+CACHE_VERSION = "3.1"
 
 #: Extraction modes whose chunk output the cache keeps apart.
 EXTRACTION_MODES = frozenset({"core", "streaming"})
@@ -310,6 +311,11 @@ class ASTCache:
         identity = _identity_or_none(language, extraction)
         if identity is None:
             return None
+        return self._lookup(path, language, identity)
+
+    def _lookup(
+        self, path: Path, language: str, identity: str
+    ) -> list[CodeChunk] | None:
         try:
             metadata = get_file_metadata(path)
         except OSError:
@@ -376,13 +382,25 @@ class ASTCache:
         Returns ``False`` without writing when there is no identity (see
         :func:`chunk_cache_identity`) or the grammar cannot be loaded. A write
         also removes this file's entries for the same language and mode under
-        any other identity.
+        any other identity. The caller must keep the path representative of the
+        supplied chunks until this manual store completes.
         """
         identity = _identity_or_none(language, extraction)
         if identity is None:
             return False
-        metadata = get_file_metadata(path)
+        return self._store(
+            get_file_metadata(path), language, extraction, identity, chunks
+        )
 
+    def _store(
+        self,
+        metadata: FileMetadata,
+        language: str,
+        extraction: str,
+        identity: str,
+        chunks: list[CodeChunk],
+    ) -> bool:
+        path = metadata.path
         # Serialize chunks
         chunks_dicts = [asdict(chunk) for chunk in chunks]
         chunks_data = pickle.dumps(chunks_dicts)

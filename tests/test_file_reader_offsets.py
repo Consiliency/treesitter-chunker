@@ -1,5 +1,7 @@
 """Physical UTF-8 span and identity contracts for file-backed chunkers."""
 
+from pathlib import Path
+
 import pytest
 import tiktoken
 
@@ -81,7 +83,8 @@ def test_nested_reader_offsets(tmp_path, reader):
     [(b"\n",) * 4, (b"\r\n",) * 4, (b"\r",) * 4, (b"\r", b"\r\n", b"\n", b"\r")],
     ids=["lf", "crlf", "cr", "mixed"],
 )
-def test_token_file_split_offsets(tmp_path, endings):
+@pytest.mark.parametrize("budget", [7, 10])
+def test_token_file_split_offsets(tmp_path, endings, budget):
     path = tmp_path / "split.py"
     lines = [
         b"def f():",
@@ -98,14 +101,14 @@ def test_token_file_split_offsets(tmp_path, endings):
     path.write_bytes(prefix + body + endings[-1])
     source = path.read_bytes()
     (parent,) = chunk_file(path, "python")
-    parts = chunk_file_with_token_limit(path, "python", 10)
+    parts = chunk_file_with_token_limit(path, "python", budget)
     assert len(parts) > 1
     # Every physical line fits the budget. A cut must be at a fixture line end.
     cursor = len(prefix)
-    line_ends = set()
-    for line in physical_lines:
+    rows = {cursor: 2}
+    for row, line in enumerate(physical_lines, start=2):
         cursor += len(line)
-        line_ends.add(cursor)
+        rows[cursor] = row + int(line.endswith((b"\r", b"\n")))
     cursor = len(prefix)
     encoding = tiktoken.get_encoding("cl100k_base")
     for part in parts:
@@ -113,11 +116,228 @@ def test_token_file_split_offsets(tmp_path, endings):
         end = cursor + len(content)
         assert content == source[cursor:end]
         assert (part.byte_start, part.byte_end) == (cursor, end)
-        assert end in line_ends
+        assert (part.start_line, part.end_line) == (rows[cursor], rows[end])
         assert part.parent_chunk_id == parent.chunk_id
-        assert part.metadata["token_count"] == len(encoding.encode(part.content)) <= 10
+        assert (
+            part.metadata["token_count"] == len(encoding.encode(part.content)) <= budget
+        )
         cursor = end
     assert cursor == len(prefix) + len(body)
+
+
+@pytest.mark.parametrize("newline", [b"\n", b"\r", b"\r\n"], ids=["lf", "cr", "crlf"])
+def test_class_parts_group_methods_at_physical_lines(tmp_path, newline):
+    path = tmp_path / "c.py"
+    prefix = "# préface".encode() + newline
+    header = b"class C:" + newline
+    first = b"    def a(self):" + newline + b"        return 1" + newline
+    last = b"    def b(self):" + newline + b"        return 2"
+    source = prefix + header + first + last + newline
+    path.write_bytes(source)
+    parts = [
+        part
+        for part in chunk_file_with_token_limit(path, "python", 12)
+        if part.node_type.startswith("class_definition_part_")
+    ]
+    start = len(prefix)
+    for part, expected, rows in zip(
+        parts, (header, first, last), ((2, 3), (3, 5), (5, 6)), strict=True
+    ):
+        end = start + len(expected)
+        assert (
+            part.content.encode() == expected == source[part.byte_start : part.byte_end]
+        )
+        assert (part.byte_start, part.byte_end) == (start, end)
+        assert (part.start_line, part.end_line) == rows
+        assert part.parent_context == "class C:"
+        start = end
+
+
+@pytest.mark.parametrize("newline", ["\n", "\r", "\r\n"], ids=["lf", "cr", "crlf"])
+def test_class_parts_oversized_preamble_first_physical_line(tmp_path, newline):
+    path = tmp_path / "c.py"
+    # U+2028 in a comment is ordinary source text on this physical line.
+    header = "class C:  # one\u2028two"
+    path.write_bytes(
+        newline.join(
+            [header, "    # " + "word " * 40, "    def a(self):", "        pass"]
+        ).encode()
+    )
+    parts = [
+        part
+        for part in chunk_file_with_token_limit(path, "python", 12)
+        if part.node_type.startswith("class_definition_part_")
+    ]
+    assert parts
+    assert all(part.parent_context == header for part in parts)
+
+
+# Captured from treesitter-chunker#766 (c593ce47) using the same relative paths.
+@pytest.mark.parametrize(
+    ("name", "source", "budget", "expected"),
+    [
+        (
+            "f.py",
+            "def f(): return a.b.c.d.e.f.g.h.i.j.k.l.m.n.o.p\n",
+            8,
+            [
+                (
+                    "def f(): return a.b.c.",
+                    (0, 22),
+                    "321a3528524df9880df6414660cd4a7b6b869c6a",
+                    8,
+                    (1, 1),
+                ),
+                (
+                    "d.e.f.g.h.i.",
+                    (22, 34),
+                    "500f599fbb552e731df41b60f094037d76626bff",
+                    7,
+                    (1, 1),
+                ),
+                (
+                    "j.k.l.m.n.o.p",
+                    (34, 47),
+                    "a0466dbcdcd803e417adfc856129bac667427ee8",
+                    7,
+                    (1, 1),
+                ),
+            ],
+        ),
+        (
+            "f.py",
+            "def f(a: a.b.c.d.e.f.g.h.i.j.k.l.m.n.o.p):\n    pass\n",
+            8,
+            [
+                (
+                    "def f(a: ",
+                    (0, 9),
+                    "599c387f0cdae9eb3e4efa2a8c03667da24256fa",
+                    5,
+                    (1, 1),
+                ),
+                (
+                    "a.b.c.d.e.f.",
+                    (9, 21),
+                    "f3329bd81250963268089b4a3294abfbe37135c1",
+                    7,
+                    (1, 1),
+                ),
+                (
+                    "g.h.i.j.k.",
+                    (21, 31),
+                    "ce58ab81aa8b9b275a3ca0305d1b5bc47f44f7e2",
+                    6,
+                    (1, 1),
+                ),
+                (
+                    "l.m.n.o.p):\n",
+                    (31, 43),
+                    "cb288d9ace13f9cc58cbceecaf43055cc4cf2156",
+                    6,
+                    (1, 2),
+                ),
+                (
+                    "    pass",
+                    (43, 51),
+                    "ca23277add22f72e891c6958549b284c2a11272e",
+                    2,
+                    (2, 2),
+                ),
+            ],
+        ),
+        (
+            "f.py",
+            "def f():\n    a = 1\n    b = 2\n    return a+b\n",
+            8,
+            [
+                (
+                    "def f():\n",
+                    (0, 9),
+                    "251dde2d6721bbab08ba78817a1ccd163030f05b",
+                    3,
+                    (1, 2),
+                ),
+                (
+                    "    a = 1\n",
+                    (9, 19),
+                    "5fa897328ee1f3dd932871cfbfb46ee26b6da4d7",
+                    6,
+                    (2, 3),
+                ),
+                (
+                    "    b = 2\n",
+                    (19, 29),
+                    "fd5526de94d4858afcc37d892837324ed1c9aa54",
+                    6,
+                    (3, 4),
+                ),
+                (
+                    "    return a+b",
+                    (29, 43),
+                    "55d09ff1a9771ab3f530344b6bed7592dc5958a0",
+                    4,
+                    (4, 4),
+                ),
+            ],
+        ),
+        (
+            "split.py",
+            "# préface\ndef f():\n    # café\n    apple = 1\n    apple = 1\n    return apple\n",
+            10,
+            [
+                (
+                    "def f():\n    # café\n",
+                    (11, 32),
+                    "beb98ee46d3dd7523142dd2b111ca3d702441e87",
+                    7,
+                    (2, 4),
+                ),
+                (
+                    "    apple = 1\n",
+                    (32, 46),
+                    "369ef74dddcb1ba06393db91bc1ffdb967358bb6",
+                    6,
+                    (4, 5),
+                ),
+                (
+                    "    apple = 1\n    return apple",
+                    (46, 76),
+                    "3a1cb7f2993cb91af5bfa0cb82ef694213e6cc4a",
+                    9,
+                    (5, 6),
+                ),
+            ],
+        ),
+    ],
+    ids=["one-line", "long-declaration", "line-groups", "repeated-assignment"],
+)
+def test_lf_split_matches_lossless_baseline(
+    tmp_path, monkeypatch, name, source, budget, expected
+):
+    monkeypatch.chdir(tmp_path)
+    path = Path(name)
+    path.write_bytes(source.encode())
+    parts = chunk_file_with_token_limit(path, "python", budget)
+    assert [
+        (
+            p.content,
+            (p.byte_start, p.byte_end),
+            p.chunk_id,
+            p.metadata["token_count"],
+            (p.start_line, p.end_line),
+        )
+        for p in parts
+    ] == expected
+    assert all(p.node_id == p.chunk_id for p in parts)
+
+
+def test_token_part_ending_inside_crlf(tmp_path):
+    path = tmp_path / "tail.py"
+    path.write_bytes(b"# head\r\ndef f():\r\n    return 1 # tail\r\n")
+    *_, last = chunk_file_with_token_limit(path, "python", 1)
+    assert last.content.endswith("\r")
+    assert (last.start_line, last.end_line) == (3, 3)
 
 
 @pytest.mark.parametrize("streaming", [False, True])
