@@ -89,9 +89,16 @@ filesystem-backed endpoints can serve requests.
 | `TREE_SITTER_CHUNKER_API_CORS_ORIGINS` | Comma-separated allowed browser origins; wildcard origins are ignored | `https://app.example.com` |
 | `TREE_SITTER_CHUNKER_POSTGRES_HOSTS` | Exact comma-separated host allowlist for direct Postgres exports | `db.internal,localhost` |
 
-The API rejects absolute paths, `..` traversal, and symlink escapes. `/graph/cut`
-accepts the graph's `nodes` and `edges` directly and returns a bounded subgraph
-around the supplied seed IDs.
+The API rejects absolute paths, `..` traversal, and symlink escapes.
+`/graph/xref` detects each file's language by extension using the same rules
+as `/chunk/file`. An existing file with an unknown extension makes the entire
+xref request return HTTP 400.
+
+`/graph/cut` accepts the graph's `nodes` and `edges` directly and returns a
+bounded subgraph around the supplied seed IDs. Omitted or null `params.radius`
+and `params.budget` default to 2 hops and 200 nodes, respectively. Radius 0
+limits candidates to the seeds. Budget 0 returns an empty graph. Negative
+bounds produce HTTP 422.
 
 ### Default Plugin Configuration
 

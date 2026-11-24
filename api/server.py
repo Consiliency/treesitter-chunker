@@ -61,6 +61,11 @@ _API_ONLY_EXTENSIONS: dict[str, str] = {
 }
 
 
+def _detect_file_language(path: Path) -> str | None:
+    suffix = path.suffix.lower()
+    return ZeroConfigAPI.EXTENSION_MAP.get(suffix) or _API_ONLY_EXTENSIONS.get(suffix)
+
+
 def _resolve_api_path(path: str) -> Path:
     candidate = Path(path)
     if candidate.is_absolute():
@@ -236,9 +241,13 @@ class GraphResponse(BaseModel):
     edges: list[dict[str, Any]]
 
 
+DEFAULT_GRAPH_RADIUS = 2
+DEFAULT_GRAPH_BUDGET = 200
+
+
 class GraphCutParams(BaseModel):
-    radius: int | None = 2
-    budget: int | None = 200
+    radius: int | None = Field(DEFAULT_GRAPH_RADIUS, ge=0)
+    budget: int | None = Field(DEFAULT_GRAPH_BUDGET, ge=0)
     weights: dict[str, float] | None = None
 
 
@@ -367,25 +376,15 @@ async def chunk_file_endpoint(
             detail=f"Not a file: {request.file_path}",
         )
 
-    # Auto-detect language if not provided
-    language = request.language
+    language = request.language or _detect_file_language(file_path)
     if not language:
-        # Use the canonical extension map shared with the CLI and Boundary IR
-        # so the API cannot drift from them (`.tsx` -> `tsx`). The API-only
-        # fallback holds extensions the canonical map does not list yet.
-        suffix = file_path.suffix.lower()
-        language = ZeroConfigAPI.EXTENSION_MAP.get(
-            suffix,
-        ) or _API_ONLY_EXTENSIONS.get(suffix)
-
-        if not language:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    f"Cannot auto-detect language for {file_path.suffix}. "
-                    "Please specify --language"
-                ),
-            )
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Cannot auto-detect language for {file_path.suffix}. "
+                "Please specify --language"
+            ),
+        )
 
     try:
         # Chunk the file
@@ -451,20 +450,15 @@ async def graph_xref_endpoint(
 ):
     paths = [_resolve_api_path(path) for path in request.paths]
     chunks = []
-    for p in paths:
-        if p.exists() and p.is_file():
-            # naive language detection from extension
-            ext = p.suffix.lower()
-            lang_map = {
-                ".py": "python",
-                ".js": "javascript",
-                ".ts": "typescript",
-                ".java": "java",
-                ".go": "go",
-                ".rs": "rust",
-            }
-            language = lang_map.get(ext, "python")
-            chunks.extend(chunk_file(str(p), language))
+    for path in paths:
+        if path.is_file():
+            language = _detect_file_language(path)
+            if language is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot auto-detect language for {path.name}",
+                )
+            chunks.extend(chunk_file(str(path), language))
     nodes, edges = build_xref(chunks)
     return GraphResponse(nodes=nodes, edges=edges)
 
@@ -477,8 +471,8 @@ async def graph_cut_endpoint(request: GraphCutRequest):
             request.seeds,
             request.nodes,
             request.edges,
-            radius=params.radius or 2,
-            budget=params.budget or 200,
+            radius=DEFAULT_GRAPH_RADIUS if params.radius is None else params.radius,
+            budget=DEFAULT_GRAPH_BUDGET if params.budget is None else params.budget,
             weights=params.weights or {},
         )
         return GraphCutResponse(nodes=selected, edges=induced)
