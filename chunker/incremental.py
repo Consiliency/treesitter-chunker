@@ -621,14 +621,16 @@ class DefaultChunkCache(ChunkCache):
         """Write a complete v1 UTF-8 JSON snapshot, replacing the backup on success.
 
         Entry and chunk metadata must be ordinary JSON trees with string keys
-        and finite numbers. Tuples, non-string keys and cycles raise ValueError.
+        and finite numbers. Strings must be UTF-8 encodable. Tuples, non-string
+        keys and cycles raise ValueError. On POSIX the new backup file is private
+        to its owner, including when it replaces an existing backup.
         """
         entries = {}
         for path in self._index:
             entry = self.retrieve(path)
             if entry is None:
                 raise ValueError(f"Missing indexed cache entry {path!r}")
-            record = {
+            record: dict[str, Any] = {
                 "file_hash": entry.file_hash,
                 "timestamp": entry.timestamp.isoformat(timespec="microseconds"),
                 "language": entry.language,
@@ -638,6 +640,8 @@ class DefaultChunkCache(ChunkCache):
                     for chunk in entry.chunks
                 ],
             }
+            if entry.timestamp.fold:
+                record["timestamp_fold"] = entry.timestamp.fold
             try:
                 _validate_backup_entry(record)
             except (ValueError, RecursionError) as error:
@@ -651,7 +655,12 @@ class DefaultChunkCache(ChunkCache):
             dir=output.parent,
             delete_on_close=False,
         ) as temp:
-            json.dump({"format_version": 1, "entries": entries}, temp, allow_nan=False)
+            json.dump(
+                {"format_version": 1, "entries": entries},
+                temp,
+                ensure_ascii=False,
+                allow_nan=False,
+            )
             temp.close()
             Path(temp.name).replace(output)
 
@@ -697,20 +706,31 @@ def _unique_backup_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return result
 
 
+def _validate_backup_text(value: str, location: str) -> None:
+    if not value.isascii():
+        try:
+            value.encode("utf-8")
+        except UnicodeEncodeError as error:
+            raise ValueError(f"{location} requires UTF-8 encodable strings") from error
+
+
 def _validate_backup_json(value: Any, location: str) -> None:
     """Reject coercions that Python's JSON encoder normally allows."""
     if type(value) is dict:
         for key, child in value.items():
             if type(key) is not str:
                 raise ValueError(f"{location} requires string keys")
+            _validate_backup_text(key, location)
             _validate_backup_json(child, f"{location}[{key!r}]")
     elif type(value) is list:
         for i, child in enumerate(value):
             _validate_backup_json(child, f"{location}[{i}]")
+    elif type(value) is str:
+        _validate_backup_text(value, location)
     elif type(value) is float:
         if not math.isfinite(value):
             raise ValueError(f"{location} requires a finite number")
-    elif value is not None and type(value) not in (str, bool, int):
+    elif value is not None and type(value) not in (bool, int):
         raise ValueError(f"{location} cannot store {type(value).__name__} in JSON")
 
 
@@ -729,7 +749,6 @@ def _validate_backup_chunk(record: Any, location: str) -> None:
             valid = type(value) is list and all(type(v) is str for v in value)
         elif expected == dict[str, Any]:
             valid = isinstance(value, dict)
-            _validate_backup_json(value, f"{location}.{name}")
         elif expected == int:
             valid = type(value) is int
         else:
@@ -761,10 +780,13 @@ def _validate_backup_entry(record: Any) -> datetime:
         raise ValueError("Expected chunks array")
     if not isinstance(record.get("metadata"), dict):
         raise ValueError("Expected metadata object")
-    _validate_backup_json(record["metadata"], "metadata")
+    _validate_backup_json(record, "entry")
+    fold = record.get("timestamp_fold", 0)
+    if type(fold) is not int or fold not in (0, 1):
+        raise ValueError("Expected timestamp_fold to be 0 or 1")
     for i, chunk in enumerate(record["chunks"]):
         _validate_backup_chunk(chunk, f"chunks[{i}]")
-    return timestamp
+    return timestamp.replace(fold=fold)
 
 
 def _decode_backup_entry(path: str, record: Any) -> CacheEntry:

@@ -402,6 +402,20 @@ class TestChunkCache:
             b"def method(self):\r\n        return 1"
         )
 
+    def test_cache_preserves_repeated_local_hour(self, tmp_path):
+        source = DefaultChunkCache(str(tmp_path / "source"))
+        stamp = datetime(2026, 11, 1, 1, 30, fold=1)
+        with patch("chunker.incremental.datetime") as clock:
+            clock.now.return_value = stamp
+            source.store("ambiguous", [], "h")
+        backup = tmp_path / "backup.json"
+        source.export_cache(str(backup))
+        target = DefaultChunkCache(str(tmp_path / "target"))
+        target.import_cache(str(backup))
+        restored = target.retrieve("ambiguous").timestamp
+        assert restored == stamp
+        assert restored.fold == 1
+
     def test_import_independent_snapshot(self, tmp_path, backup_records):
         record = {
             "file_hash": "content",
@@ -451,6 +465,8 @@ class TestChunkCache:
             ("infinity", "metadata.*finite"),
             ("wrong_type", "start_line"),
             ("timestamp", "timestamp"),
+            ("fold", "timestamp_fold"),
+            ("surrogate", "UTF-8"),
         ],
     )
     def test_invalid_cache_backup_preserves_destination(
@@ -481,6 +497,10 @@ class TestChunkCache:
             chunk["start_line"] = True
         elif fault == "timestamp":
             second["timestamp"] = "invalid"
+        elif fault == "fold":
+            second["timestamp_fold"] = True
+        elif fault == "surrogate":
+            chunk["content"] = chr(0xD800)
         elif fault == "path":
             entries["\ud800"] = first
         elif fault == "infinity":
@@ -503,7 +523,16 @@ class TestChunkCache:
                 empty.import_cache(str(backup))
             assert empty.retrieve("first") is None
 
-    @pytest.mark.parametrize("value", [(1,), {1: "key"}, float("nan")])
+    @pytest.mark.parametrize(
+        "value",
+        [
+            (1,),
+            {1: "key"},
+            float("nan"),
+            {chr(0xD83D) + chr(0xDE80): 1, "🚀": 2},
+            chr(0xD83D) + chr(0xDE80),
+        ],
+    )
     def test_cache_export_preserves_prior_backup(self, tmp_path, value, sample_chunks):
         cache = DefaultChunkCache(str(tmp_path / "cache"))
         sample_chunks[0].metadata = {"nested": [value]}
