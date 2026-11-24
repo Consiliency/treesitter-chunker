@@ -118,3 +118,42 @@ def test_278_walrus_and_default_scopes_match_oracle() -> None:
                 )
             )
     assert mismatches == []
+
+
+def test_554_definitions_match_owning_scope_and_node() -> None:
+    resolver = ContextFactory.create_symbol_resolver("python")
+    for _ in range(2):
+        case = reference_case("python", "lookup_bindings")
+        entries = case.entries("definitions", "treesitter-chunker#554")
+        assert entries
+        for entry in entries:
+            expected = case.node(entry) if entry["expect"] == "found" else None
+            scope = case.scope(entry["scope"])
+            assert (
+                resolver.find_symbol_definition(entry["name"], scope, case.root)
+                == expected
+            ), entry
+            assert (
+                resolver.find_symbol_definition(entry["name"], scope, case.root)
+                == expected
+            ), entry
+
+
+def test_544_and_555_binding_targets_and_reads() -> None:
+    case = reference_case("python", "lookup_bindings")
+    resolver = ContextFactory.create_symbol_resolver("python")
+    extractor = ContextFactory.create_context_extractor("python")
+    extracted = set(extractor._find_references_in_node(case.root, case.source))
+    for issue in ("treesitter-chunker#544", "treesitter-chunker#555"):
+        entries = case.entries("occurrences", issue)
+        assert entries
+        for entry in entries:
+            name = entry["name"]
+            node = case.occurrence(entry)
+            expected = entry["role"] == "use"
+            assert (
+                node in resolver.find_symbol_references(name, case.root)
+            ) == expected, entry
+            assert ((name, node) in extracted) == expected, entry
+    assert not resolver.find_symbol_references("field", case.root)
+    assert all(name != "field" for name, _ in extracted)

@@ -161,6 +161,23 @@ Represents a semantic chunk of code extracted from a file.
 **Methods:**
 - `generate_id() -> str`: Generate a unique ID based on content and location
 
+### Python symbol lookup
+
+`find_symbol_definition(name, scope_node, ast)` returns the first syntactic binding in the owning lexical scope. The API takes a scope and has no use-position argument.
+
+```python
+from chunker import get_parser
+from chunker.context.factory import ContextFactory
+
+root = get_parser("python").parse(b"import os, sys").root_node
+resolver = ContextFactory.create_symbol_resolver("python")
+statement = resolver.find_symbol_definition("sys", root, root)
+assert statement == resolver.find_symbol_definition("os", root, root)
+assert statement.type == "import_statement" and statement.start_byte == 0
+```
+
+Import and unpacking results span their statement. Loop, with, exception, walrus and splat targets span the bound identifier. The companion `get_symbol_type` inspects a node's parent and can return `unknown` for a statement result. Reference lookup searches by spelling across the supplied tree and excludes unpacking targets, splat parameters and walrus targets.
+
 ### JavaScript parent context
 
 Call `ContextFactory.create_context_extractor("javascript").extract_parent_context(node, root, source)` to get enclosing scope signatures in outer-to-inner order. Each item includes the scope node and its one-based starting line. Generator declarations and expressions retain the original spelling of their signature, including internal line endings.
