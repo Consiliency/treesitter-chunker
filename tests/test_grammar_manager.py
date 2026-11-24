@@ -111,9 +111,63 @@ class TestGrammarManager:
         """Test fetching specific languages only."""
         python_dir = grammar_manager._grammars_dir / "tree-sitter-python"
         python_dir.mkdir(parents=True)
-        results = grammar_manager.fetch_grammars(["python", "javascript"])
-        assert results["python"] is True
-        assert len(results) == 2
+        (python_dir / "grammar.js").touch()
+        assert grammar_manager.fetch_grammars(["python"]) == {"python": True}
+
+    @staticmethod
+    @pytest.mark.parametrize("marker", [".git/", ".git", "grammar.js", "src/parser.c"])
+    def test_fetch_preserves_file_and_reuses_source(grammar_manager, temp_dir, marker):
+        grammars = temp_dir / "grammars"
+        invalid = grammars / "tree-sitter-python"
+        invalid.write_bytes(b"keep this file")
+        valid = grammars / "tree-sitter-javascript" / marker
+        valid.parent.mkdir(parents=True)
+        if marker.endswith("/"):
+            valid.mkdir()
+        else:
+            valid.touch()
+
+        with patch("chunker.grammar_manager.subprocess.run") as run:
+            assert grammar_manager.fetch_grammars() == {
+                "python": False,
+                "javascript": True,
+            }
+            run.assert_not_called()
+        assert invalid.read_bytes() == b"keep this file"
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "notes_path", ["notes", "grammar.js/notes", "src/parser.c/notes"]
+    )
+    def test_fetch_preserves_unrecognized_directory(
+        grammar_manager, temp_dir, notes_path
+    ):
+        target = temp_dir / "grammars" / "tree-sitter-python"
+        notes = target / notes_path
+        notes.parent.mkdir(parents=True)
+        notes.write_bytes(b"keep these notes")
+        with patch("chunker.grammar_manager.subprocess.run") as run:
+            assert grammar_manager.fetch_grammars(["python"]) == {"python": False}
+            run.assert_not_called()
+        assert notes.read_bytes() == b"keep these notes"
+
+    @staticmethod
+    @pytest.mark.parametrize("dangling", [True, False])
+    def test_fetch_preserves_linked_destination(grammar_manager, temp_dir, dangling):
+        source = temp_dir / "source"
+        if not dangling:
+            source.mkdir()
+            (source / "grammar.js").touch()
+        target = temp_dir / "grammars" / "tree-sitter-python"
+        try:
+            target.symlink_to(source, target_is_directory=True)
+        except OSError as exc:
+            pytest.skip(f"directory symlinks unavailable: {exc}")
+
+        with patch("chunker.grammar_manager.subprocess.run") as run:
+            assert grammar_manager.fetch_grammars(["python"]) == {"python": False}
+            run.assert_not_called()
+        assert target.readlink() == source
 
     @staticmethod
     def test_fetch_grammars_unknown_language(grammar_manager):

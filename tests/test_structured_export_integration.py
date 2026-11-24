@@ -1,13 +1,18 @@
 """Integration tests for structured export functionality."""
 
+import hashlib
 import json
+import os
 import sqlite3
+from pathlib import Path
 
 import pyarrow as pa
+import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 import pytest
 
 from chunker.core import chunk_file
+from chunker.exceptions import ChunkerError
 from chunker.export import (
     ASTRelationshipTracker,
     DOTExporter,
@@ -19,7 +24,8 @@ from chunker.export import (
     StructuredJSONLExporter,
     StructuredParquetExporter,
 )
-from chunker.interfaces.export import ExportFormat
+from chunker.interfaces.export import ChunkRelationship, ExportFormat, RelationshipType
+from chunker.types import CodeChunk
 
 
 def read_parquet_table(path):
@@ -367,3 +373,324 @@ class TestStructuredExportIntegration:
         first_record = json.loads(lines[0])
         assert first_record["type"] == "metadata"
         assert first_record["data"]["streaming"] is True
+
+
+def parquet_chunk(chunk_id, language="python", file_path="sample.py"):
+    return CodeChunk(
+        chunk_id=chunk_id,
+        language=language,
+        file_path=file_path,
+        node_type="function",
+        start_line=1,
+        end_line=1,
+        byte_start=0,
+        byte_end=4,
+        parent_context="",
+        content="π\r\n",
+    )
+
+
+def parquet_edge(source, target):
+    return ChunkRelationship(source, target, RelationshipType.CALLS)
+
+
+def partition_rows(root):
+    rows = ds.dataset(root, format="parquet").to_table().to_pylist()
+    return sorted((r["chunk_id"], r["file_path"], r["language"]) for r in rows)
+
+
+def test_parquet_named_partition_roots_and_sidecars(tmp_path):
+    orch = StructuredExportOrchestrator()
+    orch.register_exporter(
+        ExportFormat.PARQUET, StructuredParquetExporter(partition_by=["language"])
+    )
+    first = [
+        parquet_chunk("first-py", file_path="first.py"),
+        parquet_chunk("first-js", "javascript", "first.js"),
+        parquet_chunk("more-py", file_path="more.py"),
+    ]
+    second = [parquet_chunk("second", file_path="second.py")]
+    orch.export(
+        first, [parquet_edge("first-py", "first-js")], tmp_path / "first.parquet"
+    )
+    orch.export(second, [parquet_edge("second", "second")], tmp_path / "second.parquet")
+
+    assert partition_rows(tmp_path / "first_chunks") == [
+        ("first-js", "first.js", "javascript"),
+        ("first-py", "first.py", "python"),
+        ("more-py", "more.py", "python"),
+    ]
+    assert partition_rows(tmp_path / "second_chunks") == [
+        ("second", "second.py", "python")
+    ]
+    assert not (tmp_path / "language=python/data.parquet").exists()
+    for name, source, target, files in [
+        ("first", "first-py", "first-js", ["first.js", "first.py", "more.py"]),
+        ("second", "second", "second", ["second.py"]),
+    ]:
+        assert pq.read_table(
+            tmp_path / f"{name}_relationships.parquet"
+        ).to_pylist() == [
+            {
+                "source_chunk_id": source,
+                "target_chunk_id": target,
+                "relationship_type": "calls",
+                "metadata": "",
+            }
+        ]
+        (metadata,) = pq.read_table(tmp_path / f"{name}_metadata.parquet").to_pylist()
+        assert sorted(metadata["source_files"]) == files
+        assert metadata["chunk_count"] == len(files)
+
+    orch.export(second, [], tmp_path / "first.parquet")
+    assert partition_rows(tmp_path / "first_chunks") == [
+        ("first-js", "first.js", "javascript"),
+        ("second", "second.py", "python"),
+    ]
+
+
+def test_parquet_encoded_ordered_partition_values(tmp_path):
+    exporter = StructuredParquetExporter(partition_by=["language", "file_path"])
+    reports = tmp_path / "reports"
+    sentinel = tmp_path / "data.parquet"
+    sentinel.write_bytes(b"outside")
+    exporter.export([parquet_chunk("other")], [], reports / "other.parquet")
+    path = "src/../../c:\\π%/pkg.py."
+    exporter.export(
+        [parquet_chunk("encoded", file_path=path)], [], reports / "run.v1.parquet"
+    )
+    leaf = (
+        reports
+        / "run.v1_chunks/language=python/file_path=src%2F..%2F..%2Fc%3A%5C%CF%80%25%2Fpkg.py%2E/data.parquet"
+    )
+    with pq.ParquetFile(leaf) as reader:
+        (row,) = reader.read().to_pylist()
+        assert (row["chunk_id"], row["file_path"], row["content"]) == (
+            "encoded",
+            path,
+            "π\r\n",
+        )
+    assert sentinel.read_bytes() == b"outside"
+    assert partition_rows(reports / "other_chunks") == [
+        ("other", "sample.py", "python")
+    ]
+
+
+def test_parquet_partition_component_length(tmp_path):
+    # "file_path=" accounts for ten of the 255 bytes available to the name.
+    at_limit = "a" * 245
+    over_limit = "a" * 246
+    multibyte = "src/" + "界" * 28 + ".py"
+    digest_name = "!sha256-" + hashlib.sha256(over_limit.encode()).hexdigest()
+    unicode_name = "!sha256-" + hashlib.sha256(multibyte.encode()).hexdigest()
+    names = {
+        at_limit: at_limit,
+        over_limit: digest_name,
+        multibyte: unicode_name,
+        digest_name: "%21" + digest_name[1:],
+    }
+
+    exporter = StructuredParquetExporter(partition_by=["file_path"])
+    exporter.export(
+        [parquet_chunk(str(i), file_path=value) for i, value in enumerate(names)],
+        [],
+        tmp_path / "length.parquet",
+    )
+    root = tmp_path / "length_chunks"
+    if os.name == "nt":
+        # On hosts with legacy MAX_PATH, readers also need the extended path.
+        absolute = root.as_posix()
+        if absolute.startswith("//") and not absolute.startswith("//?/"):
+            absolute = "//?/UNC/" + absolute[2:]
+        elif not absolute.startswith("//?/"):
+            absolute = "//?/" + absolute
+        root = Path(absolute)
+    assert sorted(
+        ds.dataset(root, format="parquet").to_table()["file_path"].to_pylist()
+    ) == sorted(names)
+    assert {entry.name for entry in root.iterdir()} == {
+        f"file_path={name}" for name in names.values()
+    }
+    for value, name in names.items():
+        with pq.ParquetFile(root / f"file_path={name}" / "data.parquet") as reader:
+            assert reader.schema_arrow.field("file_path").type == pa.string()
+            assert reader.read()["file_path"].to_pylist() == [value]
+
+
+def test_parquet_partition_collision_precedes_writes(tmp_path):
+    exporter = StructuredParquetExporter(partition_by=["language", "file_path"])
+    output = tmp_path / "collision.parquet"
+    exporter.export([parquet_chunk("seed")], [], output)
+    root = tmp_path / "collision_chunks"
+    seeded = root / "language=python/file_path=sample.py/data.parquet"
+    original = seeded.read_bytes()
+
+    with pytest.raises(ChunkerError, match="collision"):
+        exporter.export(
+            [
+                parquet_chunk("new", "ruby"),
+                parquet_chunk("one"),
+                parquet_chunk("two", "Python", "two.py"),
+            ],
+            [],
+            output,
+        )
+    assert seeded.read_bytes() == original
+    assert not (root / "language=ruby").exists()
+
+
+@pytest.mark.parametrize(
+    ("partition_by", "partitioned"),
+    [(None, False), ([], False), (["unknown"], False), (["unknown", "language"], True)],
+)
+def test_parquet_batch_partition_selection(tmp_path, partition_by, partitioned):
+    StructuredParquetExporter(partition_by=partition_by).export(
+        [parquet_chunk("control")], [], tmp_path / "selection.parquet"
+    )
+    root = tmp_path / "selection_chunks"
+    flat = tmp_path / "selection_chunks.parquet"
+    assert root.is_dir() == partitioned
+    assert flat.is_file() != partitioned
+    with pq.ParquetFile(
+        root / "language=python/data.parquet" if partitioned else flat
+    ) as reader:
+        (row,) = reader.read().to_pylist()
+    assert (row["chunk_id"], row["content"]) == ("control", "π\r\n")
+
+
+@pytest.mark.parametrize(
+    ("seed", "chunk_ids", "edges"),
+    [(False, [], []), (True, [], []), (True, ["new"], []), (True, [], [("x", "y")])],
+)
+def test_parquet_empty_stream_artifacts(tmp_path, seed, chunk_ids, edges):
+    exporter = StructuredParquetExporter(partition_by=["language"])
+    output = tmp_path / "stream.parquet"
+    if seed:
+        exporter.export_streaming(
+            iter([parquet_chunk("old")]), iter([parquet_edge("old", "old")]), output
+        )
+    exporter.export_streaming(
+        (parquet_chunk(i) for i in chunk_ids),
+        (parquet_edge(a, b) for a, b in edges),
+        output,
+    )
+    string, integer, strings = pa.string(), pa.int64(), pa.list_(pa.string())
+    chunks_schema = pa.schema(
+        [
+            ("chunk_id", string, False),
+            ("language", string, False),
+            ("file_path", string, False),
+            ("node_type", string, False),
+            ("start_line", integer, False),
+            ("end_line", integer, False),
+            ("byte_start", integer, False),
+            ("byte_end", integer, False),
+            ("parent_context", string),
+            ("content", string, False),
+            ("parent_chunk_id", string),
+            ("references", strings),
+            ("dependencies", strings),
+            ("lines_of_code", integer),
+            ("byte_size", integer),
+        ]
+    )
+    edges_schema = pa.schema(
+        [
+            ("source_chunk_id", string, False),
+            ("target_chunk_id", string, False),
+            ("relationship_type", string, False),
+            ("metadata", string),
+        ]
+    )
+    with pq.ParquetFile(tmp_path / "stream_chunks.parquet") as reader:
+        assert reader.schema_arrow == chunks_schema
+        assert reader.metadata.num_rows == len(chunk_ids)
+        assert reader.read()["chunk_id"].to_pylist() == chunk_ids
+    with pq.ParquetFile(tmp_path / "stream_relationships.parquet") as reader:
+        assert reader.schema_arrow == edges_schema
+        assert reader.metadata.num_rows == len(edges)
+        assert [
+            (r["source_chunk_id"], r["target_chunk_id"], r["relationship_type"])
+            for r in reader.read().to_pylist()
+        ] == [(a, b, "calls") for a, b in edges]
+    assert not (tmp_path / "stream_chunks").exists()
+
+
+def test_parquet_stream_batches_and_compression(tmp_path):
+    class OneShot:
+        def __init__(self, rows, file):
+            self.rows = rows
+            self.file = file
+            self.used = False
+
+        def __iter__(self):
+            assert not self.used
+            self.used = True
+            for i, row in enumerate(self.rows):
+                if i == 2:
+                    assert self.file.exists()
+                yield row
+
+    chunks = tmp_path / "stream_chunks.parquet"
+    edges = tmp_path / "stream_relationships.parquet"
+    ids = ["one", "two", "three"]
+    exporter = StructuredParquetExporter(compression="gzip", partition_by=["language"])
+    exporter.set_batch_size(2)
+    exporter.export_streaming(
+        OneShot([parquet_chunk(i) for i in ids], chunks),
+        OneShot([parquet_edge(i, i) for i in ids], edges),
+        tmp_path / "stream.parquet",
+    )
+    for path, column in [(chunks, "chunk_id"), (edges, "source_chunk_id")]:
+        with pq.ParquetFile(path) as reader:
+            assert reader.read()[column].to_pylist() == ids
+            groups = [
+                reader.metadata.row_group(i) for i in range(reader.num_row_groups)
+            ]
+            assert [g.num_rows for g in groups] == [2, 1]
+            assert all(g.column(0).compression == "GZIP" for g in groups)
+        path.rename(path.with_suffix(".moved"))
+
+
+@pytest.mark.parametrize(
+    ("fail_kind", "count"),
+    [("chunks", 0), ("chunks", 1), ("relationships", 1), ("relationships", 2)],
+)
+def test_parquet_stream_failure_preserves_completed_batches(tmp_path, fail_kind, count):
+    path = tmp_path / "stream.parquet"
+    chunks, edges = (
+        tmp_path / "stream_chunks.parquet",
+        tmp_path / "stream_relationships.parquet",
+    )
+    exporter = StructuredParquetExporter()
+    exporter.set_batch_size(2)
+    exporter.export_streaming(
+        iter([parquet_chunk("old")]), iter([parquet_edge("old", "old")]), path
+    )
+    original_chunks, original_edges = chunks.read_bytes(), edges.read_bytes()
+
+    def failing(row):
+        for _ in range(count):
+            yield row
+        raise RuntimeError("broken source")
+
+    with pytest.raises(RuntimeError, match="broken source") as caught:
+        exporter.export_streaming(
+            (
+                failing(parquet_chunk("new"))
+                if fail_kind == "chunks"
+                else iter([parquet_chunk("new")])
+            ),
+            failing(parquet_edge("new", "target")),
+            path,
+        )
+    assert caught.value.__traceback__ is not None
+    if fail_kind == "chunks":
+        assert chunks.read_bytes() == original_chunks
+    else:
+        assert pq.read_table(chunks)["chunk_id"].to_pylist() == ["new"]
+    if count < 2:
+        assert edges.read_bytes() == original_edges
+    else:
+        assert pq.read_table(edges)["source_chunk_id"].to_pylist() == ["new", "new"]
+    edges.rename(tmp_path / "renamed.parquet")

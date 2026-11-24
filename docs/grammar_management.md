@@ -324,6 +324,14 @@ message>)` without loading anything. The legacy combined-library manager
 only pinned languages whose library bytes pass native admission, and none
 without pins.
 
+For this combined-library manager, `fetch_grammars` reuses an existing
+`grammars/tree-sitter-<language>` directory when it has a `.git` directory
+or file, a `grammar.js` file, or a generated `src/parser.c` file. These
+markers identify a checkout or unpacked source tree. Compilation checks the
+build inputs separately. A symlink at the destination or any other invalid
+destination yields `False` for that language. Fetch preserves the path and
+continues with the other languages.
+
 #### Producing a pin for `grammar install`
 
 `GrammarInstaller` builds a grammar to the same bytes wherever its source is

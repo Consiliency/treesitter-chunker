@@ -148,18 +148,23 @@ class DatabaseExporterBase(ABC):
             ),
         ]
 
-    @staticmethod
-    def get_analysis_queries() -> dict[str, str]:
+    _file_path_column = "c.file_path"
+    _file_join = ""
+    _read_parameter = "?"
+
+    @classmethod
+    def get_analysis_queries(cls) -> dict[str, str]:
         """Get useful analysis queries for the exported data.
 
         Returns:
             Dict mapping query names to SQL queries
         """
+        path = cls._file_path_column
         return {
-            "chunks_per_file": """
-                SELECT file_path, COUNT(*) as chunk_count
-                FROM chunks
-                GROUP BY file_path
+            "chunks_per_file": f"""
+                SELECT {path} AS file_path, COUNT(*) as chunk_count
+                FROM chunks c {cls._file_join}
+                GROUP BY {path}
                 ORDER BY chunk_count DESC;
             """,
             "chunks_by_type": """
@@ -182,40 +187,38 @@ class DatabaseExporterBase(ABC):
                 GROUP BY relationship_type
                 ORDER BY count DESC;
             """,
-            "most_connected_chunks": """
-                SELECT c.id, c.file_path, c.chunk_type,
-                       COUNT(DISTINCT r1.target_id) as outgoing,
-                       COUNT(DISTINCT r2.source_id) as incoming
-                FROM chunks c
-                LEFT JOIN relationships r1 ON c.id = r1.source_id
-                LEFT JOIN relationships r2 ON c.id = r2.target_id
-                GROUP BY c.id, c.file_path, c.chunk_type
+            "most_connected_chunks": f"""
+                SELECT * FROM (
+                    SELECT c.id, {path} AS file_path, c.chunk_type,
+                           COUNT(DISTINCT r1.target_id) as outgoing,
+                           COUNT(DISTINCT r2.source_id) as incoming
+                    FROM chunks c {cls._file_join}
+                    LEFT JOIN relationships r1 ON c.id = r1.source_id
+                    LEFT JOIN relationships r2 ON c.id = r2.target_id
+                    GROUP BY c.id, {path}, c.chunk_type
+                ) AS degrees
                 ORDER BY (outgoing + incoming) DESC
                 LIMIT 20;
             """,
-            "find_dependencies": (
-                """
-                -- Find all chunks that a given chunk depends on
+            "find_dependencies": f"""
                 WITH RECURSIVE deps AS (
                     SELECT target_id as chunk_id, 1 as depth
                     FROM relationships
-                    WHERE source_id = ? AND relationship_type IN """
-                "('IMPORTS', 'CALLS')\n\n"
-                """
+                    WHERE source_id = {cls._read_parameter}
+                    AND relationship_type IN ('IMPORTS', 'CALLS')
+
                     UNION
 
                     SELECT r.target_id, d.depth + 1
                     FROM relationships r
                     JOIN deps d ON r.source_id = d.chunk_id
-                    WHERE r.relationship_type IN """
-                "('IMPORTS', 'CALLS')\n"
-                """
-                    AND d.depth < 5  -- Limit depth
+                    WHERE r.relationship_type IN ('IMPORTS', 'CALLS')
+                    AND d.depth < 5
                 )
-                SELECT DISTINCT c.*, d.depth
+                SELECT c.*, d.depth
                 FROM deps d
                 JOIN chunks c ON d.chunk_id = c.id
-                ORDER BY d.depth, c.file_path, c.start_line;
-                """
-            ),
+                {cls._file_join}
+                ORDER BY d.depth, {path}, c.start_line;
+            """,
         }

@@ -142,9 +142,18 @@ Entries for files that are never written again stay until `invalidate_cache()`.
 Installs or configurations that share one cache directory therefore replace
 each other's entries and re-extract; give each its own `cache_dir=`.
 
-The chunker version is part of the identity, so a development build whose
-version did not change keeps serving entries written before its extraction
-code changed. Call `invalidate_cache()` or use a separate `cache_dir` when
+Automatic parallel stores hash the bytes they extract. An edit during extraction
+can return chunks from that in-flight snapshot. The next call after the edit
+checks the current file. Eligible cold streaming workers each need temporary
+disk space up to the size of their source file. If scratch storage is
+unavailable, the worker uses ordinary streaming and skips the cache write.
+Manual callers of `cache_chunks()` must keep the path representative of the
+supplied chunks through the store.
+
+Cache version 3.1 refreshes version 3.0 entries on first use for each eligible
+file, language and extraction mode. Development builds can reuse earlier
+entries when both the distribution and cache compatibility versions stay the
+same after extraction changes. Call `invalidate_cache()` or use a separate `cache_dir` when
 running unreleased changes.
 
 **Upgrading from cache version 2.0.** Version 3.0 stores entries in a new

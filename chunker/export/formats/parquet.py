@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from urllib.parse import quote
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -22,6 +25,29 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from chunker.types import CodeChunk
+
+
+def _partition_component(column: str, value: Any) -> str:
+    raw = str(value).encode("utf-8")
+    encoded = quote(raw, safe="")
+    # quote preserves periods, but Windows trims them at the end of a name.
+    stem = encoded.rstrip(".")
+    component = f"{column}={stem}" + "%2E" * (len(encoded) - len(stem))
+    if len(component) > 255:
+        # Literal exclamation marks in the short form are always encoded as %21.
+        return f"{column}=!sha256-{hashlib.sha256(raw).hexdigest()}"
+    return component
+
+
+def _partition_root(path: Path) -> Path:
+    # A valid 255-byte component plus its parent and leaf can exceed MAX_PATH.
+    if os.name == "nt":
+        absolute = path.resolve().as_posix()
+        if absolute.startswith("//") and not absolute.startswith(("//?/", "//./")):
+            return Path("//?/UNC") / absolute[2:]
+        if not absolute.startswith("//"):
+            return Path("//?/" + absolute)
+    return path
 
 
 class StructuredParquetExporter(StructuredExporter):
@@ -53,9 +79,19 @@ class StructuredParquetExporter(StructuredExporter):
     ) -> None:
         """Export chunks with relationships to Parquet.
 
-        Creates two Parquet files:
-        - <output>_chunks.parquet: Contains chunk data
-        - <output>_relationships.parquet: Contains relationship data
+        For run.v1.parquet the flat files are run.v1_chunks.parquet and
+        run.v1_relationships.parquet, plus run.v1_metadata.parquet when
+        metadata is supplied. With recognized partition columns, read chunks
+        using pyarrow.dataset.dataset("run.v1_chunks", format="parquet").
+        Each leaf retains the typed partition columns. Directory values use
+        UTF-8 percent encoding. Components exceeding 255 encoded bytes use
+        <column>=!sha256-<digest> of the original UTF-8 value. Read the
+        partition value from the leaf. Case-insensitive component collisions within
+        one export raise ChunkerError before any leaf is written.
+
+        Reusing a root replaces matching leaves and retains other partitions.
+        Use a fresh root for a clean snapshot. To migrate older shared-parent
+        datasets, re-export the original chunks into a named root.
 
         Args:
             chunks: List of code chunks
@@ -80,14 +116,25 @@ class StructuredParquetExporter(StructuredExporter):
         relationship_iterator: Iterator[ChunkRelationship],
         output: Path | io.IOBase,
     ) -> None:
-        """Export using iterators for large datasets."""
+        """Write <base>_chunks.parquet followed by <base>_relationships.parquet.
+
+        Each exhausted stream produces a typed file, including empty streams.
+        An iterator failure before the first batch leaves that artifact untouched.
+        Previously flushed batches and completed artifacts remain readable.
+        """
         if isinstance(output, io.IOBase):
             raise ChunkerError("Parquet export requires a file path, not a stream")
         base_path = Path(output).with_suffix("")
         chunks_path = f"{base_path}_chunks.parquet"
-        self._stream_chunks(chunk_iterator, chunks_path)
+        self._stream_records(
+            map(self._chunk_to_dict, chunk_iterator), self._chunks_schema, chunks_path
+        )
         relationships_path = f"{base_path}_relationships.parquet"
-        self._stream_relationships(relationship_iterator, relationships_path)
+        self._stream_records(
+            map(self._relationship_to_dict, relationship_iterator),
+            self._relationships_schema,
+            relationships_path,
+        )
 
     @staticmethod
     def supports_format(fmt: ExportFormat) -> bool:
@@ -197,45 +244,40 @@ class StructuredParquetExporter(StructuredExporter):
         """Export chunks to Parquet file."""
         records = [self._chunk_to_dict(chunk) for chunk in chunks]
         table = pa.Table.from_pylist(records, schema=self._chunks_schema)
-        path_str = str(output_path)
-        if self.partition_by:
-            valid_partitions = [
-                col for col in self.partition_by if col in self._chunks_schema.names
-            ]
-            if valid_partitions:
-                # When writing a partitioned dataset, manually create partitions
-                root_path = Path(path_str)
-                if root_path.suffix:
-                    root_path = root_path.parent
-                root_path.mkdir(parents=True, exist_ok=True)
-
-                # Group records by partition columns
-                partitions = {}
-                for i in range(len(table)):
-                    partition_key = tuple(
-                        table.column(col)[i].as_py() for col in valid_partitions
-                    )
-                    if partition_key not in partitions:
-                        partitions[partition_key] = []
-                    partitions[partition_key].append(i)
-
-                # Write each partition to its own file
-                for partition_values, row_indices in partitions.items():
-                    partition_dir = root_path
-                    for i, col in enumerate(valid_partitions):
-                        partition_dir /= f"{col}={partition_values[i]}"
-
-                    partition_dir.mkdir(parents=True, exist_ok=True)
-                    subset_table = table.take(row_indices)
-                    partition_file = partition_dir / "data.parquet"
-                    with pa.OSFile(str(partition_file), "wb") as sink:
-                        pq.write_table(subset_table, sink, compression=self.compression)
-            else:
-                with pa.OSFile(path_str, "wb") as sink:
-                    pq.write_table(table, sink, compression=self.compression)
-        else:
-            with pa.OSFile(path_str, "wb") as sink:
+        columns = [col for col in self.partition_by or [] if col in table.column_names]
+        if not columns:
+            with pa.OSFile(str(output_path), "wb") as sink:
                 pq.write_table(table, sink, compression=self.compression)
+            return
+
+        root = _partition_root(Path(output_path).with_suffix(""))
+        partitions: dict[tuple[Any, ...], list[int]] = {}
+        partition_columns = [table.column(col) for col in columns]
+        for index, values in enumerate(zip(*partition_columns, strict=True)):
+            key = tuple(value.as_py() for value in values)
+            partitions.setdefault(key, []).append(index)
+
+        # Validate each directory component, including shared intermediate ones,
+        # before touching any leaf. This also catches aliases on Linux.
+        seen: dict[tuple[Path, str], Any] = {}
+        leaves = {}
+        for key, indices in partitions.items():
+            directory = root
+            for column, value in zip(columns, key, strict=True):
+                component = _partition_component(column, value)
+                alias = (directory, component.lower())
+                if seen.setdefault(alias, value) != value:
+                    raise ChunkerError(
+                        f"Partition path collision at {directory / component}"
+                    )
+                directory /= component
+            leaves[directory] = indices
+
+        root.mkdir(parents=True, exist_ok=True)
+        for directory, indices in leaves.items():
+            directory.mkdir(parents=True, exist_ok=True)
+            with pa.OSFile(str(directory / "data.parquet"), "wb") as sink:
+                pq.write_table(table.take(indices), sink, compression=self.compression)
 
     def _export_relationships(
         self,
@@ -267,77 +309,30 @@ class StructuredParquetExporter(StructuredExporter):
         with pa.OSFile(str(output_path), "wb") as sink:
             pq.write_table(table, sink, compression=self.compression)
 
-    def _stream_chunks(
-        self,
-        chunk_iterator: Iterator[CodeChunk],
-        output_path: str | Path,
+    def _stream_records(
+        self, records: Iterator[dict[str, Any]], schema: pa.Schema, output_path: str
     ) -> None:
-        """Stream chunks to Parquet file."""
-        writer = None
-        batch = []
-        try:
-            for chunk in chunk_iterator:
-                batch.append(self._chunk_to_dict(chunk))
+        def tables() -> Iterator[pa.Table]:
+            batch = []
+            for record in records:
+                batch.append(record)
                 if len(batch) >= self._batch_size:
-                    table = pa.Table.from_pylist(batch, schema=self._chunks_schema)
-                    if writer is None:
-                        sink = pa.OSFile(str(output_path), "wb")
-                        writer = pq.ParquetWriter(
-                            sink,
-                            schema=self._chunks_schema,
-                            compression=self.compression,
-                        )
-                    writer.write_table(table)
-                    batch = []
+                    yield pa.Table.from_pylist(batch, schema=schema)
+                    batch.clear()
             if batch:
-                table = pa.Table.from_pylist(batch, schema=self._chunks_schema)
-                if writer is None:
-                    sink = pa.OSFile(str(output_path), "wb")
-                    writer = pq.ParquetWriter(
-                        sink,
-                        schema=self._chunks_schema,
-                        compression=self.compression,
-                    )
-                writer.write_table(table)
-        finally:
-            if writer:
-                writer.close()
+                yield pa.Table.from_pylist(batch, schema=schema)
 
-    def _stream_relationships(
-        self,
-        relationship_iterator: Iterator[ChunkRelationship],
-        output_path: str | Path,
-    ) -> None:
-        """Stream relationships to Parquet file."""
-        writer = None
-        batch = []
-        try:
-            for rel in relationship_iterator:
-                batch.append(self._relationship_to_dict(rel))
-                if len(batch) >= self._batch_size:
-                    table = pa.Table.from_pylist(
-                        batch,
-                        schema=self._relationships_schema,
-                    )
-                    if writer is None:
-                        sink = pa.OSFile(str(output_path), "wb")
-                        writer = pq.ParquetWriter(
-                            sink,
-                            schema=self._relationships_schema,
-                            compression=self.compression,
-                        )
-                    writer.write_table(table)
-                    batch = []
-            if batch:
-                table = pa.Table.from_pylist(batch, schema=self._relationships_schema)
-                if writer is None:
-                    sink = pa.OSFile(str(output_path), "wb")
-                    writer = pq.ParquetWriter(
-                        sink,
-                        schema=self._relationships_schema,
-                        compression=self.compression,
-                    )
-                writer.write_table(table)
-        finally:
-            if writer:
-                writer.close()
+        batches = tables()
+        # Consume and convert the first batch before truncating an existing file.
+        # Normal exhaustion yields an empty table with the same declared schema.
+        first = next(batches, None)
+        with (
+            pa.OSFile(output_path, "wb") as sink,
+            pq.ParquetWriter(
+                sink, schema=schema, compression=self.compression
+            ) as writer,
+        ):
+            writer.write_table(first if first is not None else schema.empty_table())
+            del first
+            for batch in batches:
+                writer.write_table(batch)

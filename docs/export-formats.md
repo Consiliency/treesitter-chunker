@@ -445,6 +445,42 @@ exporter.export(chunks, "output_dir/")
 #       part-0.parquet
 ```
 
+### Structured Parquet exports
+
+`StructuredParquetExporter` writes chunks and relationships separately. For
+example, read a partitioned chunks dataset directly with PyArrow:
+
+```python
+from pathlib import Path
+
+import pyarrow.dataset as ds
+from chunker.export import StructuredParquetExporter
+
+exporter = StructuredParquetExporter(partition_by=["language", "file_path"])
+exporter.export(chunks, relationships, Path("run.v1.parquet"))
+table = ds.dataset("run.v1_chunks", format="parquet").to_table()
+```
+
+The relationships are in `run.v1_relationships.parquet`. Supplying metadata
+also writes `run.v1_metadata.parquet`. Reusing a chunks root replaces matching
+leaves and retains unmatched partitions. Use a fresh destination for a clean
+snapshot. Re-export older shared-parent datasets from source to create named roots.
+
+Each directory component has the form `<column>=<value>` with UTF-8 percent
+encoding, including `%21` for a literal `!`. If the entire encoded component
+exceeds 255 ASCII bytes, its name becomes `<column>=!sha256-<digest>`, using
+the 64 lowercase hex digits of SHA-256 over the original UTF-8 value. Read
+the original typed partition fields from the leaf rows. The exporter checks
+for colliding directory names within an export before writing any leaves.
+On Windows hosts with the legacy full-path limit, pass an extended-length
+absolute root to the PyArrow reader for long paths, for example
+`ds.dataset("//?/C:/reports/run.v1_chunks", format="parquet")`. For a network
+share, use `//?/UNC/server/share/reports/run.v1_chunks`.
+
+Streaming always writes flat chunks and relationships files. Each successfully
+exhausted iterator produces a readable file with its declared schema, including
+when it yields zero rows.
+
 ### Advanced Parquet Features
 
 Parquet export requires PyArrow 21.0.0 or newer. This is the tested minimum for
@@ -883,64 +919,53 @@ class XMLExporter:
             f.write(xml_str)
 ```
 
-### SQLite Export
+### SQLite and PostgreSQL database queries
+
+The normalized SQLite schema and query examples below belong to
+`chunker.export.sqlite_exporter.SQLiteExporter`. The package-level
+`chunker.export.SQLiteExporter` has a separate API and schema.
 
 ```python
+from contextlib import closing
+from pathlib import Path
 import sqlite3
-from typing import List
-from chunker import CodeChunk
 
-class SQLiteExporter:
-    """Export chunks to SQLite database."""
-    
-    def export(self, chunks: List[CodeChunk], db_path: str):
-        """Export chunks to SQLite."""
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        
-        # Create tables
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS chunks (
-                chunk_id TEXT PRIMARY KEY,
-                language TEXT,
-                file_path TEXT,
-                node_type TEXT,
-                start_line INTEGER,
-                end_line INTEGER,
-                byte_start INTEGER,
-                byte_end INTEGER,
-                parent_context TEXT,
-                content TEXT
-            )
-        ''')
-        
-        cursor.execute('''
-            CREATE INDEX IF NOT EXISTS idx_file_path ON chunks(file_path)
-        ''')
-        
-        cursor.execute('''
-            CREATE INDEX IF NOT EXISTS idx_node_type ON chunks(node_type)
-        ''')
-        
-        # Insert chunks
-        for chunk in chunks:
-            cursor.execute('''
-                INSERT OR REPLACE INTO chunks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                chunk.chunk_id,
-                chunk.language,
-                chunk.file_path,
-                chunk.node_type,
-                chunk.start_line,
-                chunk.end_line,
-                chunk.byte_start,
-                chunk.byte_end,
-                chunk.parent_context,
-                chunk.content
-            ))
-        
-        conn.commit()
-        conn.close()
+from chunker.export.sqlite_exporter import SQLiteExporter
+
+path = Path("chunks.db")
+exporter = SQLiteExporter()
+exporter.add_chunks(chunks)
+exporter.export(path)
+with closing(sqlite3.connect(path)) as db:
+    sql = SQLiteExporter.get_example_queries()["search_content"]
+    hits = db.execute(sql, ("parser",)).fetchall()
+```
+
+An export builds a complete snapshot in the destination directory. A successful
+replacement makes all rows and search entries visible together to new transactions.
+A WAL reader can finish its current transaction on the old snapshot. An empty
+export publishes an empty snapshot. Build and publication errors preserve the
+previous committed snapshot, and a failed first export leaves the path absent.
+
+Use a writable parent directory and a writable regular SQLite file with a single
+link, or a new path. Symlinks and orphan SQLite sidecars are rejected. Use a
+filesystem supporting SQLite locks and same-filesystem no-overwrite publication
+(hard links on POSIX). Other clients should use SQLite locking and leave the
+destination and sidecar names in place. Allow disk space for a complete staged
+database and for the destination WAL or rollback journal. A competing writer,
+a rollback-journal reader, or incompatible WAL page sizes can prevent replacement.
+Retry lock errors after the conflicting transaction ends.
+
+For PostgreSQL, execute the examples against the PostgreSQL export schema using
+a psycopg connection. The read helpers use positional `%s` parameters.
+
+```python
+from chunker.export.postgres_exporter import PostgresExporter
+
+sql = PostgresExporter.get_advanced_queries()["full_text_search"]
+with connection.cursor() as cursor:
+    cursor.execute(sql, ("parser",))
+    hits = cursor.fetchall()
 ```
 
 ## Integration Examples
@@ -1202,6 +1227,66 @@ node dist/cli/index.js serve --port 3000 --bundle path/to/output.slb
 
 # Open http://localhost:3000 in browser
 ```
+
+## Transforming structured exports
+
+Register an export transformer on `StructuredExportOrchestrator` to project
+retained chunks and relationships before they reach a structured writer.
+For example, given extracted `chunks` and `relationships`:
+
+```python
+import json
+from pathlib import Path
+
+from chunker.export import StructuredExportOrchestrator, StructuredJSONExporter
+from chunker.interfaces.export import ExportFormat, ExportTransformer
+
+
+class Annotate(ExportTransformer):
+    @staticmethod
+    def transform_chunk(chunk):
+        return {"content": "[omitted]"}
+
+    @staticmethod
+    def transform_relationship(relationship):
+        return {"metadata": {**(relationship.metadata or {}), "reviewed": True}}
+
+
+exporter = StructuredExportOrchestrator()
+exporter.register_exporter(ExportFormat.JSON, StructuredJSONExporter())
+exporter.add_transformer(Annotate())
+output = Path("review.json")
+exporter.export(chunks, relationships, output)
+records = json.loads(output.read_text(encoding="utf-8"))
+assert all(chunk["content"] == "[omitted]" for chunk in records["chunks"])
+assert all(edge["metadata"]["reviewed"] for edge in records["relationships"])
+```
+
+Each export snapshots its registrations, including duplicates. Filters see
+original records and select chunks and relationships independently. Each hook
+receives a detached typed copy of the preceding stage's result, in registration
+order. Return a dictionary of field replacements. Omitted fields retain their
+values, including fields modified only on the hook input. An empty patch
+preserves the record. A metadata patch replaces the whole dictionary. Use
+string top-level keys, deepcopy-compatible values and types the writer can
+serialize. Relationship metadata also accepts `None`.
+
+Chunk content accepts any string. Relationship type accepts a `RelationshipType`
+member or its exact string value (for example, `"calls"`). Later stages and
+writers receive the enum member. All remaining model fields are protected and
+can only be echoed with the same types and values. Source IDs, routes, spans
+and edge endpoints therefore still identify the original occurrence even if
+projected content changes length. Unknown fields, including writer-derived
+columns such as `byte_size`, cause an error. Each writer controls the fields
+it emits. For example, JSONL omits chunk metadata. Replacing content alone
+leaves other fields, including metadata, available in the export.
+
+A copying, hook or patch failure raises `ChunkerError` with the registration
+position and record identity. Batch export transforms all retained chunks,
+then relationships, before the writer opens the destination. Streaming applies
+hooks as the writer pulls each iterator and stops on failure. A JSONL file
+may already contain its header and earlier records. The writer determines
+buffering and the order in which the two iterators are consumed.
 
 ## See Also
 
