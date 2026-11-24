@@ -417,3 +417,51 @@ def test_token_file_requires_utf8_for_baml(tmp_path):
     path.write_bytes(b"function f() -> string { prompt: `\xff` }\r\n")
     with pytest.raises(UnicodeDecodeError):
         chunk_file_with_token_limit(path, "baml", 100)
+
+
+def test_javascript_lone_cr_function_parts_use_physical_rows(tmp_path):
+    source = b"\r\rfunction compute() {\r  doWork();\r  return 1 + 2;\r}\r"
+    path = tmp_path / "example.js"
+    path.write_bytes(source)
+    (parent,) = chunk_file(path, "javascript")
+    assert (parent.start_line, parent.end_line) == (3, 6)
+
+    parts = chunk_file_with_token_limit(path, "javascript", 6)
+    assert len(parts) > 1
+    cursor = parent.byte_start
+    for part in parts:
+        assert part.parent_chunk_id == parent.chunk_id
+        assert part.byte_start == cursor
+        assert part.content.encode() == source[cursor : part.byte_end]
+        assert part.start_line == 1 + source.count(b"\r", 0, cursor)
+        cursor = part.byte_end
+        assert part.end_line == 1 + source.count(b"\r", 0, cursor)
+    assert cursor == parent.byte_end
+    assert parts[-1].end_line == parent.end_line
+
+
+def test_julia_parser_adjacent_comment_keeps_physical_gap_in_parts(tmp_path):
+    source = "# NOTE\n\r\rfunction a()\n 1\nend"
+    path = tmp_path / "example.jl"
+    path.write_bytes(source.encode())
+    (parent,) = chunk_file(path, "julia")
+    assert parent.content == source
+    assert (parent.start_line, parent.end_line) == (1, 6)
+    assert (parent.byte_start, parent.byte_end) == (0, len(source))
+
+    parts = chunk_file_with_token_limit(path, "julia", 3)
+    assert len(parts) > 1
+    assert "".join(part.content for part in parts) == source
+    assert {part.parent_chunk_id for part in parts} == {parent.chunk_id}
+    cursor = 0
+    for part in parts:
+        assert part.byte_start == cursor
+        assert part.content == source[cursor : part.byte_end]
+        assert part.start_line == 1 + source.count("\n", 0, cursor) + source.count(
+            "\r", 0, cursor
+        )
+        cursor = part.byte_end
+        assert part.end_line == 1 + source.count("\n", 0, cursor) + source.count(
+            "\r", 0, cursor
+        )
+    assert (cursor, parts[-1].end_line) == (len(source), 6)

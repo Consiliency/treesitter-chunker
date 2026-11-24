@@ -1109,7 +1109,9 @@ def _walk(
 
     # Julia-specific post-processing: merge preceding comments with definitions
     if language == "julia":
-        chunks = _merge_julia_comments_with_definitions(chunks)
+        chunks = _merge_julia_comments_with_definitions(
+            chunks, source if line_offsets else None
+        )
 
     # MATLAB-specific post-processing: detect scripts
     if language == "matlab":
@@ -1133,7 +1135,9 @@ def _walk(
     return chunks
 
 
-def _merge_julia_comments_with_definitions(chunks: list[CodeChunk]) -> list[CodeChunk]:
+def _merge_julia_comments_with_definitions(
+    chunks: list[CodeChunk], physical_source: bytes | None
+) -> list[CodeChunk]:
     """Merge Julia comment chunks with following definition chunks."""
     if not chunks:
         return chunks
@@ -1167,8 +1171,14 @@ def _merge_julia_comments_with_definitions(chunks: list[CodeChunk]) -> list[Code
                 current_chunk.end_line + 1 == next_chunk.start_line
                 or current_chunk.end_line == next_chunk.start_line
             ):
-                # Merge the comment content with the definition content
-                merged_content = current_chunk.content + "\n" + next_chunk.content
+                # Parser-adjacent nodes can span several physical rows on lone CR.
+                # Keep their intervening bytes when reporting physical spans.
+                if physical_source is not None:
+                    merged_content = physical_source[
+                        current_chunk.byte_start : next_chunk.byte_end
+                    ].decode()
+                else:
+                    merged_content = current_chunk.content + "\n" + next_chunk.content
 
                 # Create a new chunk with the merged content
                 merged_chunk = CodeChunk(

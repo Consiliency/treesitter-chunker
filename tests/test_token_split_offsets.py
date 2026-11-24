@@ -1,5 +1,3 @@
-from chunker.chunker import chunk_file_with_token_limit
-from chunker.core import chunk_file
 from chunker.token.chunker import TreeSitterTokenAwareChunker
 from chunker.types import CodeChunk
 
@@ -21,24 +19,3 @@ def test_split_chunk_offsets_slice_the_original_utf8_content():
 
     assert source[part.byte_start : part.byte_end].decode("utf-8") == part.content
     assert part.start_line == 11
-
-
-def test_javascript_lone_cr_function_parts_use_physical_rows(tmp_path):
-    source = b"\r\rfunction compute() {\r  doWork();\r  return 1 + 2;\r}\r"
-    path = tmp_path / "example.js"
-    path.write_bytes(source)
-    (parent,) = chunk_file(path, "javascript")
-    assert (parent.start_line, parent.end_line) == (3, 6)
-
-    parts = chunk_file_with_token_limit(path, "javascript", 6)
-    assert len(parts) > 1
-    cursor = parent.byte_start
-    for part in parts:
-        assert part.parent_chunk_id == parent.chunk_id
-        assert part.byte_start == cursor
-        assert part.content.encode() == source[cursor : part.byte_end]
-        assert part.start_line == 1 + source.count(b"\r", 0, cursor)
-        cursor = part.byte_end
-        assert part.end_line == 1 + source.count(b"\r", 0, cursor)
-    assert cursor == parent.byte_end
-    assert parts[-1].end_line == parent.end_line

@@ -53,7 +53,9 @@ each advance the row once, after their final byte. This preserves grammar
 behavior, including regular Dockerfile continuation repair. Chunk endpoints
 use the start and exclusive end cursors. Call end rows describe the last
 included byte. Anonymous route anchors and Julia comment grouping retain their
-parser-row semantics. Synthetic Svelte template-control and reactive chunks
+parser-row semantics. On these files a grouped Julia definition includes the
+original bytes between its comment and declaration, so token-split parts span
+the same physical rows as their parent. Synthetic Svelte template-control and reactive chunks
 report the source line that produced them. Their legacy identity byte offsets
 can point earlier on mixed endings or after a multibyte script tag.
 
