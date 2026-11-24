@@ -272,12 +272,14 @@ class TestChunkerConfigReload:
         assert config.get_plugin_config("python").min_chunk_size == 8
         assert not config.get_plugin_config("rust").enabled
 
-        path.write_text("{}", encoding="utf-8")
+        replacement = tmp_path / "replacement.json"
+        replacement.write_text("{}", encoding="utf-8")
         monkeypatch.delenv("CHUNKER_LANGUAGES_PYTHON_MAX_CHUNK_SIZE")
         monkeypatch.setenv("CHUNKER_LANGUAGES_RUST_MIN_CHUNK_SIZE", "12")
-        config.load(path)
-        fresh = ChunkerConfig(path, use_env_vars=use_env_vars)
+        config.load(replacement)
+        fresh = ChunkerConfig(replacement, use_env_vars=use_env_vars)
 
+        assert config.config_path == replacement
         assert config.enabled_languages is fresh.enabled_languages is None
         assert config.plugin_configs == fresh.plugin_configs
         assert config.get_plugin_config("python") == PluginConfig()
