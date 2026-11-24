@@ -90,4 +90,6 @@ def test_545_declaration_and_assignment_references() -> None:
             if entry["name"] == name and entry["role"] == "use"
         }
         assert set(resolver.find_symbol_references(name, case.root)) == expected, name
-        assert {node for spelling, node in extracted if spelling == name} == expected, name
+        assert {
+            node for spelling, node in extracted if spelling == name
+        } == expected, name
