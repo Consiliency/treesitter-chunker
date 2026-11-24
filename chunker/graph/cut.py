@@ -5,6 +5,12 @@ from collections.abc import Iterable
 from typing import Any
 
 
+def _edge_endpoints(edge: dict[str, Any]) -> tuple[str, str] | None:
+    src = edge.get("src") or edge.get("source_id")
+    dst = edge.get("dst") or edge.get("target_id")
+    return (src, dst) if src and dst else None
+
+
 def graph_cut(
     seeds: Iterable[str],
     nodes: list[dict[str, Any]],
@@ -16,9 +22,13 @@ def graph_cut(
     """
     Compute a minimal subgraph around seeds bounded by radius and budget.
 
+    Edges may use src/dst or source_id/target_id. Each nonempty src or dst
+    takes precedence over its alternate key. An edge is skipped if its source
+    or target has no nonempty value.
+
     Returns:
       - node_ids: minimal set of node ids selected
-      - induced_edges: edges among selected nodes
+      - induced_edges: original edges among selected nodes, in input order
     """
     if weights is None:
         weights = {}
@@ -33,10 +43,10 @@ def graph_cut(
 
     # Build adjacency
     for e in edges:
-        src = e.get("src") or e.get("source_id")
-        dst = e.get("dst") or e.get("target_id")
-        if not src or not dst:
+        endpoints = _edge_endpoints(e)
+        if endpoints is None:
             continue
+        src, dst = endpoints
         out_adj[src].add(dst)
         out_deg[src] += 1
         in_deg[dst] += 1
@@ -88,6 +98,6 @@ def graph_cut(
     induced_edges = [
         e
         for e in edges
-        if (e.get("src") in selected_set) and (e.get("dst") in selected_set)
+        if (endpoints := _edge_endpoints(e)) and selected_set.issuperset(endpoints)
     ]
     return selected, induced_edges

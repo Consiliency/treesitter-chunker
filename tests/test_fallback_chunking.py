@@ -1,10 +1,13 @@
 """Tests for fallback chunking functionality."""
 
+import errno
 import tempfile
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 import pytest
 
+from chunker.auto import ZeroConfigAPI
 from chunker.fallback import (
     FallbackWarning,
     FileTypeDetector,
@@ -15,6 +18,28 @@ from chunker.fallback import (
 from chunker.fallback.detection.file_type import EncodingDetector, FileType
 from chunker.fallback.fallback_manager import FallbackManager
 from chunker.interfaces.fallback import FallbackReason
+
+
+def test_chunk_text_fallback_uses_only_supplied_text():
+    registry = Mock()
+    registry.is_language_installed.return_value = False
+    api = ZeroConfigAPI(registry)
+    text = "first line\nsecond line"
+    with (
+        patch.object(
+            Path, "open", side_effect=OSError(errno.EINVAL, "invalid path")
+        ) as open_path,
+        patch.object(Path, "exists", return_value=False) as exists,
+        pytest.warns(FallbackWarning),
+    ):
+        result = api.chunk_text(text, "no-grammar")
+    open_path.assert_not_called()
+    exists.assert_not_called()
+    assert result.fallback_used
+    assert result.language == "no-grammar"
+    assert [(c["content"], c["start_line"], c["end_line"]) for c in result.chunks] == [
+        (text, 1, 2)
+    ]
 
 
 class TestFallbackBase:
@@ -82,6 +107,14 @@ class TestFileTypeDetection:
         assert detector.detect_file_type("data.csv") == FileType.CSV
         assert detector.detect_file_type("config.yaml") == FileType.YAML
         assert detector.detect_file_type("notes.txt") == FileType.TEXT
+
+    def test_uninspectable_path(self):
+        detector = FileTypeDetector()
+        with patch.object(
+            Path, "open", side_effect=OSError(errno.EINVAL, "invalid path")
+        ) as open_path:
+            assert detector.detect_file_type("<text>") == FileType.UNKNOWN
+        open_path.assert_called_once()
 
     @classmethod
     def test_content_detection(cls):

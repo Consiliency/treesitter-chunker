@@ -93,16 +93,85 @@ def test_networkx_yed_import_keeps_caller_label_beside_graphics(
     pretty, output, tmp_path
 ):
     exporter, chunks, options = _graph("yed")
-    graph = _import(exporter, options, pretty, output, tmp_path)
+    # The fixture has no top-level name property. Add one to its class only.
+    class_chunk, function_chunk = chunks
+    exporter.nodes[class_chunk.node_id].properties["name"] = "Renderer\r\nDisplay"
+    expected = {
+        class_chunk.node_id: "class_definition\nRenderer\nDisplay",
+        function_chunk.node_id: "function_definition",
+    }
+    if output == "string":
+        xml = exporter.export_string(pretty_print=pretty, **options)
+        root = ET.fromstring(xml)
+        graph = nx.parse_graphml(xml)
+    else:
+        path = tmp_path / "graph.graphml"
+        exporter.export(path, pretty_print=pretty, **options)
+        root = ET.parse(path).getroot()
+        graph = nx.read_graphml(path)
+    yed = "{http://www.yworks.com/xml/graphml}"
+    assert {
+        node.attrib["id"]: node.findtext(f"{GRAPHML}data/{yed}ShapeNode/{yed}NodeLabel")
+        for node in root.iter(f"{GRAPHML}node")
+    } == expected
     for chunk in chunks:
         data = graph.nodes[chunk.node_id]
-        # NetworkX replaces ``label`` with the yEd NodeLabel graphics text,
-        # which starts with the structural type; caller metadata is separate.
-        assert data["label"].startswith(chunk.node_type)
+        assert data["label"] == expected[chunk.node_id]
         assert {name: data[DECLARED[name]] for name in NODE_CALLER} == NODE_CALLER
     edge = graph.edges[chunks[0].node_id, chunks[1].node_id]
     assert edge["label"] == "CALLS"
     assert {name: edge[DECLARED[name]] for name in EDGE_CALLER} == EDGE_CALLER
+
+
+def test_yed_renders_non_string_chunk_names():
+    np = pytest.importorskip("numpy")
+    class_chunk, function_chunk = chunk_file(FIXTURE, "python")[:2]
+    class_chunk.metadata["name"] = np.array(["Renderer", "Display"])
+    function_chunk.metadata["name"] = 0
+    exporter = GraphMLyEdExporter()
+    exporter.add_chunks([class_chunk, function_chunk])
+
+    xml = exporter.export_string(pretty_print=False)
+    graph = nx.parse_graphml(xml)
+    assert (
+        graph.nodes[class_chunk.node_id]["label"]
+        == "class_definition\n['Renderer' 'Display']"
+    )
+    assert graph.nodes[function_chunk.node_id]["label"] == "function_definition\n0"
+
+
+def test_yed_formats_each_name_once_and_compares_plain_text():
+    class Bracketed(str):
+        __slots__ = ()
+
+        def __format__(self, spec):
+            return Bracketed(f"[{str.__str__(self)}]")
+
+    class TypedName(str):
+        __slots__ = ()
+
+        def __eq__(self, other):
+            if not isinstance(other, TypedName):
+                raise TypeError("expected TypedName")
+            return str.__eq__(self, other)
+
+        __hash__ = str.__hash__
+
+    class Typed:
+        def __format__(self, spec):
+            return TypedName("Renderer")
+
+    class_chunk, function_chunk = chunk_file(FIXTURE, "python")[:2]
+    class_chunk.metadata["name"] = Bracketed("Renderer")
+    function_chunk.metadata["name"] = Typed()
+    exporter = GraphMLyEdExporter()
+    exporter.add_chunks([class_chunk, function_chunk])
+
+    graph = nx.parse_graphml(exporter.export_string(pretty_print=False))
+    assert graph.nodes[class_chunk.node_id]["label"] == "class_definition\n[Renderer]"
+    assert (
+        graph.nodes[function_chunk.node_id]["label"] == "function_definition\nRenderer"
+    )
 
 
 @pytest.mark.parametrize("route", ["plain", "yed", "delegated"])

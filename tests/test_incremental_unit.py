@@ -1,12 +1,16 @@
 """Unit tests for incremental processing without tree-sitter dependency."""
 
+import json
 import shutil
 import tempfile
+from dataclasses import asdict
 from datetime import datetime, timedelta
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
+from chunker.core import chunk_text
 from chunker.incremental import (
     DefaultChangeDetector,
     DefaultChunkCache,
@@ -264,6 +268,41 @@ class TestIncrementalProcessor:
         assert len(new_chunk_ids) == 1
 
 
+@pytest.fixture
+def backup_records():
+    chunk = {
+        "language": "python",
+        "file_path": "nested",
+        "node_type": "def",
+        "start_line": 1,
+        "end_line": 1,
+        "byte_start": 2,
+        "byte_end": 6,
+        "parent_context": "",
+        "content": "pass",
+        "chunk_id": "id",
+        "parent_chunk_id": None,
+        "references": [],
+        "dependencies": [],
+        "metadata": {},
+        "node_id": "node",
+        "file_id": "file",
+        "symbol_id": None,
+        "parent_route": [],
+        "qualified_route": [],
+        "definition_id": "",
+    }
+    first = {
+        "file_hash": "h",
+        "language": "python",
+        "metadata": {},
+        "timestamp": "2000-01-01T00:00:00.000001",
+        "chunks": [],
+    }
+    second = {**first, "chunks": [chunk]}
+    return first, second
+
+
 class TestChunkCache:
     """Test chunk cache implementation."""
 
@@ -323,18 +362,209 @@ class TestChunkCache:
         assert stats["stats"]["misses"] == 1
         assert stats["stats"]["hash_mismatches"] == 1
 
-    @classmethod
-    def test_export_import_cache(cls, sample_chunks, temp_cache_dir):
-        """Test exporting and importing cache."""
-        cache1 = DefaultChunkCache(temp_cache_dir + "_1")
-        cache2 = DefaultChunkCache(temp_cache_dir + "_2")
-        cache1.store("test.py", sample_chunks, "hash")
-        export_path = temp_cache_dir + "/export.json"
-        cache1.export_cache(export_path)
-        cache2.import_cache(export_path)
-        entry = cache2.retrieve("test.py")
-        assert entry is not None
-        assert len(entry.chunks) == len(sample_chunks)
+    def test_export_import_cache(self, tmp_path):
+        source = "# café\r\nclass C:\r\n    def method(self):\r\n        return 1\r\n"
+        chunks = chunk_text(source, "python", file_path=r"pkg\nested.py")
+        parent, method = chunks
+        parent.language = "other"
+        method.parent_chunk_id = parent.chunk_id
+        method.chunk_id = "occurrence"
+        method.node_id = "node"
+        method.symbol_id = "symbol"
+        method.definition_id = ""
+        method.dependencies = ["requires"]
+        method.references = ["ref"]
+        method.metadata["extra"] = [True, {"key": None}, 1.5]
+        original = DefaultChunkCache(str(tmp_path / "original"))
+        original.store("key.py", chunks, "hash", {"settings": ["café", 2]})
+        original.store("empty.py", [], "empty")
+        expected = {
+            path: asdict(original.retrieve(path)) for path in ("key.py", "empty.py")
+        }
+        backup = tmp_path / "backup.json"
+        original.export_cache(str(backup))
+        version = json.loads(backup.read_text(encoding="utf-8"))["format_version"]
+        assert type(version) is int
+        assert version == 1
+
+        target = DefaultChunkCache(str(tmp_path / "target"))
+        target.store("obsolete.py", [], "old")
+        target.import_cache(str(backup))
+        assert target.get_statistics()["stats"]["stores"] == 3
+        reopened = DefaultChunkCache(str(tmp_path / "target"))
+        assert reopened.retrieve("obsolete.py") is None
+        assert reopened.retrieve("key.py", "wrong") is None
+        entry = reopened.retrieve("key.py", "hash")
+        assert asdict(entry) == expected["key.py"]
+        assert asdict(reopened.retrieve("empty.py", "empty")) == expected["empty.py"]
+        restored = entry.chunks[1]
+        assert source.encode()[restored.byte_start : restored.byte_end] == (
+            b"def method(self):\r\n        return 1"
+        )
+
+    def test_cache_preserves_repeated_local_hour(self, tmp_path):
+        source = DefaultChunkCache(str(tmp_path / "source"))
+        stamp = datetime(2026, 11, 1, 1, 30, fold=1)
+        with patch("chunker.incremental.datetime") as clock:
+            clock.now.return_value = stamp
+            source.store("ambiguous", [], "h")
+        backup = tmp_path / "backup.json"
+        source.export_cache(str(backup))
+        target = DefaultChunkCache(str(tmp_path / "target"))
+        target.import_cache(str(backup))
+        restored = target.retrieve("ambiguous").timestamp
+        assert restored == stamp
+        assert restored.fold == 1
+
+    def test_import_independent_snapshot(self, tmp_path, backup_records):
+        record = {
+            "file_hash": "content",
+            "language": "python",
+            "metadata": {},
+            "timestamp": "2001-03-12T08:01:02.000003",
+            "chunks": [],
+        }
+        backup = tmp_path / "backup.json"
+        _, populated = backup_records
+        snapshot = {
+            "format_version": 1,
+            "entries": {"empty": record, "populated": populated},
+            "index": {"empty": {"file_hash": "stale", "cache_file": "wrong"}},
+        }
+        backup.write_text(json.dumps(snapshot), encoding="utf-8")
+        cache = DefaultChunkCache(str(tmp_path / "cache"))
+        cache.import_cache(str(backup))
+        reopened = DefaultChunkCache(str(cache.cache_dir))
+        entry = reopened.retrieve("empty", "content")
+        assert (
+            asdict(reopened.retrieve("populated").chunks[0]) == populated["chunks"][0]
+        )
+        assert entry.language == "python"
+        assert entry.timestamp == datetime(2001, 3, 12, 8, 1, 2, 3)
+        assert reopened.invalidate(older_than=entry.timestamp) == 1
+        assert (
+            reopened.invalidate(older_than=entry.timestamp + timedelta(microseconds=1))
+            == 1
+        )
+
+        reopened.store("old", [], "hash")
+        backup.write_text('{"format_version": 1, "entries": {}}', encoding="utf-8")
+        reopened.import_cache(str(backup))
+        assert reopened.get_statistics()["stats"]["stores"] == 1
+        assert DefaultChunkCache(str(cache.cache_dir)).get_statistics()["entries"] == 0
+
+    @pytest.mark.parametrize(
+        ("fault", "message"),
+        [
+            ("legacy", "spans and IDs.*rebuild from source"),
+            (2, "format_version"),
+            (True, "format_version"),
+            (1.0, "format_version"),
+            ("truncated", "byte_start"),
+            ("path", "Invalid cache entry"),
+            ("infinity", "metadata.*finite"),
+            ("wrong_type", "start_line"),
+            ("timestamp", "timestamp"),
+            ("fold", "timestamp_fold"),
+            ("surrogate", "UTF-8"),
+        ],
+    )
+    def test_invalid_cache_backup_preserves_destination(
+        self, tmp_path, fault, message, backup_records
+    ):
+        first, second = backup_records
+        chunk = second["chunks"][0]
+        entries = {"first": first, "second": second}
+        snapshot = {"format_version": 1, "entries": entries}
+        if fault == "legacy":
+            del snapshot["format_version"]
+            second["chunks"] = [
+                {
+                    k: chunk[k]
+                    for k in (
+                        "chunk_id",
+                        "node_type",
+                        "start_line",
+                        "end_line",
+                        "content",
+                        "parent_context",
+                    )
+                }
+            ]
+        elif fault == "truncated":
+            del chunk["byte_start"]
+        elif fault == "wrong_type":
+            chunk["start_line"] = True
+        elif fault == "timestamp":
+            second["timestamp"] = "invalid"
+        elif fault == "fold":
+            second["timestamp_fold"] = True
+        elif fault == "surrogate":
+            chunk["content"] = chr(0xD800)
+        elif fault == "path":
+            entries["\ud800"] = first
+        elif fault == "infinity":
+            second["metadata"] = {"value": float("inf")}
+        else:
+            snapshot["format_version"] = fault
+        backup = tmp_path / "backup.json"
+        backup.write_text(json.dumps(snapshot), encoding="utf-8")
+        cache = DefaultChunkCache(str(tmp_path / "cache"))
+        cache.store("original", [], "keep")
+        with pytest.raises(ValueError, match=message):
+            cache.import_cache(str(backup))
+        reopened = DefaultChunkCache(str(cache.cache_dir))
+        assert reopened.get_statistics()["entries"] == 1
+        assert reopened.retrieve("original", "keep") is not None
+        assert reopened.retrieve("first") is None
+        if fault == "legacy":
+            empty = DefaultChunkCache(str(tmp_path / "empty"))
+            with pytest.raises(ValueError, match=message):
+                empty.import_cache(str(backup))
+            assert empty.retrieve("first") is None
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            (1,),
+            {1: "key"},
+            float("nan"),
+            {chr(0xD83D) + chr(0xDE80): 1, "🚀": 2},
+            chr(0xD83D) + chr(0xDE80),
+        ],
+    )
+    def test_cache_export_preserves_prior_backup(self, tmp_path, value, sample_chunks):
+        cache = DefaultChunkCache(str(tmp_path / "cache"))
+        sample_chunks[0].metadata = {"nested": [value]}
+        cache.store("entry", sample_chunks, "hash")
+        backup = tmp_path / "backup.json"
+        backup.write_bytes(b"previous")
+        with pytest.raises(ValueError, match="metadata"):
+            cache.export_cache(str(backup))
+        assert backup.read_bytes() == b"previous"
+
+    def test_cache_export_failure_cleanup(self, tmp_path, monkeypatch):
+        cache = DefaultChunkCache(str(tmp_path / "cache"))
+        cache.store("entry", [], "hash")
+        output = tmp_path / "output"
+        output.mkdir()
+        backup = output / "backup.json"
+        backup.write_bytes(b"previous")
+        with monkeypatch.context() as patcher:
+            patcher.setattr(Path, "replace", self._fail_replace)
+            with pytest.raises(OSError, match="replacement failed"):
+                cache.export_cache(str(backup))
+        assert list(output.iterdir()) == [backup]
+        assert backup.read_bytes() == b"previous"
+
+        next(cache.cache_dir.glob("*.pkl")).unlink()
+        with pytest.raises(ValueError, match="entry"):
+            cache.export_cache(str(backup))
+        assert backup.read_bytes() == b"previous"
+
+    @staticmethod
+    def _fail_replace(_path, _target):
+        raise OSError("replacement failed")
 
 
 class TestChangeDetector:

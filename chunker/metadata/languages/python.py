@@ -120,21 +120,6 @@ class PythonMetadataExtractor(BaseMetadataExtractor):
                     if call_info:
                         calls.append(call_info)
 
-            # Handle decorator calls
-            elif n.type == "decorator":
-                # Decorator can be a simple @name or @name()
-                for child in n.children:
-                    if child.type == "call":
-                        func_node = child.children[0] if child.children else None
-                        if func_node:
-                            call_info = self._extract_python_call_info(
-                                child,
-                                func_node,
-                                source,
-                            )
-                            if call_info:
-                                calls.append(call_info)
-
         self._walk_tree(node, collect_calls)
         return calls
 

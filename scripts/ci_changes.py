@@ -48,11 +48,14 @@ def classify(changes: list[tuple[str, str]]) -> dict[str, str]:
             or any(p in {"", ".", ".."} for p in path.split("/"))
         ):
             raise ValueError("invalid repository path")
+        # surrogateescape maps undecodable Git path bytes into this range.
+        if re.search(r"[\udc80-\udcff]", path):
+            code = True
+            continue
         forced = (
             path == "CHANGELOG.md"
             or (status == "D" and path in BUILD_INPUT_ROOT_FILES)
-            or path.startswith("docs/sphinx/")
-            or path.startswith("docs/language-coverage.")
+            or path.startswith(("docs/sphinx/", "docs/language-coverage."))
             or path
             in {"docs/development/mypy-baseline.txt", "docs/interface-boundary-spec.md"}
         )
@@ -104,10 +107,13 @@ def repo_url(repo: dict) -> str:
 def parse_diff(raw: bytes) -> list[tuple[str, str]]:
     if raw and not raw.endswith(b"\0"):
         raise ValueError("unterminated diff")
-    fields = raw.decode("utf-8", errors="strict").split("\0")[:-1]
+    fields = raw.split(b"\0")[:-1]
     if len(fields) % 2:
         raise ValueError("malformed diff")
-    changes = list(zip(fields[::2], fields[1::2]))
+    changes = [
+        (status.decode("ascii"), path.decode("utf-8", errors="surrogateescape"))
+        for status, path in zip(fields[::2], fields[1::2])
+    ]
     # Validate even when callers only request the parsed stream.
     classify(changes)
     return changes
