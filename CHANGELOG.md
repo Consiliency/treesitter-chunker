@@ -9,9 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fixed in-memory text fallback on Windows for languages without an installed
-  grammar. When file type detection needs to inspect content, it now returns
-  `UNKNOWN` for directories and other paths it cannot read (treesitter-chunker#585).
+- Python chunk metadata now lists each decorator call site once in `calls` and
+  `call_spans` (treesitter-chunker#604).
 - Python structural call resolution now treats a constant string as a
   `__main__` self-reference when a component split on format and attribute
   punctuation or whitespace (or a default `string.Template` identifier) is
