@@ -261,7 +261,15 @@ class BaseComplexityAnalyzer(ComplexityAnalyzer, ABC):
         Returns:
             All complexity metrics
         """
-        lines_of_code = node.end_point.row - node.start_point.row + 1
+        end = node.end_byte
+        span = source[node.start_byte : end]
+        lines_of_code = 1 + span.count(b"\n")
+        if self.language == "python":
+            lines_of_code += span.count(b"\r") - span.count(b"\r\n")
+            # A final comment can include the CR but exclude the LF of a CRLF.
+            # That ending is complete on the next byte, outside this node.
+            if span.endswith(b"\r") and source[end : end + 1] == b"\n":
+                lines_of_code -= 1
         return ComplexityMetrics(
             cyclomatic=self.calculate_cyclomatic_complexity(node),
             cognitive=self.calculate_cognitive_complexity(node),

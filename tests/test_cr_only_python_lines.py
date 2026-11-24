@@ -18,6 +18,7 @@ import pytest
 from chunker import chunk_file, chunk_text, get_parser
 from chunker.boundary import extract_boundary_ir
 from chunker.core import _line_ending_offsets, _lone_cr_parse_copy
+from chunker.metadata import MetadataExtractorFactory
 from chunker.streaming import chunk_file_streaming
 from chunker.symbol_graph import extract_symbol_graph
 from chunker.vfs import LocalFileSystem
@@ -170,11 +171,14 @@ def test_complexity_line_metrics(tmp_path: Path, newline: str):
         b"    return 1",
         b"    # end",
     ]
-    endings = list(NEWLINES.values()) if newline == "mixed" else [NEWLINES[newline]]
+    if newline == "mixed":
+        endings = [b"\n", b"\r", b"\r\n", b"\n", b"\r", b"\r", b"\n", b"\r\n"]
+    else:
+        endings = [NEWLINES[newline]] * len(lines)
     raw = (
         b"# preamble"
         + endings[0]
-        + b"".join(line + endings[i % len(endings)] for i, line in enumerate(lines))
+        + b"".join(line + ending for line, ending in zip(lines, endings, strict=True))
     )
     path = tmp_path / "metrics.py"
     path.write_bytes(raw)
@@ -186,6 +190,18 @@ def test_complexity_line_metrics(tmp_path: Path, newline: str):
     assert (chunk.start_line, chunk.end_line) == (start, end)
     metrics = chunk.metadata["complexity"]
     assert (metrics["lines_of_code"], metrics["logical_lines"]) == (end - start + 1, 4)
+
+
+@pytest.mark.parametrize("newline", sorted(NEWLINES))
+def test_raw_python_complexity_line_metrics(newline: str):
+    raw = b"def f(): return (1" + NEWLINES[newline] + b"+ 2)"
+    tree = get_parser("python").parse(raw)
+    (node,) = tree.root_node.named_children
+    assert node.type == "function_definition" and not node.has_error
+    analyzer = MetadataExtractorFactory.create_analyzer("python")
+    assert analyzer is not None
+    metrics = analyzer.analyze_complexity(node, raw)
+    assert (metrics.lines_of_code, metrics.logical_lines) == (2, 2)
 
 
 def call_oracle(raw: bytes) -> tuple[int, int, int, int]:
