@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"23"`` for the ``js`` family and ``"42"`` for
+Schema (fact version ``"23"`` for the ``js`` family and ``"43"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -299,7 +299,21 @@ logger = logging.getLogger(__name__)
 # constant-string token, and ``cell_contents`` other than a plain read are
 # ``module-object`` causes. Provisional: renumbered at merge if #726 or #729
 # lands first.
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "23", "python": "42"}
+# python "43": treesitter-chunker#724, R-724-1: a file in which any token
+# spells a namespace-reaching name (``globals``, ``f_globals``,
+# ``__import__``, ``builtins``, ``__spec__``, ...; any role, any constant
+# spelling), uses a bare ``eval``/``exec`` or imports ``__main__`` records
+# a ``value`` use of every import binding in it; a package ``__init__.py``
+# also taints itself wholly (its submodules), and a handed-out ``sys``,
+# ``importlib`` or ``builtins`` adds ``module-system``. R-724-2 exempts
+# ``exec(code, X.__dict__)`` and ``<name>.loader.exec_module(X)`` on a fresh
+# module local and ``__import__`` of a constant foreign module. R-724-4
+# (same version, unreleased): format-field separators, more tokens, the
+# own-name resolvers and ``request.module``, and the exemption voided by a
+# constant word or a ``__class__`` write. Only ``imports``-mode facts change;
+# the fixtures' digests change only by the version. R-724-7 limits freshness
+# to types.ModuleType because a loader may return an existing module.
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "23", "python": "43"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.

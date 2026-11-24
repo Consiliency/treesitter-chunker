@@ -10,7 +10,9 @@ or does not apply.
 
 Usage (Python 3.14, from the repository root)::
 
-    uv run --locked --all-extras python scripts/call_resolution_tier2_py_mutations.py
+    uv run --locked --all-extras python scripts/call_resolution_tier2_py_mutations.py [ID ...]
+
+With mutation ids as arguments, only those run.
 
 Run it only with headroom: it runs the narrow Tier 2 Python tests once per
 mutation, serially.
@@ -511,14 +513,14 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "r5-b2-acquired-before-gate",
         PYS,
-        "        if acquired and set(_ACQUIRED_PARTS.split(value)) & _ACQUIRED_MODULES:",
+        "        if acquired and set(_TOKEN_WORDS.split(value)) & _ACQUIRED_MODULES:",
         "        if False:",
     ),
     (
         "r5-b2-split-every-separator",
         PYS,
-        '_ACQUIRED_PARTS = re.compile(r"[^A-Za-z0-9_]+")',
-        '_ACQUIRED_PARTS = re.compile(r"[.:]")',
+        "if acquired and set(_TOKEN_WORDS.split(value)) & _ACQUIRED_MODULES:",
+        "if acquired and set(_DOTTED_SPLIT.split(value)) & _ACQUIRED_MODULES:",
     ),
     (
         "r5-b2-entry-point",
@@ -1266,7 +1268,596 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         '        if missing.get("reason") == "unbound"',
         "        if True",
     ),
-    # Equivalent (recorded, not run): ``continuation`` (tree-sitter reports
+    # treesitter-chunker#724, R-724-1: a file with a namespace-reaching
+    # token hands out its import bindings.
+    (
+        "ns-reader-hands-out-imports",
+        PYM,
+        "    if handout is None or handout:\n        # #724",
+        "    if False:\n        # #724",
+    ),
+    (
+        "ns-names",
+        PYM,
+        "        if spellings & _NAMESPACE_TOKENS:\n            if _not_own_namespace(",
+        "        if False:\n            if _not_own_namespace(",
+    ),
+    ("ns-frame-key", PYM, "            keys |= read\n", "            pass\n"),
+    (
+        "ns-frame-computed-key",
+        PYM,
+        "    return None if value is None else frozenset({value})",
+        "    return frozenset() if value is None else frozenset({value})",
+    ),
+    (
+        "ns-frame-read-only",
+        PYM,
+        "    if not analysis._attribute_read(ident):\n        return None\n    outer",
+        "    outer",
+    ),
+    (
+        "ns-key-dunder",
+        PYM,
+        "                ps._dunder(key) or key not in import_names for key in read",
+        "                key not in import_names for key in read",
+    ),
+    (
+        "ns-key-import-binding",
+        PYM,
+        "                ps._dunder(key) or key not in import_names for key in read",
+        "                ps._dunder(key) for key in read",
+    ),
+    (
+        "ns-token-globals",
+        PYM,
+        '        "globals",\n        "locals",',
+        '        "locals",',
+    ),
+    (
+        "ns-token-locals",
+        PYM,
+        '        "locals",\n        "vars",',
+        '        "vars",',
+    ),
+    (
+        "ns-token-vars",
+        PYM,
+        '        "vars",\n',
+        "",
+    ),
+    (
+        "ns-token-f-builtins",
+        PYM,
+        '        "f_builtins",\n        "__globals__",',
+        '        "__globals__",',
+    ),
+    (
+        "ns-token-import",
+        PYM,
+        '        "__import__",\n        "getmodule",',
+        '        "getmodule",',
+    ),
+    (
+        "ns-token-getmodule",
+        PYM,
+        '        "getmodule",\n        "getclosurevars",',
+        '        "getclosurevars",',
+    ),
+    (
+        "ns-token-getclosurevars",
+        PYM,
+        '        "getmodule",\n        "getclosurevars",\n',
+        '        "getmodule",\n',
+    ),
+    (
+        "ns-token-loader",
+        PYM,
+        '        "__loader__",\n',
+        "",
+    ),
+    (
+        "ns-token-spec",
+        PYM,
+        '        "__loader__",\n        "__spec__",\n',
+        '        "__loader__",\n',
+    ),
+    (
+        "ns-token-load-module",
+        PYM,
+        '        "load_module",\n',
+        "",
+    ),
+    (
+        "ns-token-exec-module",
+        PYM,
+        '        "exec_module",\n',
+        "",
+    ),
+    (
+        "ns-token-get-field",
+        PYM,
+        '        "get_field",\n',
+        "",
+    ),
+    (
+        "ns-token-builtins",
+        PYM,
+        '        # The builtins module, which holds every builtin above.\n        "builtins",\n',
+        "",
+    ),
+    (
+        "ns-annotation-evaluator",
+        PYM,
+        '        "get_type_hints",\n        "get_annotations",',
+        '        "get_annotations",',
+    ),
+    (
+        "ns-strings",
+        PYM,
+        "        if _token_match(value, _NAMESPACE_TOKENS):\n            return None",
+        "        if False:\n            return None",
+    ),
+    (
+        "ns-string-components",
+        PYM,
+        '_TOKEN_SEPARATORS = re.compile(r"[.:\\[\\]\'\\"{}!]")',
+        '_TOKEN_SEPARATORS = re.compile(r"[.:{}!]")',
+    ),
+    (
+        "ns-joined-strings",
+        PYM,
+        '        if kind not in ("string", "concatenated_string", "binary_operator"):\n'
+        '            continue\n        if (\n            kind == "string"',
+        '        if kind != "string":\n'
+        '            continue\n        if (\n            kind == "string"',
+    ),
+    (
+        "ns-evaluator",
+        PYM,
+        "        if not ps._binding_position(ident):\n"
+        "            if not _exec_into_fresh_module(analysis, ident):\n"
+        "                return None\n            exempted = True\n    evaluator_strings",
+        "        if False:\n            if False:\n"
+        "                return None\n            exempted = True\n    evaluator_strings",
+    ),
+    (
+        "ns-evaluator-binding",
+        PYM,
+        "        if not ps._binding_position(ident):\n"
+        "            if not _exec_into_fresh_module(analysis, ident):\n"
+        "                return None\n            exempted = True\n    evaluator_strings",
+        "        if True:\n            if True:\n"
+        "                return None\n            exempted = True\n    evaluator_strings",
+    ),
+    (
+        "ns-evaluator-keyword",
+        PYM,
+        '            if parent is not None and parent.type == "attribute":\n'
+        "                members = True",
+        "            if True:\n                members = True",
+    ),
+    (
+        "ns-import-form",
+        PYM,
+        "        if _in_import(ident):\n            return None\n        if not ps._binding_position",
+        "        if _in_import(ident):\n            continue\n        if not ps._binding_position",
+    ),
+    (
+        "ns-exec-statement",
+        PYM,
+        '        if kind == "exec_statement":\n            return None',
+        '        if kind == "exec_statement":\n            continue',
+    ),
+    (
+        "ns-builtins-members",
+        PYM,
+        "    if routes and (members or evaluator_strings):",
+        "    if routes and evaluator_strings:",
+    ),
+    (
+        "ns-members-receiver",
+        PYM,
+        "    if routes and (members or evaluator_strings):",
+        "    if members or evaluator_strings:",
+    ),
+    (
+        "ns-builtin-strings",
+        PYM,
+        "            evaluator_strings = True",
+        "            pass",
+    ),
+    (
+        "ns-routes-strings",
+        PYM,
+        "        if _token_match(value, _BUILTINS_ROUTES):\n            routes = True",
+        "        if False:\n            routes = True",
+    ),
+    (
+        "ns-main-import",
+        PYM,
+        "        if name == _MAIN and _import_target(ident):\n            return None",
+        "        if False:\n            return None",
+    ),
+    (
+        "ns-main-string",
+        PYM,
+        "        if value == _MAIN and _argument_string(node, source) is not None:",
+        "        if False:",
+    ),
+    (
+        "ns-main-from-module",
+        PYM,
+        "        return module is not None and module.id == node.id",
+        "        return True",
+    ),
+    (
+        "ns-package-submodules",
+        PYM,
+        '            facts.taints.add((own_ref, "*"))\n    _scan_causes',
+        "            pass\n    _scan_causes",
+    ),
+    (
+        "ns-package-every-binding",
+        PYM,
+        "        if handout is None and analysis.module_path.package_init and own_ref:",
+        "        if analysis.module_path.package_init and own_ref:",
+    ),
+    (
+        "ns-module-system",
+        PYM,
+        "            facts.shutoff.add(CAUSE_MODULE_SYSTEM)\n        if handout is None and analysis",
+        "            pass\n        if handout is None and analysis",
+    ),
+    (
+        "ns-module-system-importlib",
+        PYM,
+        '_MODULE_SYSTEM_MODULES = frozenset({"sys", "importlib", "builtins"})',
+        '_MODULE_SYSTEM_MODULES = frozenset({"sys", "builtins"})',
+    ),
+    (
+        "ns-module-system-builtins",
+        PYM,
+        '_MODULE_SYSTEM_MODULES = frozenset({"sys", "importlib", "builtins"})',
+        '_MODULE_SYSTEM_MODULES = frozenset({"sys", "importlib"})',
+    ),
+    (
+        "ns-module-system-root",
+        PYM,
+        '        if any((_dotted(info) or [""])[0] in _MODULE_SYSTEM_MODULES for info in handed):',
+        '        if any((_dotted(info) or [""])[-1] in _MODULE_SYSTEM_MODULES for info in handed):',
+    ),
+    # R-724-2: the closed allow-list of exempt token uses.
+    (
+        "ns-exempt-token",
+        PYM,
+        "            if _not_own_namespace(analysis, ident):",
+        "            if False:",
+    ),
+    (
+        "ns-exempt-exec",
+        PYM,
+        "            if not _exec_into_fresh_module(analysis, ident):\n"
+        "                return None\n",
+        "            if True:\n                return None\n",
+    ),
+    (
+        "ns-exempt-factory-list",
+        PYM,
+        'return (*path, *reversed(chain)) == ("types", "ModuleType")',
+        'return (*path, *reversed(chain)) in {("types", "ModuleType"), ("importlib", "util", "module_from_spec")}',
+    ),
+    (
+        "ns-exempt-exec-receiver",
+        PYM,
+        "        and _fresh_module_local(analysis, ps._unwrap(receiver, skip_comments=True))",
+        "        and True",
+    ),
+    (
+        "ns-exempt-loader-receiver",
+        PYM,
+        "        and len(arguments) == 1\n        and _fresh_module_local(analysis, arguments[0])",
+        "        and len(arguments) == 1",
+    ),
+    (
+        "ns-exempt-exec-name",
+        PYM,
+        '    if ps._text(ident, source) != "exec" or not _unshadowed_builtin(analysis, "exec"):',
+        '    if not _unshadowed_builtin(analysis, "exec"):',
+    ),
+    (
+        "ns-exempt-exec-builtin",
+        PYM,
+        '    if ps._text(ident, source) != "exec" or not _unshadowed_builtin(analysis, "exec"):',
+        '    if ps._text(ident, source) != "exec":',
+    ),
+    (
+        "ns-exempt-unshadowed-star",
+        PYM,
+        "    return not analysis.star and not any(\n        bound == name",
+        "    return not any(\n        bound == name",
+    ),
+    (
+        "ns-exempt-splat",
+        PYM,
+        '        value.type in ("keyword_argument", "list_splat", "dictionary_splat")',
+        '        value.type in ("keyword_argument", "dictionary_splat")',
+    ),
+    (
+        "ns-exempt-exec-arity",
+        PYM,
+        "    if arguments is None or len(arguments) != 2:",
+        "    if arguments is None or len(arguments) < 2:",
+    ),
+    (
+        "ns-exempt-exec-dict",
+        PYM,
+        '        and ps._text(attribute, source) == "__dict__"',
+        '        and ps._text(attribute, source) != ""',
+    ),
+    (
+        "ns-exempt-loader-name",
+        PYM,
+        '        or ps._text(loader_name, source) != "loader"',
+        '        or ps._text(loader_name, source) == ""',
+    ),
+    (
+        "ns-exempt-loader-holder",
+        PYM,
+        '        or holder is None\n        or holder.type != "identifier"',
+        "        or holder is None",
+    ),
+    (
+        "ns-exempt-loader-arity",
+        PYM,
+        "        and len(arguments) == 1\n        and _fresh_module_local(analysis, arguments[0])",
+        "        and len(arguments) >= 1\n        and _fresh_module_local(analysis, arguments[0])",
+    ),
+    (
+        "ns-exempt-import-builtin",
+        PYM,
+        '    if not _unshadowed_builtin(analysis, "__import__"):\n        return False',
+        "",
+    ),
+    (
+        "ns-exempt-import-arity",
+        PYM,
+        "    if arguments is None or len(arguments) != 1:\n        return False\n"
+        "    value = ps._constant_string(arguments[0], analysis.source)",
+        "    if arguments is None or len(arguments) < 1:\n        return False\n"
+        "    value = ps._constant_string(arguments[0], analysis.source)",
+    ),
+    (
+        "ns-exempt-import-parts",
+        PYM,
+        "    if not all(part.isidentifier() for part in parts):\n        return False\n",
+        "",
+    ),
+    (
+        "ns-exempt-import-classified",
+        PYM,
+        "        and parts[0] not in _CLASSIFIED_MODULES\n",
+        "",
+    ),
+    (
+        "ns-exempt-import-own",
+        PYM,
+        "        and parts[0] not in own\n",
+        "",
+    ),
+    (
+        "ns-exempt-import-own-path",
+        PYM,
+        "    own = set(analysis.module_path.components) | set(analysis.own_names)",
+        "    own = set(analysis.own_names)",
+    ),
+    (
+        "ns-exempt-fresh-function",
+        PYM,
+        "    if scope is None or scope.kind != ps._FUNCTION:",
+        "    if scope is None:",
+    ),
+    (
+        "ns-exempt-independent-hazard",
+        PYS,
+        "not namespace_receiver or self.namespace_receiver_blocked",
+        "not namespace_receiver",
+    ),
+    (
+        "ns-exempt-fresh-lookup",
+        PYM,
+        "    if analysis.decided is not scope or len(scope.bindings.get(name, ())) != 1:",
+        "    if len(scope.bindings.get(name, ())) != 1:",
+    ),
+    (
+        "ns-exempt-fresh-one-binding",
+        PYM,
+        "    if analysis.decided is not scope or len(scope.bindings.get(name, ())) != 1:",
+        "    if analysis.decided is not scope:",
+    ),
+    (
+        "ns-exempt-fresh-one-site",
+        PYM,
+        "    if len(sites) != 1:\n        return False\n    (site,) = sites",
+        "    if len(sites) > 1:\n        return False\n    (site,) = sites[:1] or [None]",
+    ),
+    (
+        "ns-exempt-factory-mangled",
+        PYM,
+        "    if ps._mangled_names(node, head, source):",
+        "    if False:",
+    ),
+    (
+        "ns-exempt-factory-star",
+        PYM,
+        '    if node is None or node.type != "identifier" or analysis.star:',
+        '    if node is None or node.type != "identifier":',
+    ),
+    (
+        "ns-exempt-factory-writes",
+        PYM,
+        "    if set(chain) & analysis.attribute_writes:",
+        "    if False:",
+    ),
+    (
+        "ns-exempt-factory-other-binding",
+        PYM,
+        "        if dotted is None:\n            return False\n        paths.add",
+        "        if dotted is None:\n            continue\n        paths.add",
+    ),
+    (
+        "ns-exempt-factory-one-path",
+        PYM,
+        "    if len(paths) != 1:\n        return False\n    (path,) = paths",
+        "    if not paths:\n        return False\n    path = sorted(paths)[-1]",
+    ),
+    # R-724-4: format-field separators, the voided exemption, the
+    # ``__class__`` write, and the S-3 routes.
+    (
+        "ns-separator-open-brace",
+        PYM,
+        '_TOKEN_SEPARATORS = re.compile(r"[.:\\[\\]\'\\"{}!]")',
+        '_TOKEN_SEPARATORS = re.compile(r"[.:\\[\\]\'\\"}!]")',
+    ),
+    (
+        "ns-separator-close-brace",
+        PYM,
+        '_TOKEN_SEPARATORS = re.compile(r"[.:\\[\\]\'\\"{}!]")',
+        '_TOKEN_SEPARATORS = re.compile(r"[.:\\[\\]\'\\"{!]")',
+    ),
+    (
+        "ns-separator-bang",
+        PYM,
+        '_TOKEN_SEPARATORS = re.compile(r"[.:\\[\\]\'\\"{}!]")',
+        '_TOKEN_SEPARATORS = re.compile(r"[.:\\[\\]\'\\"{}]")',
+    ),
+    (
+        "ns-exempt-void",
+        PYM,
+        "    if exempted and worded:\n",
+        "    if False:\n",
+    ),
+    (
+        "ns-exempt-void-exec",
+        PYM,
+        "                return None\n            exempted = True\n    evaluator_strings",
+        "                return None\n    evaluator_strings",
+    ),
+    (
+        "ns-exempt-void-token",
+        PYM,
+        "                # lookup proves is not this file's namespace.\n"
+        "                exempted = True\n",
+        "                # lookup proves is not this file's namespace.\n",
+    ),
+    (
+        "ns-exempt-void-words",
+        PYM,
+        "        if set(ps._TOKEN_WORDS.split(value)) & _EXEMPT_VOIDING_WORDS or",
+        "        if False or",
+    ),
+    (
+        "ns-exempt-void-word-split",
+        PYM,
+        "set(ps._TOKEN_WORDS.split(value)) & _EXEMPT_VOIDING_WORDS",
+        "set(_TOKEN_SEPARATORS.split(value)) & _EXEMPT_VOIDING_WORDS",
+    ),
+    (
+        "ns-exempt-void-factory-names",
+        PYM,
+        '_EXEMPT_VOIDING_WORDS = _NAMESPACE_TOKENS | {"ModuleType", "module_from_spec"}',
+        "_EXEMPT_VOIDING_WORDS = _NAMESPACE_TOKENS",
+    ),
+    (
+        "ns-exempt-void-factory-parts",
+        PYM,
+        "        if set(ps._TOKEN_WORDS.split(value)) & _EXEMPT_VOIDING_WORDS or _token_match(\n"
+        "            value, _FACTORY_PARTS\n        ):",
+        "        if set(ps._TOKEN_WORDS.split(value)) & _EXEMPT_VOIDING_WORDS or _token_match(\n"
+        "            value, frozenset()\n        ):",
+    ),
+    (
+        "ns-exempt-class-write",
+        PYM,
+        '    if "__class__" in analysis.attribute_writes:\n',
+        "    if False:\n",
+    ),
+    (
+        "ns-own-route",
+        PYM,
+        "        if _own_module_route(analysis, ident, name):\n            return None\n",
+        "",
+    ),
+    (
+        "ns-own-resolver-name",
+        PYM,
+        '    if first.type == "identifier" and ps._text(first, source) == "__name__":\n'
+        "        return True\n",
+        "",
+    ),
+    (
+        "ns-own-resolver-constant",
+        PYM,
+        "    return head in {*analysis.module_path.components, *analysis.own_names}",
+        "    return False",
+    ),
+    (
+        "ns-own-resolver-path",
+        PYM,
+        "    return head in {*analysis.module_path.components, *analysis.own_names}",
+        "    return head in {*analysis.own_names}",
+    ),
+    (
+        "ns-own-resolver-callee",
+        PYM,
+        "    if callee is not ident and not ps._same(\n"
+        '        ident, callee.child_by_field_name("attribute")\n    ):\n        return False\n',
+        "",
+    ),
+    (
+        "ns-own-attribute",
+        PYM,
+        "            and (ps._text(holder, source), name) in _OWN_MODULE_ATTRIBUTES\n",
+        "            and False\n",
+    ),
+    (
+        "ns-own-resolver-locate",
+        PYM,
+        '_OWN_NAME_RESOLVERS = frozenset({"resolve_name", "locate", "resolve"})',
+        '_OWN_NAME_RESOLVERS = frozenset({"resolve_name", "resolve"})',
+    ),
+    (
+        "ns-own-resolver-resolve",
+        PYM,
+        '_OWN_NAME_RESOLVERS = frozenset({"resolve_name", "locate", "resolve"})',
+        '_OWN_NAME_RESOLVERS = frozenset({"resolve_name", "locate"})',
+    ),
+    (
+        "ns-own-resolver-resolve-name",
+        PYM,
+        '_OWN_NAME_RESOLVERS = frozenset({"resolve_name", "locate", "resolve"})',
+        '_OWN_NAME_RESOLVERS = frozenset({"locate", "resolve"})',
+    ),
+    ("ns-token-getmembers", PYM, '        "getmembers",\n', ""),
+    ("ns-token-getmembers-static", PYM, '        "getmembers_static",\n', ""),
+    ("ns-token-doctest-finder", PYM, '        "DocTestFinder",\n', ""),
+    ("ns-token-globs", PYM, '        "globs",\n', ""),
+    ("ns-token-rlcompleter", PYM, '        "rlcompleter",\n', ""),
+    (
+        "ns-token-dunder-builtins",
+        PYM,
+        '        "rlcompleter",\n        "__builtins__",\n',
+        '        "rlcompleter",\n',
+    ),
+    ("ns-token-pyeval-getglobals", PYM, '        "PyEval_GetGlobals",\n', ""),
+    # Equivalent (recorded, not run): the R-724-2 keyword filter of
+    # ``_positional_arguments`` (a keyword argument is no attribute,
+    # identifier or constant, which each exempt position also requires), the
+    # ``exec_module`` attribute-position check (a token that is no attribute
+    # name has no ``.loader`` object), the receiver's mangled-name check (the
+    # lookup decides no mangled name), the factory head's attribute-write
+    # check (every recorded attribute write is a module binding event) and
+    # ``module_path.unknown`` (every test file has a path); ``continuation``
+    # (tree-sitter reports
     # every malformed continuation as an error first), ``own-name-acquisition``
     # (``sys.modules[__name__]`` already makes the file dynamic in Tier 1, so
     # its exports fail closed), ``chain-matches-reference`` (the tree's chain
@@ -1406,7 +1997,7 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "s4-gc-acquired",
         PYS,
-        "        if acquired and _GC in _ACQUIRED_PARTS.split(value):",
+        "        if acquired and _GC in _TOKEN_WORDS.split(value):",
         "        if False:",
     ),
     (
@@ -1520,14 +2111,14 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "s4-frame-readers-drop-curframe-locals",
         PYM,
-        '        "getasyncgenlocals",\n        "curframe_locals",\n',
-        '        "getasyncgenlocals",\n',
+        '        "curframe_locals",\n        # R-699-10 item 1',
+        "        # R-699-10 item 1",
     ),
     (
         "s4-frame-readers-words",
-        PYS,
-        '_TOKEN_WORDS = re.compile(r"[^A-Za-z0-9_]+")',
-        '_TOKEN_WORDS = re.compile(r"[.:]")',
+        PYM,
+        "if words & _FRAME_READERS:",
+        "if set(ps._DOTTED_SPLIT.split(value)) & _FRAME_READERS:",
     ),
     (
         "s4-locals-value-cause",
@@ -1570,8 +2161,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "r10-getclosurevars-reader",
         PYM,
-        '        "getclosurevars",\n',
-        "",
+        '        # them, with no cell or frame name spelled.\n        "getclosurevars",\n',
+        "        # them, with no cell or frame name spelled.\n",
     ),
     (
         "r10-imported-patch-any-module",
@@ -1696,7 +2287,13 @@ def _pytest(root: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    """Run every mutation, or only the ids given as arguments."""
+    only = set(sys.argv[1:] if argv is None else argv)
+    unknown = only - {m[0] for m in MUTATIONS}
+    if unknown:
+        print(f"unknown mutation ids: {sorted(unknown)}", file=sys.stderr)
+        return 2
     with tempfile.TemporaryDirectory(prefix="tier2-py-mutations-") as tmp:
         copy = Path(tmp) / "repo"
         copy.mkdir()
@@ -1709,7 +2306,8 @@ def main() -> int:
             print("baseline fails; no mutation is meaningful", file=sys.stderr)
             return 2
         bad = 0
-        for ident, relative, old, new in MUTATIONS:
+        selected = [m for m in MUTATIONS if not only or m[0] in only]
+        for ident, relative, old, new in selected:
             path = copy / relative
             original = path.read_text(encoding="utf-8")
             if original.count(old) != 1:
@@ -1743,7 +2341,7 @@ def main() -> int:
             killed = result.returncode == 1
             bad += not killed
             print(f"{'KILLED' if killed else 'SURVIVED'}\t{ident}\t{failed}")
-        total = len(MUTATIONS)
+        total = len(selected)
         print(f"{total - bad}/{total} killed")
         return 1 if bad else 0
 

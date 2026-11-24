@@ -32,7 +32,15 @@ for the exact rules.
 In Python, `imports` also checks for recognized writes to a known module's
 globals across the run. A write or an escape, such as passing an imported
 module to a helper, can also invalidate that module's own Tier 1 module-scope
-proofs. Python can therefore resolve fewer calls in `imports` than in
+proofs. For example, after `import svc; helper(globals())`, the helper can
+write `d["svc"].t` through the dictionary it received. The resolver treats
+the file's imports as exposed when it finds a namespace-reaching name such
+as `globals`, `f_locals` or `__spec__`, including in a constant string.
+A constant-key frame lookup can limit exposure to a single imported name.
+The resolver can prove a fresh module for a function local constructed with
+`types.ModuleType`. With `importlib.util.module_from_spec`, the loader can
+return an existing module, including the importer itself.
+Python can therefore resolve fewer calls in `imports` than in
 `structural`. The tool does not detect cross-file closure-cell writes or
 writes to a caller's frame locals for Tier 1 proofs. A Tier 1 edge that such
 a write makes wrong stays `resolved` in both modes.
@@ -85,7 +93,6 @@ outside those rules.
 
 | Route | Example | Tracked in |
 | --- | --- | --- |
-| Python imports exposed through a namespace | Passing `globals()` or `locals()` to a helper can let it reach and modify an imported module. | [treesitter-chunker#724](https://github.com/Consiliency/treesitter-chunker/issues/724) |
 | Python helpers that return imported modules | Returning an import already counts as exposing it to other code. More precise tracking is planned for which module a helper returns and how the caller uses it. | [treesitter-chunker#706](https://github.com/Consiliency/treesitter-chunker/issues/706) |
 
 ### Runtime behavior the source scan can miss

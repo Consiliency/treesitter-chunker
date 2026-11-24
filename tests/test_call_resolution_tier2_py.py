@@ -1034,6 +1034,13 @@ CAUSES: dict[str, tuple[str, str]] = {
 }
 
 
+_CAUSES_HANDED_OUT = {
+    "builtins": "module-system",
+    "frame-globals": "module-system",
+    "frame-locals-write": "module-system",
+}
+
+
 @pytest.mark.parametrize("case", sorted(CAUSES))
 def test_run_wide_causes_fail_closed(tmp_path: Path, case: str) -> None:
     """A cause shuts off Tier 2 (as for TS/JS, PR 5); Tier 1 proofs keep
@@ -1043,7 +1050,15 @@ def test_run_wide_causes_fail_closed(tmp_path: Path, case: str) -> None:
     off, structural, on, label = _run(root, "use.py", "t")
     assert structural == off
     assert on == off, case
-    assert label == f"none(run-tainted:{cause})", case
+    assert cause in _module_bindings(root)["w.py"]["shutoff"], case
+    # R-724-1 item 4: a writer that spells a namespace-reaching name hands
+    # out its ``sys`` or ``builtins``, a ``module-system`` cause, which is
+    # reported first.
+    if case == "b1-loader-get-code":
+        # use.__spec__ hands out the writer's import of use.
+        assert label == "none(module-escape)"
+    else:
+        assert label == f"none(run-tainted:{_CAUSES_HANDED_OUT.get(case, cause)})", case
     _own_off, own_structural, own_on, _own_label = _run(root, "svc.py", "t")
     assert own_structural["resolution"] == "resolved"
     for key in ("resolution", "candidates", "to"):
@@ -1538,7 +1553,9 @@ FOLD2_BLOCKING: dict[str, tuple[dict[str, str], tuple[str, str], str, str, str]]
             "patch.py": "import mid\n" + PATCHER + "mid.svc.t = o\n",
         },
         ("use.py", "t"),
-        "reassigned",
+        # #724: ``mid.py`` reads its own namespace, so its ``import svc``
+        # is handed out and ``svc`` is tainted wholly, not only ``svc.t``.
+        "module-escape",
         "import patch, use; print(use.u())",
         "2 (other.t runs)",
     ),
@@ -1782,14 +1799,11 @@ FOLD2_CONTROLS: dict[str, tuple[dict[str, str], tuple[str, str], str]] = {
         ("src/app/main.py", "t"),
         "svc.py",
     ),
-    # E6-7: plain reads of safe dunders are no escape.
+    # E6-7: plain reads of safe dunders are no escape. (``svc.__spec__``
+    # left: ``__spec__`` is a namespace-reaching name in any spelling,
+    # R-724-1.)
     "safe-dunder-reads": (
-        {
-            "w.py": (
-                "import svc\n\nINFO = (svc.__file__, svc.__name__, svc.__spec__, "
-                "svc.__doc__)\n"
-            )
-        },
+        {"w.py": "import svc\n\nINFO = (svc.__file__, svc.__name__, svc.__doc__)\n"},
         ("use.py", "t"),
         "svc.py",
     ),
@@ -2028,9 +2042,12 @@ FOLD2_MUTATION_GAPS: dict[str, tuple[dict[str, str | bytes], str, str]] = {
         "t",
         "dynamic-scope",
     ),
+    # A package that hands out its namespace (``globals()``) taints its
+    # submodules wholly (R-724-1 item 2), which decides first; a mention of
+    # ``importlib`` makes the package dynamic without handing it out.
     "submodule-of-a-dynamic-package": (
         {
-            "pkg/__init__.py": "G = globals()\n",
+            "pkg/__init__.py": "import importlib\n",
             "pkg/sub.py": SVC,
             "use.py": "from pkg import sub\n\n\ndef u():\n    return sub.t()\n",
         },
@@ -3236,19 +3253,23 @@ def test_fold6_monkeypatch_methods_on_any_receiver(tmp_path: Path, case: str) ->
     root = _write(tmp_path, {**_SVC_OTHER, **files})
     off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
     assert on == off, case
-    # #699 S2 causes sort first where a tree also spells one: the annotation
-    # evaluator ``get_type_hints`` (``evaluator``) and a ``__closure__``
-    # mention (``module-object``, B-1).
-    # #699 S4 (PY-9): a spelled ``f_locals`` is a ``module-object`` cause.
-    expected = {
-        "f5_hints_locals": "evaluator",
-        "f5_closure_cell": "module-object",
-        "f5_frame_locals": "module-object",
-        "f5_frame_walk": "module-object",
-    }
-    cause = expected.get(case, "unresolvable-writer")
-    assert label == f"none(run-tainted:{cause})", case
-    assert "unresolvable-writer" in _recorded_causes(root), case
+    facts = _module_bindings(root)
+    assert any("unresolvable-writer" in f["shutoff"] for f in facts.values()), case
+    # #724, R-724-1: a test file that reaches its own namespace (``locals()``,
+    # a frame read by a key that names no import binding) hands out its
+    # ``import calls``, so ``calls`` is tainted wholly, which decides first;
+    # one that hands out ``sys`` raises ``module-system``, reported first.
+    expected = _FOLD6_NAMESPACE_READERS.get(case, "run-tainted:unresolvable-writer")
+    assert label == f"none({expected})", case
+
+
+_FOLD6_NAMESPACE_READERS = {
+    "f5_locals_dict": "module-escape",
+    "f5_closure_cell": "run-tainted:module-object",
+    "f5_hints_locals": "module-escape",
+    "f5_frame_locals": "module-escape",
+    "f5_frame_walk": "run-tainted:module-system",
+}
 
 
 FOLD6_CONTROLS: dict[str, tuple[str, str | None]] = {
@@ -3442,7 +3463,14 @@ def test_fold7_method_names_by_constant_expression(tmp_path: Path, case: str) ->
     root = _write(tmp_path, {**_SVC_OTHER, **files})
     off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
     assert on == off, case
-    assert label == f"none(run-tainted:{reason})", case
+    facts = _module_bindings(root)
+    assert any(reason in f["shutoff"] for f in facts.values()), case
+    if case == "f6p_c09_vars_class":
+        # R-724-1: ``vars`` in any spelling hands out ``import calls``, so
+        # ``calls`` is tainted wholly, which decides first.
+        assert label == "none(module-escape)", case
+    else:
+        assert label == f"none(run-tainted:{reason})", case
 
 
 def test_fold7_computed_method_name_is_r12(tmp_path: Path) -> None:
@@ -3631,6 +3659,2647 @@ def test_fold8_clean_reexports_still_resolve(tmp_path: Path, case: str) -> None:
     assert _target(on, root) == "a/b.py", case
 
 
+# treesitter-chunker#724: a file that reads its own namespace hands out every
+# import binding in it. Each tree's ``main.py`` imports ``use`` (the reader,
+# or the file that reaches it), runs it and prints which ``t`` body
+# ``svc.u()`` ran. ``svc.py``'s ``u -> t`` is a Tier 1 proof; ``other.py``
+# defines another ``t``, so name mode is ambiguous.
+_NS_SVC = 'def t():\n    return "SVC.t"\n\n\ndef u():\n    return t()\n'
+_NS_BASE = {
+    "svc.py": _NS_SVC,
+    "other.py": 'def t():\n    return "OTHER.t"\n',
+    "main.py": "import use\nimport svc\n\nuse.go()\nprint(svc.u())\n",
+}
+_NS_POKE = "import get as G\n\n\ndef go():\n    G.poke()\n"
+_NS_HELPER = {
+    "helper.py": 'import other\n\n\ndef patch(d):\n    d["svc"].t = other.t\n'
+}
+
+# Name -> (files, what CPython 3.14 prints). Every pinned case printed
+# ``OTHER.t`` (the replacement ran); main 64bae100 resolved ``svc.py``'s
+# ``t`` in all but c01 and c04, whose getter return or module alias was
+# already an escape.
+NAMESPACE_HANDOUT: dict[str, dict[str, str]] = {
+    # The #706 plan battery (706/battery-final4).
+    "c01-locals-leak-alias": {
+        "get.py": "import svc\n\n\ndef get():\n    return svc\n",
+        "helper.py": 'import other\n\n\ndef patch(d):\n    d["m"].t = other.t\n',
+        "use.py": (
+            "from get import get\nimport helper\n\n\ndef go():\n    m = get()\n"
+            "    helper.patch(locals())\n"
+        ),
+    },
+    "c01-twin-locals-leak-import": {
+        **_NS_HELPER,
+        "use.py": "import helper\n\n\ndef go():\n    import svc\n    helper.patch(locals())\n",
+    },
+    "c04-globals-leak-module-alias": {
+        "holder.py": "import svc\n",
+        "helper.py": 'import other\n\n\ndef patch(d):\n    d["SV"].t = other.t\n',
+        "use.py": (
+            "import holder as H\nimport helper\nSV = H.svc\n\n\ndef go():\n"
+            "    helper.patch(globals())\n"
+        ),
+    },
+    "c04-twin-globals-leak-import": {
+        **_NS_HELPER,
+        "use.py": "import svc\nimport helper\n\n\ndef go():\n    helper.patch(globals())\n",
+    },
+    "c03-twin-exec-import": {
+        "use.py": 'import svc\nimport other\n\n\ndef go():\n    exec("svc.t = other.t")\n',
+    },
+    # The plan review's twins (706-opus, plain imports).
+    "x02t-own-f_globals": {
+        "get.py": (
+            "import sys\nimport svc\nimport other\n\n\ndef poke():\n"
+            '    sys._getframe(0).f_globals["svc"].t = other.t\n'
+        ),
+        "use.py": _NS_POKE,
+    },
+    "x03t-own-__globals__": {
+        "get.py": (
+            "import svc\nimport other\n\n\ndef poke():\n"
+            '    poke.__globals__["svc"].t = other.t\n'
+        ),
+        "use.py": _NS_POKE,
+    },
+    "y01t-own-getmodule": {
+        "get.py": (
+            "import inspect\nimport svc\nimport other\n\n\ndef poke():\n"
+            "    inspect.getmodule(poke).svc.t = other.t\n"
+        ),
+        "use.py": _NS_POKE,
+    },
+    "y02t-own-dunder-import": {
+        "get.py": (
+            "import svc\nimport other\n\n\ndef poke():\n"
+            "    __import__(__name__).svc.t = other.t\n"
+        ),
+        "use.py": _NS_POKE,
+    },
+    "y05t-caller-f_globals": {
+        "use.py": (
+            "import sys\nimport svc\nimport other\n\n\ndef go():\n"
+            '    sys._getframe(0).f_globals["svc"].t = other.t\n'
+        ),
+    },
+    "z01t-caller-globals": {
+        "use.py": (
+            "import svc\nimport other\n\n\ndef go():\n"
+            '    globals()["svc"].t = other.t\n'
+        ),
+    },
+    "x06t-string-annotation": {
+        "get.py": (
+            'import typing\nimport svc\nimport other\n\n\ndef h(x: "svc"):\n'
+            '    pass\n\n\ndef poke():\n    typing.get_type_hints(h)["x"].t = other.t\n'
+        ),
+        "use.py": _NS_POKE,
+    },
+    # More spellings of the same rule.
+    "vars-no-argument": {
+        "use.py": (
+            "import other\n\n\ndef go():\n    import svc\n"
+            '    vars()["svc"].t = other.t\n'
+        ),
+    },
+    "eval-one-argument": {
+        "use.py": 'import svc\nimport other\n\n\ndef go():\n    eval("svc").t = other.t\n',
+    },
+    "exec-none-globals": {
+        "use.py": (
+            "import svc\nimport other\n\n\ndef go():\n"
+            '    exec("svc.t = other.t", None)\n'
+        ),
+    },
+    "globals-handed-on": {
+        "use.py": (
+            "import svc\nimport other\n\nns = globals\n\n\ndef go():\n"
+            '    ns()["svc"].t = other.t\n'
+        ),
+    },
+    "builtins-globals-attribute": {
+        "use.py": (
+            "import builtins\nimport svc\nimport other\n\n\ndef go():\n"
+            '    builtins.globals()["svc"].t = other.t\n'
+        ),
+    },
+    "globals-imported-under-another-name": {
+        "use.py": (
+            "from builtins import globals as g\nimport svc\nimport other\n\n\n"
+            'def go():\n    g()["svc"].t = other.t\n'
+        ),
+    },
+    "builtins-globals-by-string": {
+        "use.py": (
+            "import builtins\nimport svc\nimport other\n\n\ndef go():\n"
+            '    getattr(builtins, "globals")()["svc"].t = other.t\n'
+        ),
+    },
+    "f_globals-computed-key": {
+        "use.py": (
+            "import sys\nimport svc\nimport other\n\n\ndef go():\n"
+            '    k = "s" + "vc"\n    sys._getframe(0).f_globals[k].t = other.t\n'
+        ),
+    },
+    "f_locals-written": {
+        "use.py": (
+            "import sys\nimport other\n\n\ndef go():\n    import svc\n"
+            "    f = sys._getframe(0)\n    m = f.f_locals\n"
+            '    m["svc"].t = other.t\n'
+        ),
+    },
+    "f_builtins-globals": {
+        "use.py": (
+            "import sys\nimport svc\nimport other\n\n\ndef go():\n"
+            '    sys._getframe(0).f_builtins["globals"]()["svc"].t = other.t\n'
+        ),
+    },
+    "f_globals-by-string": {
+        "use.py": (
+            "import sys\nimport svc\nimport other\n\n\ndef go():\n"
+            '    getattr(sys._getframe(0), "f_globals")["svc"].t = other.t\n'
+        ),
+    },
+    "from-import-of-a-submodule": {
+        "pkg/__init__.py": "",
+        "pkg/svc.py": _NS_SVC,
+        "main.py": "import use\nimport pkg.svc\n\nuse.go()\nprint(pkg.svc.u())\n",
+        "use.py": (
+            "from pkg import svc\nimport other\n\n\ndef go():\n"
+            '    globals()["svc"].t = other.t\n'
+        ),
+    },
+}
+
+# R-724-1: the token rule, on the 726 Fable review's battery
+# (726-fable-soundness). Name -> files; CPython 3.14 printed ``OTHER.t``
+# for each, and the head before the rule (45e28a26) resolved ``svc.py``'s
+# ``t``.
+NAMESPACE_TOKENS: dict[str, dict[str, str]] = {
+    # B-1: __import__ in every spelling.
+    "b03-importlib-dunder-import": {
+        "use.py": (
+            "import importlib\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    importlib.__import__(__name__).svc.t = other.t\n"
+        ),
+    },
+    "b04-builtins-dunder-import": {
+        "use.py": (
+            "import builtins\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    builtins.__import__(__name__).svc.t = other.t\n"
+        ),
+    },
+    "b05-from-builtins-import-dunder-import": {
+        "use.py": (
+            "from builtins import __import__ as imp\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    imp(__name__).svc.t = other.t\n"
+        ),
+    },
+    "b06-getattr-builtins-dunder-import": {
+        "use.py": (
+            "import builtins\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    getattr(builtins, "__import__")(__name__).svc.t = other.t\n'
+        ),
+    },
+    "g08-f_builtins-import": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    sys._getframe(0).f_builtins["__import__"](__name__).svc.t = other.t\n'
+        ),
+    },
+    "a08-builtins-key-import": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    f = sys._getframe(0)\n"
+            '    b = f.f_globals["__builtins__"]\n'
+            '    b["__import__"](__name__).svc.t = other.t\n'
+        ),
+    },
+    # B-2: a package hands out its submodules.
+    "b20-package-init-globals": {
+        "main.py": ("import pkg.svc\nimport pkg\n\npkg.go()\nprint(pkg.svc.u())\n"),
+        "pkg/__init__.py": (
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    globals()["svc"].t = other.t\n'
+        ),
+        "pkg/svc.py": (
+            "def t():\n"
+            '    return "SVC.t"\n'
+            "\n"
+            "\n"
+            "def u():\n"
+            "    return t()\n"
+        ),
+    },
+    "e17-package-init-nested": {
+        "main.py": (
+            "import pkg.sub.svc\n"
+            "import pkg\n"
+            "\n"
+            "pkg.go()\n"
+            "print(pkg.sub.svc.u())\n"
+        ),
+        "pkg/__init__.py": (
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    globals()["sub"].svc.t = other.t\n'
+        ),
+        "pkg/sub/__init__.py": "",
+        "pkg/sub/svc.py": (
+            "def t():\n"
+            '    return "SVC.t"\n'
+            "\n"
+            "\n"
+            "def u():\n"
+            "    return t()\n"
+        ),
+    },
+    "p01-package-init-getmodule": {
+        "main.py": ("import pkg.svc\nimport pkg\n\npkg.go()\nprint(pkg.svc.u())\n"),
+        "pkg/__init__.py": (
+            "import inspect\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    inspect.getmodule(go).svc.t = other.t\n"
+        ),
+        "pkg/svc.py": (
+            "def t():\n"
+            '    return "SVC.t"\n'
+            "\n"
+            "\n"
+            "def u():\n"
+            "    return t()\n"
+        ),
+    },
+    "p02-package-init-dunder-import": {
+        "main.py": ("import pkg.svc\nimport pkg\n\npkg.go()\nprint(pkg.svc.u())\n"),
+        "pkg/__init__.py": (
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    __import__(__name__).svc.t = other.t\n"
+        ),
+        "pkg/svc.py": (
+            "def t():\n"
+            '    return "SVC.t"\n'
+            "\n"
+            "\n"
+            "def u():\n"
+            "    return t()\n"
+        ),
+    },
+    "p03-package-init-eval": {
+        "main.py": ("import pkg.svc\nimport pkg\n\npkg.go()\nprint(pkg.svc.u())\n"),
+        "pkg/__init__.py": (
+            'import other\n\n\ndef go():\n    eval("svc").t = other.t\n'
+        ),
+        "pkg/svc.py": (
+            "def t():\n"
+            '    return "SVC.t"\n'
+            "\n"
+            "\n"
+            "def u():\n"
+            "    return t()\n"
+        ),
+    },
+    "a17-key-package-submodule": {
+        "main.py": ("import pkg.svc\nimport pkg\n\npkg.go()\nprint(pkg.svc.u())\n"),
+        "pkg/__init__.py": (
+            "import sys\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    sys._getframe(0).f_globals["svc"].t = other.t\n'
+        ),
+        "pkg/svc.py": (
+            "def t():\n"
+            '    return "SVC.t"\n'
+            "\n"
+            "\n"
+            "def u():\n"
+            "    return t()\n"
+        ),
+    },
+    # B-3: a constant key narrows only when it names an import binding.
+    "a22-key-loader": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    f = sys._getframe(0)\n"
+            '    f.f_globals["__loader__"].load_module(__name__).svc.t = other.t\n'
+        ),
+    },
+    "a23-key-name-then-modules": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    f = sys._getframe(0)\n"
+            '    sys.modules[f.f_globals["__name__"]].svc.t = other.t\n'
+        ),
+    },
+    "a11-builtins-key-passed": {
+        "helper.py": (
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def run(b):\n"
+            '    b["exec"]("svc.t = other.t")\n'
+        ),
+        "use.py": (
+            "import sys\n"
+            "import helper\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    helper.run(sys._getframe(0).f_globals["__builtins__"])\n'
+        ),
+    },
+    "a10-builtins-key-filter": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    f = sys._getframe(0)\n"
+            '    b = f.f_globals["__builtins__"]\n'
+            '    g = [v for k, v in b.items() if k == "globals"][0]\n'
+            '    g()["svc"].t = other.t\n'
+        ),
+    },
+    "a13-key-function-globals-elsewhere": {
+        "helper.py": (
+            "import other\n"
+            "\n"
+            "\n"
+            "def patch(fn):\n"
+            '    fn.__globals__["svc"].t = other.t\n'
+        ),
+        "use.py": (
+            "import helper\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    f = sys._getframe(0)\n"
+            '    helper.patch(f.f_globals["go"])\n'
+        ),
+    },
+    # B-5: joined constants.
+    "c08-routes-string-concatenated": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    sys.modules["built" "ins"].globals()["svc"].t = other.t\n'
+        ),
+    },
+    "c09-routes-string-plus": {
+        "use.py": (
+            "import importlib\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    importlib.import_module("built" + "ins").globals()["svc"].t = other.t\n'
+        ),
+    },
+    # B-6: shadowing is ignored.
+    "e08-comprehension-target": {
+        "use.py": (
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    [globals() for globals in [globals]][0]["svc"].t = other.t\n'
+        ),
+    },
+    "g06-comprehension-eval": {
+        "use.py": (
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    [eval("svc") for eval in [eval]][0].t = other.t\n'
+        ),
+    },
+    # B-7: a name as a constant in any position.
+    "c01-stored-const-f_globals": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    f = sys._getframe(0)\n"
+            '    n = "f_globals"\n'
+            '    getattr(f, n)["svc"].t = other.t\n'
+        ),
+    },
+    "c02-stored-const-dunder-globals": {
+        "use.py": (
+            "import svc\n"
+            "import other\n"
+            "\n"
+            'N = "__globals__"\n'
+            "\n"
+            "\n"
+            "def go():\n"
+            '    getattr(go, N)["svc"].t = other.t\n'
+        ),
+    },
+    "c03-filter-f_globals": {
+        "use.py": (
+            "import inspect\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    f = sys._getframe(0)\n"
+            '    d = [v for k, v in inspect.getmembers(f) if k == "f_globals"][0]\n'
+            '    d["svc"].t = other.t\n'
+        ),
+    },
+    "c10-stored-const-builtin-name": {
+        "use.py": (
+            "import builtins\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            'N = "globals"\n'
+            "\n"
+            "\n"
+            "def go():\n"
+            '    getattr(builtins, N)()["svc"].t = other.t\n'
+        ),
+    },
+    "g10-f_builtins-filter": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    b = sys._getframe(0).f_builtins\n"
+            '    g = [v for v in b.values() if getattr(v, "__name__", "") == "globals"][0]\n'
+            '    g()["svc"].t = other.t\n'
+        ),
+    },
+    "b18-signature-eval-str-splat": {
+        "use.py": (
+            "import inspect\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            'def h(x: "svc"):\n'
+            "    pass\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    opts = {"eval_" + "str": True}\n'
+            '    inspect.signature(h, **opts).parameters["x"].annotation.t = other.t\n'
+        ),
+    },
+    "g07-builtins-kw-splat": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def run(globals, **rest):\n"
+            "    return globals()\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    run(**sys._getframe(0).f_builtins)["svc"].t = other.t\n'
+        ),
+    },
+    # S-1: the module's own loader, closures, __main__ and Formatter.
+    "b13-getclosurevars": {
+        "use.py": (
+            "import inspect\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def peek():\n"
+            "    return svc.u\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    inspect.getclosurevars(peek).globals["svc"].t = other.t\n'
+        ),
+    },
+    "b14-getclosurevars-index": {
+        "use.py": (
+            "import inspect\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def peek():\n"
+            "    return svc.u\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    inspect.getclosurevars(peek)[1]["svc"].t = other.t\n'
+        ),
+    },
+    "b07-spec-loader-load-module": {
+        "use.py": (
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    __spec__.loader.load_module(__name__).svc.t = other.t\n"
+        ),
+    },
+    "e19-exec-module-own": {
+        "use.py": (
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    __loader__.load_module(__name__).svc.t = other.t\n"
+        ),
+    },
+    "b15-import-dunder-main": {
+        "main.py": (
+            "import svc\n"
+            "import other\n"
+            "import __main__ as me\n"
+            "\n"
+            "me.svc.t = other.t\n"
+            "print(svc.u())\n"
+        ),
+    },
+    "e02-formatter-get-field": {
+        "use.py": (
+            "import string\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    string.Formatter().get_field("0.__globals__[svc]", (go,), {})[0].t = other.t\n'
+        ),
+    },
+    # exec with explicit globals counts: they may be the namespace.
+    "c11-exec-computed-none": {
+        "use.py": (
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go(c=0):\n"
+            '    exec("svc.t = other.t", None if c else None)\n'
+        ),
+    },
+    # R-724-4 (B-1): a format field delimited by ``{``, ``}`` or ``!``.
+    "t18b-formatter-subclass-braces": {
+        "use.py": (
+            "import string\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "class F(string.Formatter):\n"
+            "    def format_field(self, value, spec):\n"
+            '        value["svc"].t = other.t\n'
+            '        return ""\n'
+            "\n"
+            "\n"
+            "def go():\n"
+            '    F().format("{0.__globals__}", go)\n'
+        ),
+    },
+    "t18d-formatter-subclass-conversion": {
+        "use.py": (
+            "import string\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "class F(string.Formatter):\n"
+            "    def convert_field(self, value, conversion):\n"
+            '        value["svc"].t = other.t\n'
+            '        return ""\n'
+            "\n"
+            "\n"
+            "def go():\n"
+            '    F().format("{0.__globals__!r}", go)\n'
+        ),
+    },
+    "t18e-formatter-subclass-frame": {
+        "use.py": (
+            "import string\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "class F(string.Formatter):\n"
+            "    def format_field(self, value, spec):\n"
+            '        value["svc"].t = other.t\n'
+            '        return ""\n'
+            "\n"
+            "\n"
+            "def go():\n"
+            '    F().format("{0.f_globals}", sys._getframe(0))\n'
+        ),
+    },
+    # R-724-4 (S-3): routes that spell no earlier listed name.
+    "t05-getmembers-frame": {
+        "use.py": (
+            "import inspect\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    [v for k, v in inspect.getmembers(sys._getframe(0)) if isinstance(v, dict) and "svc" in v][0]["svc"].t = other.t\n'
+        ),
+    },
+    "t06-getmembers-function": {
+        "use.py": (
+            "import inspect\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    [v for k, v in inspect.getmembers(go) if isinstance(v, dict) and "svc" in v][0]["svc"].t = other.t\n'
+        ),
+    },
+    "t45b-dataclass-init-getmembers": {
+        "use.py": (
+            "import dataclasses\n"
+            "import inspect\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "@dataclasses.dataclass\n"
+            "class C:\n"
+            "    x: int = 0\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    [v for k, v in inspect.getmembers(C.__init__) if isinstance(v, dict) and "svc" in v][0]["svc"].t = other.t\n'
+        ),
+    },
+    "t49-settrace-getmembers": {
+        "use.py": (
+            "import inspect\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def probe():\n"
+            "    pass\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    def tracer(frame, event, arg):\n"
+            '        [v for k, v in inspect.getmembers(frame) if isinstance(v, dict) and "svc" in v][0]["svc"].t = other.t\n'
+            "    \n"
+            "    sys.settrace(tracer)\n"
+            "    try:\n"
+            "        probe()\n"
+            "    finally:\n"
+            "        sys.settrace(None)\n"
+        ),
+    },
+    "t50-getmembers-static-frame": {
+        "use.py": (
+            "import inspect\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    f = sys._getframe(0)\n"
+            '    [d.__get__(f) for k, d in inspect.getmembers_static(f) if k.endswith("_globals")][0]["svc"].t = other.t\n'
+        ),
+    },
+    "t08-dunder-builtins-items": {
+        "use.py": (
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    [v for k, v in __builtins__.items() if k.startswith("glob")][0]()["svc"].t = other.t\n'
+        ),
+    },
+    "t08b-dunder-builtins-items-evaluator": {
+        "use.py": (
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    [v for k, v in __builtins__.items() if k.startswith("ev")][0]("svc").t = other.t\n'
+        ),
+    },
+    "t10-function-builtins-items": {
+        "use.py": (
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    [v for k, v in go.__builtins__.items() if k.startswith("glob")][0]()["svc"].t = other.t\n'
+        ),
+    },
+    "t20-doctest-finder-globs": {
+        "use.py": (
+            "import doctest\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    """Doc.\n'
+            "\n"
+            "    >>> 1\n"
+            "    1\n"
+            '    """\n'
+            '    doctest.DocTestFinder().find(go)[0].globs["svc"].t = other.t\n'
+        ),
+    },
+    "x16-dunder-import-doctest": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    """Doc.\n'
+            "\n"
+            "    >>> 1\n"
+            "    1\n"
+            '    """\n'
+            '    __import__("doctest").DocTestFinder().find(go)[0].globs["svc"].t = other.t\n'
+        ),
+    },
+    "t21-pydoc-locate-name": {
+        "use.py": (
+            "import pydoc\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    pydoc.locate(__name__).svc.t = other.t\n"
+        ),
+    },
+    "t22-pkgutil-resolve-name": {
+        "use.py": (
+            "import pkgutil\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    pkgutil.resolve_name(__name__).svc.t = other.t\n"
+        ),
+    },
+    "t22b-pkgutil-resolve-constant": {
+        "use.py": (
+            "import pkgutil\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    pkgutil.resolve_name("use:svc").t = other.t\n'
+        ),
+    },
+    "t42-logging-config-resolve-name": {
+        "use.py": (
+            "import logging.config\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    logging.config.BaseConfigurator({}).resolve(__name__).svc.t = other.t\n"
+        ),
+    },
+    "t25-ctypes-pyeval-getglobals": {
+        "use.py": (
+            "import ctypes\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    f = ctypes.pythonapi.PyEval_GetGlobals\n"
+            "    f.restype = ctypes.py_object\n"
+            '    f()["svc"].t = other.t\n'
+        ),
+    },
+    "t29-rlcompleter-script": {
+        "main.py": (
+            "import rlcompleter\n"
+            "import use\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "use.go()\n"
+            "c = rlcompleter.Completer()\n"
+            'c.complete("sv", 0)\n'
+            'c.namespace["svc"].t = other.t\n'
+            "print(svc.u())\n"
+        ),
+        "use.py": "def go():\n    pass\n",
+    },
+}
+
+# R-724-1 item 4: a handed-out ``sys`` or ``importlib`` raises the run-wide
+# ``module-system`` cause. Each tree's ``caller.py`` runs ``svc.t()``
+# (a Tier 2 proof), and CPython printed ``OTHER.t`` for it first.
+NAMESPACE_MODULE_SYSTEM: dict[str, dict[str, str]] = {
+    "d11-sys-through-globals": {
+        "caller.py": ("import svc\n\n\ndef c():\n    return svc.t()\n"),
+        "helper.py": (
+            "import other\n"
+            "\n"
+            "\n"
+            "def patch(d):\n"
+            '    d["sys"].modules["svc"].t = other.t\n'
+        ),
+        "main.py": (
+            "import use\n"
+            "import svc\n"
+            "import caller\n"
+            "\n"
+            "use.go()\n"
+            "print(svc.u())\n"
+            "print(caller.c())\n"
+        ),
+        "use.py": (
+            "import sys\n"
+            "import helper\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    helper.patch(globals())\n"
+        ),
+    },
+    "d13-importlib-through-globals": {
+        "caller.py": ("import svc\n\n\ndef c():\n    return svc.t()\n"),
+        "helper.py": (
+            "import other\n"
+            "\n"
+            "\n"
+            "def patch(d):\n"
+            '    d["importlib"].import_module("svc").t = other.t\n'
+        ),
+        "main.py": (
+            "import use\n"
+            "import svc\n"
+            "import caller\n"
+            "\n"
+            "use.go()\n"
+            "print(svc.u())\n"
+            "print(caller.c())\n"
+        ),
+        "use.py": (
+            "import importlib\n"
+            "import helper\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    helper.patch(globals())\n"
+        ),
+    },
+}
+
+# Name -> files. Trees that kept their proof before the token rule and now
+# hand out every binding, because any spelling of a listed name counts and
+# shadowing is ignored (R-724-1 item 1). CPython printed ``SVC.t``: these
+# are the accepted precision cost.
+NAMESPACE_TOKEN_COST: dict[str, dict[str, str]] = {
+    # ``vars(obj)`` reads ``obj.__dict__``, but ``vars`` is a listed name.
+    "vars-with-argument": {
+        "use.py": (
+            "import svc\n\n\nclass K:\n    pass\n\n\ndef go():\n"
+            "    return vars(K())\n"
+        ),
+    },
+    # R-724-7: these loaders happen to create fresh modules at runtime.
+    "exec-module-from-spec": {
+        "probe_mod.py": "svc = None\n",
+        "use.py": (
+            "import importlib.util\n"
+            "import svc\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    spec = importlib.util.spec_from_file_location('probe', 'probe_mod.py')\n"
+            "    probe = importlib.util.module_from_spec(spec)\n"
+            "    spec.loader.exec_module(probe)\n"
+            "    return probe\n"
+        ),
+    },
+    "exec-module-from-import": {
+        "probe_mod.py": "svc = None\n",
+        "use.py": (
+            "from importlib.util import module_from_spec, spec_from_file_location\n"
+            "import svc\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    spec = spec_from_file_location('probe', 'probe_mod.py')\n"
+            "    probe = module_from_spec(spec)\n"
+            "    spec.loader.exec_module(probe)\n"
+            "    return probe\n"
+        ),
+    },
+    # spec's ``ingest.py`` shape: ``exec(code, mod.__dict__)`` on a fresh
+    # ``types.ModuleType`` is exempt since R-724-2, but ``eval("1", {})``
+    # is not: no costed site passes a literal dict, so the allow-list leaves
+    # it out, and explicit globals may be the namespace (c11).
+    "exec-explicit-globals": {
+        "use.py": (
+            "import types\nimport svc\n\n\ndef go():\n"
+            '    mod = types.ModuleType("m")\n    exec("x = 1", mod.__dict__)\n'
+            '    eval("1", {})\n'
+        ),
+    },
+    "exec-keyword-globals": {
+        "use.py": 'import svc\n\n\ndef go():\n    exec("x = 1", globals={})\n',
+    },
+    # A template environment's ``.globals``.
+    "globals-attribute": {
+        "use.py": (
+            "import svc\n\n\nclass M:\n    globals = {}\n\n\ndef go():\n"
+            '    M.globals["x"] = 1\n'
+        ),
+    },
+    # A binding of the file's own named ``locals`` or ``globals``.
+    "own-binding-named-locals": {
+        "use.py": ("import svc\n\n\ndef go(locals=dict):\n    return locals()\n"),
+    },
+    "enclosing-parameter-named-globals": {
+        "use.py": (
+            "import svc\n"
+            "\n"
+            "\n"
+            "def go(globals=dict):\n"
+            "    def inner():\n"
+            "        return globals()\n"
+            "    return inner()\n"
+        ),
+    },
+    # pmcp's ``tb.tb_frame.f_locals.get("code")``: ``code`` is no import
+    # binding of the file, and a function or class key reaches the
+    # namespace through ``__globals__`` (a13).
+    "frame-read-of-another-name": {
+        "use.py": (
+            "import sys\nimport svc\n\n\ndef go():\n    f = sys._getframe(0)\n"
+            '    return f.f_locals.get("code")\n'
+        ),
+    },
+}
+
+# Name -> files. A file that keeps its namespace to itself: CPython printed
+# ``SVC.t`` for each, and ``svc.py``'s proof stays.
+NAMESPACE_CONTROLS: dict[str, dict[str, str]] = {
+    "no-reader": {"use.py": "import svc\n\n\ndef go():\n    return svc.t\n"},
+    # A model's ``.eval()`` names no builtin in a file with no route to the
+    # builtins.
+    "eval-method": {
+        "use.py": (
+            "import svc\n\n\nclass M:\n    def eval(self):\n"
+            "        return self\n\n\ndef go():\n    M().eval()\n"
+        ),
+    },
+    # A frame read by a constant key that names an import binding hands out
+    # that binding only (``sys``: a run-wide cause, which leaves a Tier 1
+    # proof alone), and ``in`` none.
+    "frame-read-of-an-import-binding": {
+        "use.py": (
+            "import sys\nimport json\nimport svc\n\n\ndef go():\n"
+            "    f = sys._getframe(0)\n"
+            '    seen = "svc" in f.f_globals\n'
+            '    return f.f_locals.get("json"), seen, f.f_globals["sys"]\n'
+        ),
+    },
+    # ``compile``'s mode string names no builtin to call.
+    "exec-mode-string": {
+        "use.py": 'import svc\n\n\ndef go():\n    return compile("1", "f", "exec")\n',
+    },
+    # The script guard is no import of ``__main__``; a comment and a
+    # docstring are no tokens.
+    "main-guard-comment-docstring": {
+        "use.py": (
+            'import svc\n\n\ndef go():\n    """Reads no globals() of its own."""\n'
+            "    return 1  # globals\n\n\n"
+            'if __name__ == "__main__":\n    go()\n'
+        ),
+    },
+}
+
+
+# R-724-2 / R-724-7: CPython prints SVC.t for each exempt operation.
+# The loader control explicitly constructs its receiver with ModuleType.
+NAMESPACE_EXEMPT: dict[str, dict[str, str]] = {
+    "dunder-import-of-a-constant": {
+        "use.py": 'import svc\n\n\ndef go():\n    return __import__("json")\n',
+    },
+    "exec-into-moduletype": {
+        "use.py": (
+            "import types\n"
+            "import svc\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    import types\n"
+            "    mod = types.ModuleType('m')\n"
+            "    exec('svc = 1\\nt = 2', mod.__dict__)\n"
+            "    return mod\n"
+        ),
+    },
+    "exec-module-into-moduletype": {
+        "probe_mod.py": "svc = None\n",
+        "use.py": (
+            "import importlib.util, types, svc\n\ndef go():\n"
+            "    spec = importlib.util.spec_from_file_location('probe', 'probe_mod.py')\n"
+            "    probe = types.ModuleType('probe')\n"
+            "    spec.loader.exec_module(probe)\n"
+        ),
+    },
+    "dunder-import-constant": {
+        "use.py": (
+            "import svc\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    return __import__('hashlib').sha256(b'x').hexdigest()\n"
+        ),
+    },
+    "dunder-import-dotted": {
+        "use.py": ("import svc\n\n\ndef go():\n    return __import__('os.path')\n"),
+    },
+}
+
+# R-724-2 adversarial pins: an exempt-looking shape aimed at the file's own
+# module. The own module comes from iterating ``sys.modules``, a run-wide
+# ``module-system`` cause only, which leaves a Tier 1 proof alone (R10), so
+# only the namespace rule closes each tree: with the allow-list's checks
+# forced to pass, every one but the two arity pins resolves ``svc.py``'s
+# ``t`` (r724-2/cases_r2b.py, FORCE_EXEMPT). CPython 3.14 printed
+# ``OTHER.t`` for each.
+NAMESPACE_EXEMPT_PINS: dict[str, dict[str, str]] = {
+    "loader-returns-importer": {
+        "use.py": (
+            "import sys, importlib.util, svc, other\n"
+            "from importlib.machinery import ModuleSpec\n\n"
+            "class Loader:\n"
+            "    def create_module(self, spec):\n"
+            "        return next(m for k, m in sys.modules.items() if k == __name__)\n\n"
+            "def go():\n"
+            "    mod = importlib.util.module_from_spec(ModuleSpec('sample', Loader()))\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "exec-own-module": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "exec-moduletype-rebound": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    mod = [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "exec-moduletype-rebound-later": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    for i in range(2):\n"
+            "        if i:\n"
+            "            exec('svc.t = other.t', mod.__dict__)\n"
+            "        mod = types.ModuleType('m')\n"
+            "        mod = [m for k, m in sys.modules.items() if k == __name__][0]\n"
+        ),
+    },
+    "exec-alias-of-own": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    own = [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "    mod = own if own else types.ModuleType('m')\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "exec-global-mod": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "mod = None\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    global mod\n"
+            "    mod = [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+            "    mod = types.ModuleType('m')\n"
+        ),
+    },
+    "exec-closure-mod": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "    def inner():\n"
+            "        exec('svc.t = other.t', mod.__dict__)\n"
+            "    inner()\n"
+            "    return types.ModuleType('m')\n"
+        ),
+    },
+    "exec-nonlocal-rebind": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    def inner():\n"
+            "        nonlocal mod\n"
+            "        mod = [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "    inner()\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "exec-walrus-rebind": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    [mod := m for k, m in sys.modules.items() if k == __name__]\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "exec-for-rebind": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    for k, mod in sys.modules.items():\n"
+            "        if k == __name__:\n"
+            "            break\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "exec-param-mod": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def go(mod=None):\n"
+            "    mod = [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+            "    return types.ModuleType('m')\n"
+        ),
+    },
+    "exec-module-scope-mod": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "mod = types.ModuleType('m')\n"
+            "mod = [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "exec-fake-types-class": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "class types:\n"
+            "    @staticmethod\n"
+            "    def ModuleType(name):\n"
+            "        return [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "exec-types-rebound": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "class F:\n"
+            "    @staticmethod\n"
+            "    def ModuleType(name):\n"
+            "        return [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "\n"
+            "\n"
+            "types = F\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "exec-types-attribute-patched": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def fake(name):\n"
+            "    return [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "\n"
+            "\n"
+            "types.ModuleType = fake\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "exec-importlib-util-patched": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import importlib.util\n"
+            "\n"
+            "\n"
+            "class U:\n"
+            "    @staticmethod\n"
+            "    def module_from_spec(spec):\n"
+            "        return [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "\n"
+            "\n"
+            "importlib.util = U\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    probe = importlib.util.module_from_spec(None)\n"
+            "    exec('svc.t = other.t', probe.__dict__)\n"
+        ),
+    },
+    "exec-try-fallback": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "try:\n"
+            "    from importlib_missing import module_from_spec\n"
+            "except ImportError:\n"
+            "    def module_from_spec(spec):\n"
+            "        return [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    probe = module_from_spec(None)\n"
+            "    exec('svc.t = other.t', probe.__dict__)\n"
+        ),
+    },
+    "exec-star-shadow": {
+        "helper.py": (
+            "import sys\n"
+            "__all__ = ['module_from_spec']\n"
+            "\n"
+            "\n"
+            "def module_from_spec(spec):\n"
+            "    return [m for k, m in sys.modules.items() if k == 'use'][0]\n"
+        ),
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "from importlib.util import module_from_spec\n"
+            "from helper import *\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    probe = module_from_spec(None)\n"
+            "    exec('svc.t = other.t', probe.__dict__)\n"
+        ),
+    },
+    "exec-shadowed-exec": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def exec(code, ns):\n"
+            "    [m for k, m in sys.modules.items() if k == __name__][0].svc.t = other.t\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    exec('x = 1', mod.__dict__)\n"
+        ),
+    },
+    "exec-third-argument": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    exec('svc.t = other.t', mod.__dict__, [m for k, m in sys.modules.items() if k == __name__][0].__dict__)\n"
+        ),
+    },
+    "exec-keyword-globals": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    own = [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "    exec('svc.t = other.t', own.__dict__)\n"
+            "    mod = types.ModuleType('m')\n"
+            "    exec('x = 1', mod.__dict__)\n"
+        ),
+    },
+    "exec-module-own": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import importlib.util\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    probe = [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "    spec = importlib.util.spec_from_file_location(__name__, 'patch_mod.py')\n"
+            "    spec.loader.exec_module(probe)\n"
+        ),
+        "patch_mod.py": "svc.t = other.t\n",
+    },
+    "exec-module-two-args": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import importlib.util\n"
+            "\n"
+            "\n"
+            "class L:\n"
+            "    def exec_module(self, m, own):\n"
+            "        own.svc.t = other.t\n"
+            "\n"
+            "\n"
+            "class S:\n"
+            "    loader = L()\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    probe = importlib.util.module_from_spec(importlib.util.spec_from_loader('p', None))\n"
+            "    S.loader.exec_module(probe, [m for k, m in sys.modules.items() if k == __name__][0])\n"
+        ),
+    },
+    "dunder-import-name": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    __import__(__name__).svc.t = other.t\n"
+        ),
+    },
+    "dunder-import-sys": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    __import__('sys').modules[__name__].svc.t = other.t\n"
+        ),
+    },
+    "dunder-import-importlib": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    __import__('importlib').import_module(__name__).svc.t = other.t\n"
+        ),
+    },
+    "dunder-import-handed": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    f = __import__\n"
+            "    f('use').svc.t = other.t\n"
+            "    return __import__('hashlib')\n"
+        ),
+    },
+    "dunder-import-gc": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    g = __import__('gc')\n"
+            "    [m for m in g.get_objects() if type(m) is type(sys) and m.__name__ == 'use'][0].svc.t = other.t\n"
+        ),
+    },
+    # R-724-4 (B-1): the code an exempt ``exec`` runs spells a token as a word.
+    "x09b-exec-code-frame-read-spaced": {
+        "use.py": (
+            "import types\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    exec(\"import sys; d = sys._getframe(1).f_globals; d['svc'].t = d['other'].t\", mod.__dict__)\n"
+        ),
+    },
+    "x09c-exec-code-dunder-import-own": {
+        "use.py": (
+            "import types\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    exec(\"m = __import__('use'); m.svc.t = m.other.t\", mod.__dict__)\n"
+        ),
+    },
+    "x09f-exec-code-globals-call": {
+        "use.py": (
+            "import types\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    mod.go = go\n"
+            "    exec(\"d = go.__globals__; d['svc'].t = d['other'].t\", mod.__dict__)\n"
+        ),
+    },
+    # R-724-4 (B-2): a patch target or module key names the factory.
+    "x04c-factory-patched-by-mock-string-same-file": {
+        "use.py": (
+            "import types\n"
+            "from unittest import mock\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def fake(name):\n"
+            "    return [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "\n"
+            "\n"
+            "mock.patch('types.ModuleType', fake).start()\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "x04d-module-from-spec-patched-by-mock-string-same-file": {
+        "use.py": (
+            "import importlib.util\n"
+            "from unittest import mock\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def fake(name):\n"
+            "    return [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "\n"
+            "\n"
+            "mock.patch('importlib.util.module_from_spec', fake).start()\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    probe = importlib.util.module_from_spec(None)\n"
+            "    exec('svc.t = other.t', probe.__dict__)\n"
+        ),
+    },
+    "x04e-factory-module-patched-by-mock-string": {
+        "use.py": (
+            "import importlib.util\n"
+            "from unittest import mock\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "class U:\n"
+            "    @staticmethod\n"
+            "    def module_from_spec(spec):\n"
+            "        return [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "\n"
+            "\n"
+            "mock.patch('importlib.util', U).start()\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    probe = importlib.util.module_from_spec(None)\n"
+            "    exec('svc.t = other.t', probe.__dict__)\n"
+        ),
+    },
+    "x04f-factory-module-key-in-patched-sys-modules": {
+        "use.py": (
+            "from unittest import mock\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "class F:\n"
+            "    @staticmethod\n"
+            "    def ModuleType(name):\n"
+            "        return [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    with mock.patch.dict(sys.modules, {'types': F}):\n"
+            "        import types\n"
+            "        mod = types.ModuleType('m')\n"
+            "        exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    # R-724-4 (B-2): ``__class__`` written on any receiver.
+    "x07-class-reassigned-dict-property": {
+        "use.py": (
+            "import types\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "class M(types.ModuleType):\n"
+            "    __dict__ = property(lambda self: [m for k, m in sys.modules.items() if k == __name__][0].__dict__)\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    mod.__class__ = M\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "x07b-class-reassigned-exec-module": {
+        "helper.py": (
+            "import other\n"
+            "\n"
+            "\n"
+            "class L:\n"
+            "    def exec_module(self, m):\n"
+            "        m.__dict__['svc'].t = other.t\n"
+            "\n"
+            "\n"
+            "class S:\n"
+            "    loader = L()\n"
+        ),
+        "use.py": (
+            "import importlib.util\n"
+            "import helper\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "class M(type(sys)):\n"
+            "    __dict__ = property(lambda self: [m for k, m in sys.modules.items() if k == __name__][0].__dict__)\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    probe = importlib.util.module_from_spec(importlib.util.spec_from_loader('p', None))\n"
+            "    probe.__class__ = M\n"
+            "    spec = helper.S\n"
+            "    spec.loader.exec_module(probe)\n"
+        ),
+    },
+    "x07c-class-reassigned-by-setattr": {
+        "use.py": (
+            "import types\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "class M(types.ModuleType):\n"
+            "    __dict__ = property(lambda self: [m for k, m in sys.modules.items() if k == __name__][0].__dict__)\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    setattr(mod, '__class__', M)\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+}
+
+
+def _cpython(root: Path) -> str:
+    import subprocess
+    import sys
+
+    run = subprocess.run(
+        [sys.executable, "-B", "-E", "-s", "main.py"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=True,
+    )
+    return run.stdout.strip().splitlines()[-1]
+
+
+def _ns_probe(root: Path) -> str:
+    return next(
+        probe
+        for probe in ("pkg/sub/svc.py", "pkg/svc.py", "svc.py")
+        if (root / probe).exists()
+    )
+
+
+@pytest.mark.parametrize(
+    "case",
+    sorted([*NAMESPACE_HANDOUT, *(f"token:{name}" for name in NAMESPACE_TOKENS)]),
+)
+def test_namespace_reader_hands_out_its_import_bindings(
+    tmp_path: Path, case: str
+) -> None:
+    """#724, R-724-1: a file with any token that spells a namespace-reaching
+    name (``globals``, ``__import__``, ``f_globals``, ``builtins``,
+    ``__spec__``, ``getclosurevars``, ``get_field``, ...), in any role and
+    in any constant spelling, a bare ``eval``/``exec`` or an import of
+    ``__main__`` hands out every import binding, and a package hands out its
+    submodules, so the imported module is tainted wholly. CPython 3.14 runs
+    the replacement in each tree; ``svc.py``'s ``t`` keeps its off-mode
+    edge."""
+    files = (
+        NAMESPACE_TOKENS[case.removeprefix("token:")]
+        if case.startswith("token:")
+        else NAMESPACE_HANDOUT[case]
+    )
+    root = _write(tmp_path, {**_NS_BASE, **files})
+    assert _cpython(root) == "OTHER.t", case
+    off, structural, on, label = _run(root, _ns_probe(root), "t")
+    assert structural["resolution"] == "resolved", case
+    assert on == off and on["resolution"] == "ambiguous", case
+    assert label == "none(module-escape)", case
+
+
+@pytest.mark.parametrize("case", sorted(NAMESPACE_MODULE_SYSTEM))
+def test_handed_out_sys_or_importlib_is_a_module_system_cause(
+    tmp_path: Path, case: str
+) -> None:
+    """R-724-1 item 4: ``helper(globals())`` hands out ``import sys`` (or
+    ``importlib``), and ``helper`` runs ``d["sys"].modules["svc"].t = f``.
+    CPython 3.14 runs the replacement for ``caller.py``'s ``svc.t()``, which
+    is now ``none(run-tainted:module-system)``. ``svc.py``'s own Tier 1
+    proof is the plan's R10 residual: a run-wide cause shuts off Tier 2
+    only."""
+    root = _write(tmp_path, {**_NS_BASE, **NAMESPACE_MODULE_SYSTEM[case]})
+    assert _cpython(root) == "OTHER.t", case
+    off, _structural, on, label = _run(root, "caller.py", "svc.t")
+    assert on == off and on["resolution"] == "ambiguous", case
+    assert label == "none(run-tainted:module-system)", case
+
+
+@pytest.mark.parametrize("case", sorted(NAMESPACE_TOKEN_COST))
+def test_namespace_token_rule_precision_cost(tmp_path: Path, case: str) -> None:
+    """R-724-1 item 1: any spelling of a listed name counts and shadowing is
+    ignored, so ``vars(obj)``, ``exec`` with explicit globals, another
+    object's ``.globals``, a binding of the file's own named ``locals``,
+    ``__import__`` of a constant and a frame read by a key that names no
+    import binding all hand out every binding. CPython 3.14 runs
+    ``svc.py``'s own ``t``; the edge keeps its off-mode result."""
+    root = _write(tmp_path, {**_NS_BASE, **NAMESPACE_TOKEN_COST[case]})
+    assert _cpython(root) == "SVC.t", case
+    off, structural, on, label = _run(root, "svc.py", "t")
+    assert structural["resolution"] == "resolved", case
+    assert on == off and on["resolution"] == "ambiguous", case
+    assert label == "none(module-escape)", case
+
+
+@pytest.mark.parametrize("case", sorted(NAMESPACE_CONTROLS))
+def test_namespace_controls_keep_their_proof(tmp_path: Path, case: str) -> None:
+    """#724 controls: no listed token, another object's ``.eval()`` in a
+    file with no route to the builtins, a frame read by a key that names an
+    import binding, ``compile``'s mode string, and the script guard: no
+    namespace of the file reaches other code, and ``svc.py``'s ``t`` stays
+    resolved."""
+    root = _write(tmp_path, {**_NS_BASE, **NAMESPACE_CONTROLS[case]})
+    assert _cpython(root) == "SVC.t", case
+    _off, _structural, on, label = _run(root, "svc.py", "t")
+    assert on["resolution"] == "resolved", (case, label)
+    assert _target(on, root) == "svc.py"
+
+
+@pytest.mark.parametrize("case", sorted(NAMESPACE_EXEMPT))
+def test_namespace_exempt_shapes_keep_their_proof(tmp_path: Path, case: str) -> None:
+    """R-724-2: a token whose object the use-site lookup proves is not the
+    file's own namespace hands out nothing: ``exec(code, mod.__dict__)``
+    and ``spec.loader.exec_module(probe)`` on a fresh module local, and
+    ``__import__`` of a constant foreign module. CPython 3.14 runs
+    ``svc.py``'s own ``t``; the edge matches ``structural``."""
+    root = _write(tmp_path, {**_NS_BASE, **NAMESPACE_EXEMPT[case]})
+    assert _cpython(root) == "SVC.t", case
+    _off, structural, on, label = _run(root, "svc.py", "t")
+    assert on["resolution"] == "resolved", (case, label)
+    assert on["to"] == structural["to"], case
+    assert _target(on, root) == "svc.py"
+
+
+@pytest.mark.parametrize("case", sorted(NAMESPACE_EXEMPT_PINS))
+def test_namespace_exempt_shape_aimed_at_own_module_hands_out(
+    tmp_path: Path, case: str
+) -> None:
+    """R-724-2 adversarial pins: the exempt shapes aimed at the file's own
+    module (a rebound, aliased, global, closure, ``nonlocal``, walrus,
+    ``for`` or parameter receiver, a fake or patched factory, a shadowed
+    ``exec`` or ``__import__``, an extra argument, ``__import__`` of
+    ``__name__``, ``sys``, ``importlib`` or ``gc``) stay triggers. CPython
+    3.14 runs the replacement; ``svc.py``'s ``t`` keeps its off-mode edge."""
+    root = _write(tmp_path, {**_NS_BASE, **NAMESPACE_EXEMPT_PINS[case]})
+    assert _cpython(root) == "OTHER.t", case
+    off, structural, on, label = _run(root, "svc.py", "t")
+    assert structural["resolution"] == "resolved", case
+    assert on == off and on["resolution"] == "ambiguous", case
+    assert label == "none(module-escape)", case
+
+
+_FRESH = "\n\n\ndef f(code, spec):\n"
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        # exec into a fresh module local (spec ``ingest.py``).
+        "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+        "    exec(code, mod.__dict__)\n",
+        _FRESH + "    import types\n    mod = types.ModuleType('m')\n"
+        "    exec(code, (mod).__dict__)\n",
+        "import types as t" + _FRESH + "    mod = t.ModuleType('m')\n"
+        "    exec(code, mod.__dict__)\n",
+        "from types import ModuleType" + _FRESH + "    mod = ModuleType('m')\n"
+        "    exec(code, mod.__dict__)\n",
+        "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
+        "    spec.loader.exec_module(probe)\n",
+        # ``__import__`` of a constant foreign module.
+        "x = __import__('hashlib')\n",
+        "x = __import__('os.path')\n",
+        'x = __import__("js" "on").dumps\n',
+    ],
+)
+def test_namespace_exempt_use_hands_out_nothing(tmp_path: Path, source: str) -> None:
+    """R-724-2: each exempt shape alone hands out no binding."""
+    root = _write(tmp_path, {"r.py": "import svc\n" + source})
+    assert ["svc", "value"] not in _module_bindings(root)["r.py"]["uses"], source
+
+
+@pytest.mark.parametrize("local", [True, False], ids=["function", "module"])
+def test_fresh_receiver_proof_requires_function_scope(local: bool) -> None:
+    """Isolate the receiver proof from the evaluator's own file-wide effect."""
+    from chunker.call_resolution import py_scope
+    from chunker.parser import get_parser
+
+    lines = ["mod = types.ModuleType('m')", "consume(mod)"]
+    body = "def go():\n    " + "\n    ".join(lines) if local else "\n".join(lines)
+    source = ("import types\n" + body + "\n").encode()
+    root = get_parser("python").parse(source).root_node
+    analysis = py_scope._Analysis(
+        root, source, module_path=py_scope.module_path("r.py")
+    )
+    receiver = next(
+        node
+        for node in analysis.identifier_nodes
+        if node.text == b"mod" and node.parent.type == "argument_list"
+    )
+    assert py_modules._fresh_module_local(analysis, receiver) is local
+
+
+@pytest.mark.parametrize(
+    "hazard", ["compile(code, 'x', 'exec')", "gc.get_objects()", "frame.f_locals"]
+)
+def test_namespace_exempt_receiver_with_independent_hazard(
+    tmp_path: Path, hazard: str
+) -> None:
+    source = f"""import svc, types, gc
+
+def f(code, frame):
+    mod = types.ModuleType('m')
+    {hazard}
+    exec(code, mod.__dict__)
+"""
+    root = _write(tmp_path, {"r.py": source})
+    assert ["svc", "value"] in _module_bindings(root)["r.py"]["uses"]
+
+
+@pytest.mark.parametrize(
+    ("path", "source"),
+    [
+        # A loader may return the importer in any import spelling.
+        (
+            "r.py",
+            "import importlib.util"
+            + _FRESH
+            + "    mod = importlib.util.module_from_spec(spec)\n"
+            "    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import importlib.util"
+            + _FRESH
+            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "    spec.loader.exec_module(probe)\n",
+        ),
+        (
+            "r.py",
+            "from importlib.util import module_from_spec"
+            + _FRESH
+            + "    probe = module_from_spec(spec)\n    spec.loader.exec_module(probe)\n",
+        ),
+        (
+            "r.py",
+            "from importlib import util"
+            + _FRESH
+            + "    probe = util.module_from_spec(spec)\n    spec.loader.exec_module(probe)\n",
+        ),
+        (
+            "r.py",
+            "import importlib.util as iu"
+            + _FRESH
+            + "    probe = iu.module_from_spec(spec)\n    spec.loader.exec_module(probe)\n",
+        ),
+        # exec: arity, keywords, splats, receivers outside the closed list.
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    exec(code, mod.__dict__, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    exec(code, globals=mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    exec(*(code, mod.__dict__))\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    exec(code, mod.__dict__.copy())\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    exec(code, mod)\n",
+        ),
+        ("r.py", "import types\nmod = types.ModuleType('m')\nexec(c, mod.__dict__)\n"),
+        ("r.py", "import types\n\n\ndef f(code, mod):\n    exec(code, mod.__dict__)\n"),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.SimpleNamespace()\n"
+            "    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    mod = spec\n    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    del mod\n    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    global mod\n"
+            "    mod = types.ModuleType('m')\n    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    def g():\n        nonlocal mod\n        mod = spec\n"
+            "    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    def g():\n        exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    return lambda: exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    [exec(code, mod.__dict__) for _ in ()]\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    [mod := spec for _ in ()]\n    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod, x = types.ModuleType('m'), 1\n"
+            "    exec(code, mod.__dict__)\n",
+        ),
+        # The factory: not proven by its import.
+        (
+            "r.py",
+            "import types\ntypes = spec"
+            + _FRESH
+            + "    mod = types.ModuleType('m')\n    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types\nimport os as types"
+            + _FRESH
+            + "    mod = types.ModuleType('m')\n    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "from x import *\nimport types"
+            + _FRESH
+            + "    mod = types.ModuleType('m')\n    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types\ntypes.ModuleType = spec"
+            + _FRESH
+            + "    mod = types.ModuleType('m')\n    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import importlib.util\nimportlib.util = spec"
+            + _FRESH
+            + "    mod = importlib.util.module_from_spec(spec)\n"
+            "    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "from .types import ModuleType"
+            + _FRESH
+            + "    mod = ModuleType('m')\n    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import importlib"
+            + _FRESH
+            + "    mod = importlib.import_module('m')\n    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    exec(*code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    eval(code, mod.__dict__)\n",
+        ),
+        (
+            # The parameter is a callback, so S2's builtin evaluator check
+            # cannot mask the handout rule's exec-only callee check.
+            "r.py",
+            "import types\n\ndef f(code, eval):\n    mod = types.ModuleType('m')\n"
+            "    eval(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    exec(code, mod.__class__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    [mod := types.ModuleType('m') for _ in ()]\n"
+            "    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    def g():\n        return mod\n"
+            "    g.__closure__[0].cell_contents = spec\n    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types as __t\n_K__t = None\n\n\nclass K:\n"
+            "    def f(self, code):\n        mod = __t.ModuleType('m')\n"
+            "        exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types\nprobe = types.ModuleType('m')\nspec.loader.exec_module(probe)\n",
+        ),
+        (
+            "r.py",
+            "from x import *\nimport types"
+            + _FRESH
+            + "    probe = types.ModuleType('m')\n"
+            "    spec.loader.exec_module(probe)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    spec.types = None\n"
+            "    mod = types.ModuleType('m')\n    exec(code, mod.__dict__)\n",
+        ),
+        # exec itself not the builtin.
+        (
+            "r.py",
+            "import types\nexec = print"
+            + _FRESH
+            + "    mod = types.ModuleType('m')\n    exec(code, mod.__dict__)\n",
+        ),
+        # exec_module: arity, keywords, the receiver, the loader position.
+        (
+            "r.py",
+            "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
+            "    spec.loader.exec_module(probe, 1)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
+            "    spec.loader.exec_module(module=probe)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
+            "    spec.exec_module(probe)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
+            "    spec.a.loader.exec_module(probe)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
+            "    spec.other.exec_module(probe)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
+            "    spec.loader.exec_module(*probe)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
+            "    run = spec.loader.exec_module\n    run(probe)\n",
+        ),
+        (
+            "r.py",
+            "import sys"
+            + _FRESH
+            + "    spec.loader.exec_module(sys.modules[__name__])\n",
+        ),
+        # __import__: classified, own, relative, computed, extra arguments,
+        # handed on, shadowed.
+        ("r.py", "x = __import__('sys')\n"),
+        ("r.py", "x = __import__('importlib.util')\n"),
+        ("r.py", "x = __import__('builtins')\n"),
+        ("r.py", "x = __import__('__main__')\n"),
+        ("r.py", "x = __import__('inspect')\n"),
+        ("r.py", "x = __import__('gc')\n"),
+        ("r.py", "x = __import__('r')\n"),
+        ("pkg/r.py", "x = __import__('pkg.other')\n"),
+        ("pkg/r.py", "x = __import__('pkg')\n"),
+        ("r.py", "x = __import__('.x')\n"),
+        ("r.py", "x = __import__('')\n"),
+        ("r.py", "x = __import__('a-b')\n"),
+        ("r.py", "x = __import__('json', {})\n"),
+        ("r.py", "x = __import__('json', level=0)\n"),
+        ("r.py", "x = __import__('f_globals')\n"),
+        ("r.py", "x = __import__(name)\n"),
+        ("r.py", "f = __import__\nx = __import__('json')\n"),
+        ("r.py", "def __import__(n):\n    return n\n\n\nx = __import__('json')\n"),
+        ("r.py", "from x import *\nx = __import__('json')\n"),
+    ],
+)
+def test_namespace_exempt_near_miss_hands_out_every_binding(
+    tmp_path: Path, path: str, source: str
+) -> None:
+    """R-724-2: every use outside the closed allow-list stays a trigger."""
+    root = _write(tmp_path, {path: "import svc\n" + source})
+    assert ["svc", "value"] in _module_bindings(root)[path]["uses"], source
+
+
+def test_namespace_reader_records_value_uses_of_every_binding(
+    tmp_path: Path,
+) -> None:
+    """The reader rule records a ``value`` use of each import binding,
+    function-local and ``from`` imports included, and nothing in a file that
+    reads no namespace."""
+    root = _write(
+        tmp_path,
+        {
+            "r.py": (
+                "import a.b\nfrom c import d as e\n\n\ndef f():\n    import g\n"
+                "    return locals()\n"
+            ),
+            "n.py": "import a.b\nfrom c import d as e\n",
+        },
+    )
+    facts = {
+        item["path"]: item["scope_facts"]["module_bindings"]
+        for item in (
+            extract_symbol_facts_for_file(path, root, None, call_resolution=MODE)
+            for path in collect_source_files(root, None)
+        )
+    }
+    assert ["a", "value"] in facts["r.py"]["uses"]
+    assert ["c", "value", "d"] in facts["r.py"]["uses"]
+    assert ["g", "value"] in facts["r.py"]["uses"]
+    assert facts["n.py"]["uses"] == []
+
+
+def _module_bindings(root: Path) -> dict[str, dict[str, Any]]:
+    return {
+        item["path"]: item["scope_facts"]["module_bindings"]
+        for item in (
+            extract_symbol_facts_for_file(path, root, None, call_resolution=MODE)
+            for path in collect_source_files(root, None)
+        )
+    }
+
+
+@pytest.mark.parametrize(
+    ("key", "handed"),
+    [
+        # An import binding of the file: that binding only.
+        ('"svc"', ["svc"]),
+        ('"s" "vc"', ["svc"]),
+        # A dunder reaches the whole namespace (``__builtins__``,
+        # ``__loader__``, ``__spec__``, ``__name__``), and a key that names
+        # no import binding may be a function or class whose ``__globals__``
+        # or ``__module__`` reaches it (R-724-1 item 3).
+        ('"__builtins__"', ["json", "svc", "sys"]),
+        ('"__loader__"', ["json", "svc", "sys"]),
+        # A dunder that is an import binding of the file hands out everything.
+        ('"__version__"', ["json", "svc", "sys"]),
+        ('"f"', ["json", "svc", "sys"]),
+        ('"code"', ["json", "svc", "sys"]),
+        ("k", ["json", "svc", "sys"]),
+    ],
+)
+def test_frame_read_by_constant_key_hands_out_that_binding(
+    tmp_path: Path, key: str, handed: list[str]
+) -> None:
+    """#724, R-724-1 item 3: ``frame.f_globals[K]`` with a constant ``K``
+    hands out only the binding named ``K``, and only when ``K`` is a
+    non-dunder import binding of the file; any other key hands out every
+    binding."""
+    root = _write(
+        tmp_path,
+        {
+            "r.py": (
+                "import sys\nimport svc\nimport json\n"
+                "from json import __version__\n\n\ndef f(k):\n"
+                f"    return sys._getframe(0).f_globals[{key}]\n"
+            ),
+        },
+    )
+    uses = _module_bindings(root)["r.py"]["uses"]
+    assert sorted(use[0] for use in uses if use[1:] == ["value"]) == handed
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        # Every token kind: an identifier, an attribute, an import name, a
+        # keyword argument and a constant string (R-724-1 item 1).
+        "x = y.locals\n",
+        "f(globals=1)\n",
+        "from inspect import getclosurevars as g\n",
+        "from string import Formatter as F\nF().get_field\n",
+        'f("builtins.open")\n',
+        'n = "f_globals"\n',
+        'n = "__glo" "bals__"\n',
+        'n = "f_bui" + "ltins"\n',
+        "x = frame.f_builtins\n",
+        'n = f"__im{"port"}__"\n',
+        'f("0.__globals__[svc]", (g,), {})\n',
+        'f(**{"eval_" + "str": True})\n',
+        "s = __spec__\n",
+        "x = __loader__\n",
+        "x = y.load_module\n",
+        "x.exec_module(m)\n",
+        "x = __import__(name)\n",
+        "import builtins\n",
+        # Shadowing is ignored.
+        "def f(vars):\n    return vars()\n",
+        "def f(eval):\n    return eval(x)\n",
+        "z = [eval(x) for eval in [eval]]\n",
+        # The evaluators in any bare spelling, explicit globals included.
+        "exec(code, mod.__dict__)\n",
+        "e = eval\n",
+        "from somewhere import exec\n",
+        # ``__main__`` as an import target.
+        "import __main__\n",
+        "import __main__ as me\n",
+        "from __main__ import x\n",
+        'm = importlib.import_module("__main__")\n',
+        # Another object's ``.eval()`` in a file with a route to the
+        # builtins.
+        "b = __builtins__\nm.eval(x)\n",
+        'b = d["__builtins__"]\nm.eval(x)\n',
+        # The same with a route that is no token (``__builtins__`` is one
+        # since R-724-4).
+        "b = __builtin__\nm.eval(x)\n",
+        'b = d["__builtin__"]\nm.eval(x)\n',
+        # The Python 2 statement.
+        "exec 'x = 1'\n",
+        'g = getattr(bltns, "ex" "ec")\n',
+    ],
+)
+def test_namespace_token_in_any_role_hands_out_every_binding(
+    tmp_path: Path, source: str
+) -> None:
+    """R-724-1 item 1: one token spelling a listed name, in any role and any
+    constant spelling, hands out every import binding of the file."""
+    root = _write(tmp_path, {"r.py": "import svc\n" + source})
+    assert ["svc", "value"] in _module_bindings(root)["r.py"]["uses"], source
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        'c = compile(s, "f", "exec")\n',
+        "m.eval()\n",
+        "class M:\n    def eval(self):\n        return 1\n",
+        "f(eval=True)\n",
+        "b = __builtin__\nf(eval=True)\n",
+        'if __name__ == "__main__":\n    pass\n',
+        '"""Calls globals() and builtins.open."""\n',
+        "x = 1  # globals, vars, __import__\n",
+        'n = "my_globals"\n',
+        "from x import __main__\n",
+        'x = "svc" in sys._getframe(0).f_globals\n',
+    ],
+)
+def test_namespace_token_absent_hands_out_nothing(tmp_path: Path, source: str) -> None:
+    """No listed token: a mode string, another object's ``.eval()``, a
+    method or keyword named ``eval``, the script guard, a docstring, a
+    comment, a longer name, another package's ``__main__`` submodule and an
+    ``in`` test hand out nothing."""
+    root = _write(tmp_path, {"r.py": "import sys\nimport svc\n" + source})
+    facts = _module_bindings(root)["r.py"]
+    assert ["svc", "value"] not in facts["uses"], source
+
+
+_R4_EXEC = "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+_R4_LOADER = "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
+
+
+@pytest.mark.parametrize(
+    ("path", "source"),
+    [
+        # B-1: format-field delimiters are component separators.
+        ("r.py", 's = "{0.__globals__}"\n'),
+        ("r.py", 's = "{0.f_globals!r}"\n'),
+        ("r.py", 's = "globals{0"\n'),
+        ("r.py", 's = "0}globals"\n'),
+        ("r.py", 's = "0!globals"\n'),
+        # B-1: in a file with an exempt use, a constant spelling a token as a
+        # word (the code an exempt exec runs, any other constant).
+        (
+            "r.py",
+            _R4_EXEC + "    exec('d = sys._getframe(1).f_globals; d', mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            _R4_LOADER + "    spec.loader.exec_module(probe)\n    s = 'a globals b'\n",
+        ),
+        ("r.py", "x = __import__('hashlib')\ns = 'a globals b'\n"),
+        (
+            "r.py",
+            'import types\n\ndef f(code):\n    """Inspect the globals here."""\n'
+            "    mod = types.ModuleType('m')\n    exec(code, mod.__dict__)\n",
+        ),
+        # B-2: a factory's own name as a word, any factory path name as a
+        # component (a patch target, a module key).
+        ("r.py", _R4_EXEC + "    exec(code, mod.__dict__)\n    s = 'a ModuleType b'\n"),
+        (
+            "r.py",
+            "from unittest import mock\nmock.patch('importlib.util', u).start()\n"
+            + _R4_LOADER
+            + "    spec.loader.exec_module(probe)\n",
+        ),
+        (
+            "r.py",
+            _R4_EXEC + "    exec(code, mod.__dict__)\n    d = {'types': t}\n",
+        ),
+        # B-2: ``__class__`` written on any receiver.
+        ("r.py", _R4_EXEC + "    mod.__class__ = M\n    exec(code, mod.__dict__)\n"),
+        (
+            "r.py",
+            _R4_LOADER + "    setattr(probe, '__class__', M)\n"
+            "    spec.loader.exec_module(probe)\n",
+        ),
+        # S-3: a resolver given the file's own name or a package holding it.
+        ("r.py", "import pkgutil\nm = pkgutil.resolve_name(__name__)\n"),
+        ("r.py", "import pydoc\nm = pydoc.locate((__name__))\n"),
+        ("r.py", "m = c.resolve(__name__)\n"),
+        ("r.py", "from pkgutil import resolve_name\nm = resolve_name('r:svc')\n"),
+        ("pkg/r.py", "import pydoc\nm = pydoc.locate('pkg.other')\n"),
+        # S-3: tokens that each close a tree alone.
+        ("r.py", "import doctest\nf = doctest.DocTestFinder()\n"),
+        ("r.py", "g = t.globs\n"),
+        # S-3: pytest's ``request.module``.
+        ("tests/test_r.py", "def test_a(request):\n    m = request.module\n"),
+    ],
+)
+def test_namespace_r724_4_hands_out_every_binding(
+    tmp_path: Path, path: str, source: str
+) -> None:
+    """R-724-4: a token in a format field; any word spelling a token, a
+    factory's own name, or a factory path name as a component in a file with
+    an exempt use; a ``__class__`` write in a file with a fresh-module
+    receiver; a resolver given the file's own name; pytest's
+    ``request.module``. Each hands out every import binding."""
+    root = _write(tmp_path, {path: "import svc\n" + source})
+    assert ["svc", "value"] in _module_bindings(root)[path]["uses"], source
+
+
+@pytest.mark.parametrize(
+    ("path", "source"),
+    [
+        ("r.py", 's = "{0.name}"\n'),
+        ("r.py", 's = "{0!r:>{width}}"\n'),
+        ("r.py", _R4_EXEC + "    exec('x = 1; y = x', mod.__dict__)\n"),
+        ("r.py", "x = __import__('hashlib')\ns = 'a my_globals b'\n"),
+        ("r.py", _R4_EXEC + "    exec(code, mod.__dict__)\n    s = 'a util b'\n"),
+        ("r.py", _R4_EXEC + "    k = mod.__class__\n    exec(code, mod.__dict__)\n"),
+        ("r.py", "import pkgutil\nm = pkgutil.resolve_name('json:dumps')\n"),
+        ("r.py", "import pydoc\nm = pydoc.locate(name)\n"),
+        ("r.py", "m = p.resolve()\nn = p.resolve(x, __name__)\n"),
+        ("r.py", "import logging\nlog = logging.getLogger(__name__)\n"),
+        ("r.py", "m = c.resolve_name\nn = resolve.other(__name__)\n"),
+        (
+            "tests/test_r.py",
+            "def test_a(request, req):\n    m = request.node\n    n = req.module\n",
+        ),
+    ],
+)
+def test_namespace_r724_4_near_miss_hands_out_nothing(
+    tmp_path: Path, path: str, source: str
+) -> None:
+    """R-724-4 near misses: a format field naming no token, an exempt use in
+    a file whose constants spell no listed word, a ``__class__`` read, a
+    resolver given another name or none, and another fixture attribute
+    hand out nothing."""
+    root = _write(tmp_path, {path: "import svc\n" + source})
+    assert ["svc", "value"] not in _module_bindings(root)[path]["uses"], source
+
+
+def test_package_reader_hands_out_its_submodules(tmp_path: Path) -> None:
+    """R-724-1 item 2: a package ``__init__.py`` that hands out its namespace
+    taints the package wholly, and through it every submodule (which is no
+    import binding); a module that does the same does not, nor does a
+    package that reads no namespace or reads one binding by a constant
+    key."""
+    root = _write(
+        tmp_path,
+        {
+            "pkg/__init__.py": "def go():\n    return globals()\n",
+            "quiet/__init__.py": "def go():\n    return 1\n",
+            "keyed/__init__.py": (
+                "import sys\nimport json\n\n\ndef go():\n"
+                '    return sys._getframe(0).f_globals["json"]\n'
+            ),
+            "mod.py": "def go():\n    return globals()\n",
+        },
+    )
+    facts = _module_bindings(root)
+    assert ["pkg", "*"] in facts["pkg/__init__.py"]["taints"]
+    assert facts["quiet/__init__.py"]["taints"] == []
+    assert facts["keyed/__init__.py"]["taints"] == []
+    assert ["json", "value"] in facts["keyed/__init__.py"]["uses"]
+    assert facts["mod.py"]["taints"] == []
+
+
+@pytest.mark.parametrize(
+    ("imports", "cause"),
+    [
+        ("import sys\n", True),
+        ("import sys as s\n", True),
+        ("import importlib.util\n", True),
+        ("from importlib import import_module\n", True),
+        ("import builtins as b\n", True),
+        ("import json\n", False),
+    ],
+)
+def test_handed_out_module_system_binding_raises_the_cause(
+    tmp_path: Path, imports: str, cause: bool
+) -> None:
+    """R-724-1 item 4: a handed-out binding of ``sys``, ``importlib`` or
+    ``builtins`` (under any alias) raises ``module-system``; the same import
+    in a file that keeps its namespace raises nothing (``import builtins``
+    spells a listed name, so that file hands out its namespace)."""
+    root = _write(
+        tmp_path,
+        {
+            "r.py": imports + "\n\ndef f():\n    return locals()\n",
+            "q.py": imports.replace(" as b", "").replace(" as s", "") + "\n",
+        },
+    )
+    facts = _module_bindings(root)
+    assert ("module-system" in facts["r.py"]["shutoff"]) is cause, imports
+    assert ("module-system" in facts["q.py"]["shutoff"]) is (
+        "builtins" in imports
+    ), imports
+
+
+def test_module_system_cause_from_a_test_file_is_test_scoped(tmp_path: Path) -> None:
+    """R-724-1 item 4, O-2: the cause a test file raises by handing out
+    ``sys`` shuts off Tier 2 for callers in test files only."""
+    root = _write(
+        tmp_path,
+        {
+            "svc.py": "def t():\n    return 1\n",
+            "other.py": "def t():\n    return 2\n",
+            "caller.py": "import svc\n\n\ndef c():\n    return svc.t()\n",
+            "tests/test_r.py": "import sys\n\n\ndef test_r():\n    assert globals()\n",
+            "tests/test_c.py": "import svc\n\n\ndef test_c():\n    assert svc.t()\n",
+        },
+    )
+    _off, _structural, on, label = _run(root, "caller.py", "svc.t")
+    assert on["resolution"] == "resolved", label
+    _off, _structural, on, label = _run(root, "tests/test_c.py", "svc.t")
+    assert on["resolution"] != "resolved"
+    assert label == "none(run-tainted:module-system)"
+
+
 # ---------------------------------------------------------------------------
 # treesitter-chunker#707: a function-local alias of a patcher (E-21) is
 # reachable when its function's locals may be read as a dict. The
@@ -3744,6 +6413,9 @@ def test_issue707_local_patcher_alias_escapes_through_locals(
     # a ``module-object`` cause too, which sorts first; the escape rule's own
     # cause is still recorded.
     cause = "module-object" if case in ISSUE707_FRAME_TOKENS else "unresolvable-writer"
+    if case == "getframe_f_locals_get":
+        assert cause in _recorded_causes(root)
+        cause = "module-system"  # sys was handed out
     assert label == f"none(run-tainted:{cause})", case
     assert "unresolvable-writer" in _recorded_causes(root), case
 
@@ -3957,7 +6629,8 @@ def test_r707_1_sensitive_parameter_escapes_through_locals(
     cause = (
         "module-object" if case == "mocker_frame_f_locals" else "unresolvable-writer"
     )
-    assert label == f"none(run-tainted:{cause})", case
+    assert cause in _recorded_causes(root), case
+    assert label == "none(module-escape)", case  # the file hands out calls
     assert "unresolvable-writer" in _recorded_causes(root), case
 
 
@@ -4848,7 +7521,23 @@ def test_s4_traced_routes_fail_closed(tmp_path: Path, case: str) -> None:
     assert off["resolution"] == "ambiguous", case
     assert on == off, case
     cause = _S4_TRACED_CAUSES.get(case, "module-object")
-    assert label == f"none(run-tainted:{cause})", case
+    assert cause in _recorded_causes(root), case
+    if case in {
+        "xf_cr_frame",
+        "xf_gen_frame",
+        "xf_getargvalues",
+        "xf_inspect_trace",
+        "xf_tb_frame",
+    }:
+        assert label == "none(module-escape)", case
+    elif case in {
+        "f9_formatter_field",
+        "t2_frame_callee_reads_caller",
+        "y_getargvalues_reads_caller",
+    }:
+        assert label == "none(run-tainted:module-system)", case
+    else:
+        assert label == f"none(run-tainted:{cause})", case
 
 
 @pytest.mark.parametrize("case", sorted(S4_TRACED_CONTROLS))
@@ -4902,7 +7591,13 @@ def test_s4_overlapped_patcher_rules_still_fire(tmp_path: Path, case: str) -> No
     off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
     assert off["resolution"] == "ambiguous", case
     assert on == off, case
-    assert label == "none(run-tainted:unresolvable-writer)", case
+    assert "unresolvable-writer" in _recorded_causes(root), case
+    expected = (
+        "module-escape"
+        if case == "mocker-parameter-locals"
+        else "run-tainted:unresolvable-writer"
+    )
+    assert label == f"none({expected})", case
 
 
 def test_s4_fixture_kept_without_escape_is_no_cause(tmp_path: Path) -> None:
@@ -5574,7 +8269,12 @@ def test_r10_traced_routes_fail_closed(tmp_path: Path, case: str) -> None:
     off, _structural, on, label = _run(root, file, reference)
     assert off["resolution"] == "ambiguous", case
     assert on == off, case
-    assert label == f"none(run-tainted:{cause})", case
+    if case == "pm_getclosurevars":
+        assert cause in _recorded_causes(root), case
+    expected = (
+        "module-escape" if case == "pm_getclosurevars" else f"run-tainted:{cause}"
+    )
+    assert label == f"none({expected})", case
 
 
 @pytest.mark.parametrize("case", sorted(R10_TRACED_CONTROLS))

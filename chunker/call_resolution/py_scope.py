@@ -877,7 +877,8 @@ _ENTRY_POINT_PARSE_KEYWORDS = frozenset({"src"})
 # ``".timeit.x"``) and strip whitespace (``"timeit : timeit"``), and
 # ``pkgutil.resolve_name``'s pattern accepts a trailing newline, so any
 # string-code module name among the parts fires.
-_ACQUIRED_PARTS = re.compile(r"[^A-Za-z0-9_]+")
+# The same word boundaries apply to frame, heap and namespace tokens.
+_TOKEN_WORDS = re.compile(r"[^A-Za-z0-9_]+")
 _ACQUIRED_MODULES = (
     _GENERIC_MODULE_STRINGS
     | _MODULE_STRINGS
@@ -889,10 +890,6 @@ _DOTTED_SPLIT = re.compile(r"[.:]")
 # Components of a constant string for the token rules (R-724-1, R-707-1): a
 # dotted, ``:`` or bracket path (``"gc.get_objects"``, ``"d[f_locals]"``).
 _TOKEN_PARTS = re.compile(r"[.:\[\]]")
-# Words of a constant string, for the distinctive names whose every mention
-# counts (PY-6, PY-7, PY-9): any run of characters that is not part of an
-# identifier separates them (``"0.f_locals[p]"``, ``"{0.gi_frame.f_locals}"``).
-_TOKEN_WORDS = re.compile(r"[^A-Za-z0-9_]+")
 # A constant that is a dotted name (``.`` or ``:`` between identifiers).
 _DOTTED_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:[.:][A-Za-z_][A-Za-z0-9_]*)*")
 # Builtins that run source, build a code object or reach ``pdb``. A use is
@@ -1435,6 +1432,9 @@ class _Analysis:
         # name (Tier 2 ``module-object``). The use-site checks run once the
         # scopes are complete (:meth:`_verify_string_code`).
         self.string_code: set[str] = set()
+        # A fresh-module handout proof checks the exec/exec_module use itself.
+        # Every independent file-wide hazard must still block its local lookup.
+        self.namespace_receiver_blocked = False
         self.code_objects = False
         # treesitter-chunker#699 PY-7: a use of ``gc`` off its member list or
         # a heap-walker token (Tier 1 fails closed file-wide; Tier 2 records
@@ -2318,8 +2318,10 @@ class _Analysis:
 
     # -- string code and code objects (treesitter-chunker#699 S2) -----------
 
-    def _fire(self, group: str) -> None:
+    def _fire(self, group: str, *, namespace_candidate: bool = False) -> None:
         self.string_code.add(group)
+        if not namespace_candidate:
+            self.namespace_receiver_blocked = True
 
     def _string_code_rules(
         self,
@@ -2345,7 +2347,7 @@ class _Analysis:
             if spellings & _BUILTINS_REACH or self._computed_acquisition(ident):
                 self.builtins_reach = True
             if spellings & _STRING_CODE_NAMES:
-                self._fire("name")
+                self._fire("name", namespace_candidate=spellings == {"exec_module"})
             if spellings & _CODE_OBJECT_NAMES:
                 self.code_objects = True
             if spellings & _GC_WALKERS:
@@ -2584,10 +2586,10 @@ class _Analysis:
             # ``attrgetter("gc.get_objects")``.
             self.heap_walk = True
         acquired = self._acquired(node)
-        if acquired and _GC in _ACQUIRED_PARTS.split(value):
+        if acquired and _GC in _TOKEN_WORDS.split(value):
             # ``importlib.import_module("gc")``, ``sys.modules["gc"]``.
             self.heap_walk = True
-        if acquired and set(_ACQUIRED_PARTS.split(value)) & _ACQUIRED_MODULES:
+        if acquired and set(_TOKEN_WORDS.split(value)) & _ACQUIRED_MODULES:
             # Before the dotted-name gate (R-699-5, BLOCKING 2):
             # ``pkgutil.resolve_name("timeit:timeit\n")``,
             # ``pydoc.locate(".timeit.timeit")``, ``{"()": "ext://timeit.x"}``,
@@ -2956,7 +2958,10 @@ class _Analysis:
         for kind, node in self.string_checks:
             if kind == "builtin":
                 if self._is_builtin(node):
-                    self._fire("builtin")
+                    self._fire(
+                        "builtin",
+                        namespace_candidate=_text(node, self.source) == "exec",
+                    )
             elif kind == "attribute:compile":
                 if self.builtins_reach and not self._re_receiver(node):
                     self._fire("builtin")
@@ -2977,6 +2982,7 @@ class _Analysis:
                     self._fire_checked(failed)
         if computed_getter:
             self.dynamic = True
+        self.namespace_receiver_blocked |= self.frame_locals or self.heap_walk
         if self.string_code:
             self.dynamic = True
             self.frame_locals = True
@@ -4501,13 +4507,20 @@ class _Analysis:
             yield from self._scopes_at(node, child, ident)
             child, node = node, node.parent
 
-    def lookup(self, ident: Any, *, annotations: bool = True) -> dict[str, Any]:
+    def lookup(
+        self, ident: Any, *, annotations: bool = True, namespace_receiver: bool = False
+    ) -> dict[str, Any]:
         """The outcome of a value lookup of ``ident``'s name. With
         ``annotations=False`` a name in an annotation is looked up through
-        the ordinary chain (:meth:`_use_lookup`)."""
+        the ordinary chain (:meth:`_use_lookup`). Namespace receiver lookups
+        can prove a local in the presence of candidate exec calls because the
+        handout scan must verify every such use. Independent file-wide
+        hazards still block the proof."""
         name = _text(ident, self.source)
         self.decided = None
-        if self.frame_locals:
+        if self.frame_locals and (
+            not namespace_receiver or self.namespace_receiver_blocked
+        ):
             # ``frame.f_locals`` writes any function's locals (PEP 667).
             return _none("dynamic-scope")
         if annotations and _in_annotation(ident):
