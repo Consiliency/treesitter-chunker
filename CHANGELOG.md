@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Token-limited file reads, standard VFS chunking and repository processing
+  (including watch deltas) preserve source line endings. For valid UTF-8,
+  contiguous source-backed chunk spans and content refer to the original bytes.
+  Standard VFS source decoding uses UTF-8 on all platforms. Rechunk affected
+  files to refresh occurrence IDs and parent links (treesitter-chunker#758).
+
 - Python structural call resolution now treats a constant string as a
   `__main__` self-reference when a component split on format and attribute
   punctuation or whitespace (or a default `string.Template` identifier) is

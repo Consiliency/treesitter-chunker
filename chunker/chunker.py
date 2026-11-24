@@ -108,7 +108,7 @@ def chunk_file_with_token_limit(
     if language == "baml":
         src = Path(path).read_bytes().decode("utf-8")
     else:
-        src = Path(path).read_text(encoding="utf-8", errors="replace")
+        src = Path(path).read_text(encoding="utf-8", errors="replace", newline="")
     return chunk_text_with_token_limit(
         src,
         language,

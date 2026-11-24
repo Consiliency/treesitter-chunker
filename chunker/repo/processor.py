@@ -538,14 +538,14 @@ class RepoProcessor(RepoProcessorInterface):
     ) -> str | FileChunkResult:
         """Read file with fallback encoding support."""
         try:
-            return file_path.read_text(encoding="utf-8")
+            return file_path.read_text(encoding="utf-8", newline="")
         except UnicodeDecodeError:
             pass
 
         # Try fallback encodings
         for encoding in ["latin-1", "cp1252"]:
             try:
-                return file_path.read_text(encoding=encoding)
+                return file_path.read_text(encoding=encoding, newline="")
             except (OSError, FileNotFoundError, IndexError):
                 continue
 
@@ -1044,11 +1044,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
             if not language or not path.is_file():
                 continue
             try:
-                content = (
-                    path.read_bytes().decode("utf-8")
-                    if language == "baml"
-                    else path.read_text(encoding="utf-8")
-                )
+                content = path.read_bytes().decode("utf-8")
             except UnicodeDecodeError as exc:
                 errors.append(
                     {"file": rel, "error": str(exc), "type": type(exc).__name__}
