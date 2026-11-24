@@ -1134,8 +1134,7 @@ def test_496_call_site_line_lookup_avoids_repeated_prefix_scans(
     original_finditer = graph_module.re.finditer
 
     def instrument_index(pattern, buffer, *args, **kwargs):
-        # LF for JavaScript; LF, CRLF or lone CR for Python
-        # (treesitter-chunker#471).
+        # Count both the physical index and any redundant LF-only scans.
         if pattern in {b"\n", rb"\r\n|\r|\n"} and isinstance(buffer, BudgetBytes):
             measured["newline_index_scans"] += 1
             measured["newline_index_scan_bytes"] += len(buffer)

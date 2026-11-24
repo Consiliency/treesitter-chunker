@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import shlex
+from importlib.metadata import distribution
+
+from typer.testing import CliRunner
 
 from chunker.exceptions import LanguageNotFoundError
 
@@ -28,12 +32,36 @@ class TestLanguageNotFoundErrorMessages:
         # Should suggest installing the language pack
         assert "tree-sitter-language-pack" in error_str or "language-pack" in error_str
 
-    def test_error_includes_grammar_compile_guidance(self):
-        """Test that error message mentions grammar compilation option."""
-        error = LanguageNotFoundError("unknown_lang", [])
-        error_str = str(error)
-        # Should mention compiling grammars as an alternative
-        assert "grammar" in error_str.lower() or "compile" in error_str.lower()
+    def test_guidance_names_registered_cli_commands(self):
+        language = "rust"
+        guidance = str(LanguageNotFoundError(language, []))
+        commands = [
+            shlex.split(line)
+            for line in guidance.splitlines()
+            if line.startswith("      ")
+        ]
+        scripts = distribution("treesitter-chunker").entry_points.select(
+            group="console_scripts"
+        )
+        for program, *arguments in commands:
+            if program == "pip":
+                assert arguments == ["install", "tree-sitter-language-pack"]
+                continue
+            assert program in scripts.names, f"Unregistered executable: {program}"
+            result = CliRunner().invoke(scripts[program].load(), [*arguments, "--help"])
+            assert result.exit_code == 0, result.output
+
+        assert ["treesitter-chunker", "setup", "grammars", language] in commands
+
+    def test_guidance_explains_pin_sources(self):
+        guidance = str(LanguageNotFoundError("rust", []))
+        assert (
+            "SHA-256" in guidance and "user-config trusted-artifacts.json" in guidance
+        )
+        assert (
+            "https://github.com/Consiliency/treesitter-chunker/blob/main/docs/grammar_management.md#approved-pins"
+            in guidance
+        )
 
     def test_error_includes_available_count(self):
         """Test that error message includes count of available languages."""

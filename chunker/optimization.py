@@ -518,11 +518,9 @@ class ChunkOptimizer(ChunkOptimizerInterface):
             "gpt-4",
         )
         sub_chunks = []
-        chunk.content.split("\n")
         current_line = chunk.start_line
         for text in text_chunks:
-            text_lines = text.split("\n")
-            end_line = current_line + len(text_lines) - 1
+            end_line = current_line + text.count("\n")
             sub_chunk = CodeChunk(
                 language=chunk.language,
                 file_path=chunk.file_path,
@@ -539,7 +537,7 @@ class ChunkOptimizer(ChunkOptimizerInterface):
                 metadata=chunk.metadata.copy(),
             )
             sub_chunks.append(sub_chunk)
-            current_line = end_line + 1
+            current_line = end_line
         return sub_chunks
 
     @classmethod

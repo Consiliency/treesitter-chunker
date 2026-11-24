@@ -312,7 +312,14 @@ class ExportFilter(ABC):
 
 
 class ExportTransformer(ABC):
-    """Transform chunks during export."""
+    """Return field patches for retained records during structured export.
+
+    Each registration receives a detached typed copy of the previous result.
+    Omitted fields keep their values. Returning an empty dict preserves all
+    fields. Metadata is replaced as a whole and can contain writer-supported,
+    deepcopy-compatible values under string keys. All other fields must be
+    omitted or echoed with identical values and types. Unknown keys fail.
+    """
 
     @staticmethod
     @abstractmethod
@@ -323,7 +330,8 @@ class ExportTransformer(ABC):
             chunk: Chunk to transform
 
         Returns:
-            Transformed chunk data
+            Replacements for content (str) and/or metadata (dict). Source
+            identity, spans, routes and links are protected.
         """
 
     @staticmethod
@@ -338,5 +346,7 @@ class ExportTransformer(ABC):
             relationship: Relationship to transform
 
         Returns:
-            Transformed relationship data
+            Replacements for metadata (dict or None) and/or relationship_type
+            (RelationshipType member or exact string value, e.g. "calls").
+            The next stage receives an enum. Both endpoints are protected.
         """

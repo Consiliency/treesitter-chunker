@@ -17,6 +17,8 @@ CI_SMOKE_TESTS = [
     "tests/test_cli.py",
     "tests/test_non_regular_inputs.py",
     "tests/test_cr_only_python_lines.py",
+    "tests/test_cr_only_source_lines.py",
+    "tests/test_boundary_physical_row_cache.py",
     "tests/test_node_explorer_contract.py",
     "tests/test_debug_repl_contract.py",
     "tests/test_public_grammar_validator.py",

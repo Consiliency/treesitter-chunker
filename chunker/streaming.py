@@ -23,14 +23,20 @@ from __future__ import annotations
 
 import hashlib
 import mmap
+import os
+import stat
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from ._internal.file_utils import FileMetadata as _CacheFileMetadata
 from .core import (
     _build_retrieval_metadata,
     _extract_definition_name,
     _lone_cr_parse_copy,
+    _chunk_line_offsets,
+    _physical_row,
     resolve_chunk_predicates,
 )
 from .exceptions import ParsingError
@@ -39,7 +45,7 @@ from .parser import get_parser
 from .types import CodeChunk, compute_node_id
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Callable, Iterator, Sequence
 
     from tree_sitter import Node, Parser
 
@@ -120,6 +126,7 @@ class StreamingChunker:
         include_retrieval_metadata: bool = False,
         should_chunk: Callable[[str], bool] | None = None,
         should_ignore: Callable[[str], bool] | None = None,
+        line_offsets: Sequence[int] | None = None,
     ) -> Iterator[CodeChunk]:
         """Yield chunks as they're found without building a full list in memory.
 
@@ -130,6 +137,8 @@ class StreamingChunker:
         top of the walk and threaded through recursion; ignored nodes stop
         traversal just as they do in ``chunk_file``.
         """
+        if line_offsets is None:
+            line_offsets = _chunk_line_offsets(mmap_data, self.language)
         if should_chunk is None or should_ignore is None:
             default_chunk, default_ignore = resolve_chunk_predicates(self.language)
             if should_chunk is None:
@@ -162,8 +171,16 @@ class StreamingChunker:
                 language=self.language,
                 file_path=file_path,
                 node_type=node.type,
-                start_line=start_line,
-                end_line=node.end_point[0] + 1,
+                start_line=(
+                    _physical_row(line_offsets, node.start_byte)
+                    if line_offsets
+                    else start_line
+                ),
+                end_line=(
+                    _physical_row(line_offsets, node.end_byte)
+                    if line_offsets
+                    else node.end_point[0] + 1
+                ),
                 byte_start=node.start_byte,
                 byte_end=node.end_byte,
                 parent_context=parent_ctx or "",
@@ -205,6 +222,7 @@ class StreamingChunker:
                 include_retrieval_metadata,
                 should_chunk,
                 should_ignore,
+                line_offsets,
             )
 
     def chunk_file_streaming(
@@ -222,7 +240,6 @@ class StreamingChunker:
         if path.stat().st_size == 0:
             return
 
-        should_chunk, should_ignore = resolve_chunk_predicates(self.language)
         with (
             Path(path).open("rb") as f,
             mmap.mmap(
@@ -231,27 +248,84 @@ class StreamingChunker:
                 access=mmap.ACCESS_READ,
             ) as mmap_data,
         ):
-            if self.language == "baml":
-                mmap_data[:].decode("utf-8")
-            # CR-only Python parses a CR->LF copy with identical offsets; the
-            # walk still slices the raw mapped bytes (treesitter-chunker#471).
-            parse_copy = _lone_cr_parse_copy(mmap_data, self.language)
-            if parse_copy is None:
-                tree = self.parser.parse(mmap_data)
-            else:
-                tree = self.parser.parse(parse_copy)
-            root = tree.root_node
-            config = language_config_registry.get(self.language)
-            if config and config.strict_parse and root.has_error:
-                raise ParsingError(self.language, "syntax error in source")
-            yield from self._walk_streaming(
-                root,
-                mmap_data,
-                str(path),
-                include_retrieval_metadata=include_retrieval_metadata,
-                should_chunk=should_chunk,
-                should_ignore=should_ignore,
-            )
+            yield from self._chunk_mapping(mmap_data, path, include_retrieval_metadata)
+
+    def _chunk_mapping(
+        self, mmap_data: mmap.mmap, path: Path, include_retrieval_metadata: bool = False
+    ) -> Iterator[CodeChunk]:
+        should_chunk, should_ignore = resolve_chunk_predicates(self.language)
+        if self.language == "baml":
+            mmap_data[:].decode("utf-8")
+        # CR-only Python parses a CR->LF copy with identical offsets; the
+        # walk still slices the raw mapped bytes (treesitter-chunker#471).
+        parse_copy = _lone_cr_parse_copy(mmap_data, self.language)
+        if parse_copy is None:
+            tree = self.parser.parse(mmap_data)
+        else:
+            tree = self.parser.parse(parse_copy)
+        root = tree.root_node
+        config = language_config_registry.get(self.language)
+        if config and config.strict_parse and root.has_error:
+            raise ParsingError(self.language, "syntax error in source")
+        yield from self._walk_streaming(
+            root,
+            mmap_data,
+            str(path),
+            include_retrieval_metadata=include_retrieval_metadata,
+            should_chunk=should_chunk,
+            should_ignore=should_ignore,
+        )
+
+
+_COPY_BLOCK_SIZE = 1024 * 1024
+
+
+def _can_snapshot_streaming(path: Path) -> bool:
+    info = path.stat()
+    return stat.S_ISREG(info.st_mode) and info.st_size > 0
+
+
+def _streaming_snapshot(
+    path: Path, language: str
+) -> tuple[list[CodeChunk], _CacheFileMetadata] | None:
+    """Copy in bounded blocks. Return None if private storage is unavailable."""
+    # The lookup may have raced a replacement. Apply the public reader's
+    # stat-zero shortcut and ordinary handling of special files at capture.
+    if not _can_snapshot_streaming(path):
+        return None
+    digest = hashlib.sha256()
+    size = 0
+    try:
+        snapshot = tempfile.TemporaryFile(mode="w+b", buffering=0)
+    except OSError:
+        return None
+    with snapshot:
+        with path.open("rb") as source:
+            if os.fstat(source.fileno()).st_size == 0:
+                return None
+            # Some regular pseudo-files allow reads but reject mapping. Keep
+            # ordinary streaming's source error. Never access the live map.
+            mmap.mmap(source.fileno(), 0, access=mmap.ACCESS_READ).close()
+            while block := source.read(_COPY_BLOCK_SIZE):
+                try:
+                    if snapshot.write(block) != len(block):
+                        return None
+                except OSError:
+                    return None
+                digest.update(block)
+                size += len(block)
+            mtime = os.fstat(source.fileno()).st_mtime
+        metadata = _CacheFileMetadata(path, size, digest.hexdigest(), mtime)
+        if not size:
+            return [], metadata
+        try:
+            snapshot.flush()
+            mapping = mmap.mmap(snapshot.fileno(), 0, access=mmap.ACCESS_READ)
+        except OSError:
+            return None
+        with mapping:
+            chunks = list(StreamingChunker(language)._chunk_mapping(mapping, path))
+        return chunks, metadata
 
 
 def chunk_file_streaming(

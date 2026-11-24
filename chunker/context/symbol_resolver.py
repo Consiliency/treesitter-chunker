@@ -40,6 +40,16 @@ class BaseSymbolResolver(SymbolResolver):
         cache_key = (symbol_name, scope_node, ast)
         if cache_key in self._definition_cache:
             return self._definition_cache[cache_key]
+        definition = self._lookup_definition(symbol_name, scope_node, ast)
+        if len(self._definition_cache) >= 256:
+            self._definition_cache.pop(next(iter(self._definition_cache)))
+        self._definition_cache[cache_key] = definition
+        return definition
+
+    def _lookup_definition(
+        self, symbol_name: str, scope_node: Node, ast: Node
+    ) -> Node | None:
+        """Search lexical scopes on a cache miss."""
         current_scope = scope_node
         while current_scope:
             definition = self._search_scope_for_definition(symbol_name, current_scope)
@@ -48,9 +58,6 @@ class BaseSymbolResolver(SymbolResolver):
             current_scope = self._get_parent_scope(current_scope)
         else:
             definition = self._search_scope_for_definition(symbol_name, ast)
-        if len(self._definition_cache) >= 256:
-            self._definition_cache.pop(next(iter(self._definition_cache)))
-        self._definition_cache[cache_key] = definition
         return definition
 
     def get_symbol_type(self, symbol_node: Node) -> str:

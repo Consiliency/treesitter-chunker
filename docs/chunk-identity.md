@@ -47,26 +47,60 @@ parse exactly as before. Python complexity metadata uses the same physical
 lines for `lines_of_code` and for scanning code in `logical_lines`
 (treesitter-chunker#597).
 
-Other languages still parse the raw bytes and count only LF, so a CR-only
-file in those languages reports every chunk on line 1
-(treesitter-chunker#601). The
-VFS standard (non-streaming) path reads translated text, so its chunk content
-holds LF and its CRLF offsets refer to the translated text rather than the raw
-bytes; that predates this contract. Raw spans can end between CR and LF when
-the parser includes CR in a token, such as a Python comment; source slicing
-still retains those exact bytes.
+For non-Python files containing a lone CR, the regular, mmap and VFS streaming
+chunkers report physical rows for nodes recognized by the existing parser. LF, CRLF and lone CR
+each advance the row once, after their final byte. This preserves grammar
+behavior, including regular Dockerfile continuation repair. Chunk endpoints
+use the start and exclusive end cursors. Call end rows describe the last
+included byte. Anonymous route anchors and Julia comment grouping retain their
+parser-row semantics. On these files a grouped Julia definition includes the
+original bytes between its comment and declaration, so token-split parts span
+the same physical rows as their parent. Synthetic Svelte template-control and reactive chunks
+report the source line that produced them. Their legacy identity byte offsets
+can point earlier on mixed endings or after a multibyte script tag.
+
+Raw spans can end between CR and LF when the parser includes CR in a token, such
+as a Python comment. Source slicing retains those exact bytes.
 
 An explicit `identity_path` still determines regular chunk identities independently
-of the physical read path. Invalid UTF-8 outside BAML retains replacement
+of the physical read path. Regular file input outside BAML retains replacement
 decoding, which is lossy and does not promise raw-byte roundtrips. BAML decoding
 remains strict. Language-specific transformations, such as R Markdown extraction,
 and regular/streaming selection differences are separate contracts; this change
 does not establish global API parity. CLI stdin retains text-stream newline
 handling and is not certified as raw-byte-equivalent to file input.
 
-Cached parallel processing has a separate cache-identity defect
-(treesitter-chunker#358). Use `use_cache=False` until that repair is accepted;
-newline preservation does not invalidate or repair existing cached payloads.
+The SQLite parallel directory cache includes the installed package version in
+its extraction identity. Refresh that cache or use `use_cache=False` when
+upgrading between development builds with the same version.
+
+## Token-limited files, standard VFS and repository readers
+
+These entries preserve LF, CRLF and lone CR (treesitter-chunker#758). For valid
+UTF-8, a contiguous source-backed chunk's half-open byte range slices back to
+its content. For an unsplit named definition selected with the same path and
+route, the occurrence ID and parent link agree with regular extraction.
+Rechunk previously translated files and rebuild their occurrence-ID joins and
+parent links. Named structural IDs still depend on path and route. On CR-only
+input, a language's raw grammar can also select different declarations.
+
+- Token splitting of oversized functions preserves the original line endings
+  between parts. Joining the parts in order reproduces the function body,
+  including its declaration and indentation.
+- Token-limited files replace invalid UTF-8 outside BAML. Offsets then refer
+  to the decoded text re-encoded as UTF-8. BAML uses strict UTF-8.
+- Standard VFS chunking obtains bytes from the backend and strictly decodes
+  UTF-8. Custom backends supply source via the binary read. A text-only read
+  override no longer transforms chunk input. On systems with a non-UTF-8
+  locale, local files previously accepted in the locale encoding may now
+  raise `UnicodeDecodeError`.
+- Repository batch and iterator reads use UTF-8 first, then the existing
+  legacy-encoding fallback outside BAML. Fallback offsets refer to the UTF-8
+  representation of decoded text. The default adapter uses the relative POSIX
+  path for identity. Custom adapters receive the original terminators through
+  their existing two-argument interface and determine their own chunks.
+- Watch uses strict UTF-8 and the absolute path for identity. A decode failure
+  appears in the delta's errors while other files continue processing.
 
 ## Python selection migration for 6.0.0
 

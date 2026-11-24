@@ -74,3 +74,65 @@ def test_293_binding_identifiers_are_not_references_and_uses_are() -> None:
         if observed != (expected, expected):
             mismatches.append((entry["name"], point, entry["role"], observed))
     assert mismatches == []
+
+
+def test_545_declaration_and_assignment_references() -> None:
+    case = reference_case("javascript", "declaration_reads")
+    entries = case.entries("occurrences", "treesitter-chunker#545")
+    assert entries
+    resolver = ContextFactory.create_symbol_resolver("javascript")
+    extractor = ContextFactory.create_context_extractor("javascript")
+    extracted = extractor._find_references_in_node(case.root, case.source)
+    for name in {entry["name"] for entry in entries} | {"staticKey"}:
+        expected = {
+            case.occurrence(entry)
+            for entry in entries
+            if entry["name"] == name and entry["role"] == "use"
+        }
+        assert set(resolver.find_symbol_references(name, case.root)) == expected, name
+        assert {
+            node for spelling, node in extracted if spelling == name
+        } == expected, name
+
+
+def test_552_generator_parent_context_matches_oracle() -> None:
+    from chunker.interfaces.context import ContextType
+
+    case = reference_case("javascript", "generator_parents")
+    entries = case.entries("parent_context", "treesitter-chunker#552")
+    assert entries
+    extractor = ContextFactory.create_context_extractor("javascript")
+    for entry in entries:
+        items = extractor.extract_parent_context(
+            case.node(entry), case.root, case.source
+        )
+        expected = [
+            (
+                ContextType.PARENT_SCOPE,
+                case.scope(parent["scope"]),
+                parent["summary"],
+                case.scope(parent["scope"]).start_point.row + 1,
+            )
+            for parent in entry["parents"]
+        ]
+        assert [(i.type, i.node, i.content, i.line_number) for i in items] == expected
+
+
+def test_552_multiline_generator_keeps_input_line_endings() -> None:
+    from chunker.parser import get_parser
+
+    extractor = ContextFactory.create_context_extractor("javascript")
+    for ending in (b"\n", b"\r\n"):
+        signature = ending.join((b"function* gen(", b"    arg", b")"))
+        source = ending + signature + b" { yield arg; }"
+        root = get_parser("javascript").parse(source).root_node
+        generator = root.named_children[0]
+        body = generator.child_by_field_name("body")
+        probe = body.named_children[0]
+        (item,) = extractor.extract_parent_context(probe, root, source)
+        assert (
+            item.node == generator
+            and item.node.type == "generator_function_declaration"
+        )
+        assert item.line_number == 2
+        assert item.content == signature.decode() + " { ... }"

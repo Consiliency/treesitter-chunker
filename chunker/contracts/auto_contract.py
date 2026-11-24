@@ -8,7 +8,9 @@ from typing import Any
 
 @dataclass
 class AutoChunkResult:
-    """Result of automatic chunking"""
+    """Result of automatic chunking. Unruled-grammar line fallback records
+    fallback_reason="no_chunk_rules" in result and chunk metadata.
+    """
 
     chunks: list[dict[str, Any]]
     language: str
@@ -51,7 +53,7 @@ class ZeroConfigContract(ABC):
         Args:
             file_path: Path to file
             language: Override language detection
-            token_limit: Optional token limit per chunk
+            token_limit: Optional token limit for structural chunks
 
         Returns:
             Chunking result with metadata
@@ -62,7 +64,9 @@ class ZeroConfigContract(ABC):
         Postconditions:
             - File chunked with an installed, admitted grammar when available
             - Nothing is downloaded or built
-            - Falls back to text chunking otherwise
+            - Uses line fallback for nonblank, NUL-free input when an unruled
+              grammar yields zero chunks; ruled empty results remain empty
+            - Falls back to text chunking for unavailable grammars
         """
 
     @staticmethod
@@ -94,7 +98,7 @@ class ZeroConfigContract(ABC):
         Args:
             text: Text content to chunk
             language: Language of the text
-            token_limit: Optional token limit
+            token_limit: Optional token limit for structural chunks
 
         Returns:
             Chunking result
@@ -107,6 +111,8 @@ class ZeroConfigContract(ABC):
             - Nothing is downloaded or built
             - Text chunked with an installed, admitted grammar, or by the text
               fallback otherwise
+            - Recovers nonblank, NUL-free text when an unruled grammar yields
+              zero chunks; ruled empty results remain empty
         """
 
     @staticmethod
