@@ -40,16 +40,24 @@ class GitignorePattern:
         self.pattern: re.Pattern[str] | None = None
         if line in ("", "!") or line.startswith("#"):
             return
-        # Git accepts an escaped internal separator. pathspec splits on the
-        # slash first and would treat the preceding escape as dangling.
+        if self.is_negation:
+            line = line[1:]
+            if line.startswith(("!", "#")):
+                line = "\\" + line
+
+        # pathspec splits on slashes before processing escapes. Git allows
+        # an escaped internal slash, but it still requires a path component:
+        # **\/x matches a/x and a/b/x, while **/x also matches x.
         segments = line.split("/")
-        for index, segment in enumerate(segments[:-1]):
-            if _ends_in_escape(segment):
-                if segment in ("\\", "!\\"):
+        for index, segment in enumerate(segments):
+            escaped_slash = _ends_in_escape(segment)
+            if escaped_slash:
+                if index == len(segments) - 1 or segment == "\\":
                     return
-                segments[index] = segment[:-1]
-        if _ends_in_escape(segments[-1]):
-            return
+                segment = segment[:-1]
+            if len(segment) >= 2 and not segment.strip("*"):
+                segment = "*/**" if escaped_slash else "**"
+            segments[index] = segment
         line = "/".join(segments)
         if line[0].isspace():
             line = "\\" + line
