@@ -4,7 +4,6 @@ import logging
 import multiprocessing as mp
 import os
 import sqlite3
-import stat
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -15,7 +14,11 @@ from typing import TYPE_CHECKING
 
 from ._internal.cache import ASTCache, _identity_or_none
 from .core import _chunk_file_snapshot, chunk_file, ensure_regular_file
-from .streaming import _streaming_snapshot, chunk_file_streaming
+from .streaming import (
+    _can_snapshot_streaming,
+    _streaming_snapshot,
+    chunk_file_streaming,
+)
 
 if TYPE_CHECKING:
     from .types import CodeChunk
@@ -95,10 +98,7 @@ class ParallelChunker:
             return file_path, chunk_file(file_path, self.language)
 
         if self.use_streaming:
-            info = file_path.stat()
-            if info.st_size == 0:
-                return file_path, []
-            if not stat.S_ISREG(info.st_mode):
+            if not _can_snapshot_streaming(file_path):
                 return file_path, list(chunk_file_streaming(file_path, self.language))
         else:
             ensure_regular_file(file_path)

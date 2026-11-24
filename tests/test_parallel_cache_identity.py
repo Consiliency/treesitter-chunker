@@ -30,6 +30,7 @@ import chunker.parser as parser_module
 from chunker._internal.cache import ASTCache, chunk_cache_identity
 from chunker._internal.file_utils import get_file_metadata
 from chunker.core import chunk_file
+from chunker.exceptions import NonRegularFileError
 from chunker.languages import language_config_registry
 from chunker.languages.base import ChunkRule
 from chunker.metadata import MetadataExtractorFactory
@@ -253,15 +254,78 @@ def test_streaming_empty_stat_skips_read(tmp_path, monkeypatch):
     assert _revision_row(worker.cache) == []
 
 
-def test_streaming_empty_copy_skips_mapping(tmp_path, monkeypatch):
+def test_core_rechecks_file_type_after_miss(tmp_path, monkeypatch):
+    path = tmp_path / "value.py"
+    path.write_bytes(REV_A)
+    worker = _revision_worker(tmp_path / "cache", "core")
+    lookup = worker.cache._lookup
+
+    def replace_after_lookup(*args):
+        assert lookup(*args) is None
+        path.unlink()
+        path.mkdir()
+
+    monkeypatch.setattr(worker.cache, "_lookup", replace_after_lookup)
+    with pytest.raises(NonRegularFileError):
+        worker._process_single_file(path)
+    assert _revision_row(worker.cache) == []
+
+
+def test_streaming_rechecks_stat_zero_after_lookup(tmp_path, monkeypatch):
+    path = tmp_path / "value.py"
+    path.touch()
+    empty = path.stat()
+    path.write_bytes(REV_A)
+    worker = _revision_worker(tmp_path / "cache", "streaming")
+    lookup = worker.cache._lookup
+    real_stat = Path.stat
+
+    def replace_after_lookup(*args):
+        assert lookup(*args) is None
+        monkeypatch.setattr(
+            Path, "stat", lambda p, **kw: empty if p == path else real_stat(p, **kw)
+        )
+
+    monkeypatch.setattr(worker.cache, "_lookup", replace_after_lookup)
+    assert worker._process_single_file(path)[1] == _direct(path, "streaming") == []
+    assert _revision_row(worker.cache) == []
+
+
+def test_streaming_propagates_source_mapping_error(tmp_path, monkeypatch):
+    path = tmp_path / "value.py"
+    path.write_bytes(REV_A)
+    worker = _revision_worker(tmp_path / "cache", "streaming")
+    source_stat = path.stat()
+    real_map = streaming_module.mmap.mmap
+    error = OSError("source does not support mapping")
+
+    def map_regular_files(fd, *args, **kwargs):
+        if os.path.samestat(os.fstat(fd), source_stat):
+            raise error
+        return real_map(fd, *args, **kwargs)
+
+    monkeypatch.setattr(streaming_module.mmap, "mmap", map_regular_files)
+    with pytest.raises(OSError) as direct:
+        _direct(path, "streaming")
+    with pytest.raises(OSError) as cached:
+        worker._process_single_file(path)
+    assert direct.value is cached.value is error
+    assert _revision_row(worker.cache) == []
+
+
+def test_streaming_empty_copy_skips_private_mapping(tmp_path, monkeypatch):
     path = tmp_path / "empty.py"
     path.write_bytes(REV_A)
     worker = _revision_worker(tmp_path / "cache", "streaming")
+    real_map = streaming_module.mmap.mmap
 
-    def empty_after_lookup(*args):
+    def truncate_after_source_mapping(fd, *args, **kwargs):
+        mapping = real_map(fd, *args, **kwargs)
+        mapping.close()
         path.write_bytes(b"")
+        return mapping
 
-    monkeypatch.setattr(worker.cache, "_lookup", empty_after_lookup)
+    monkeypatch.setattr(streaming_module.mmap, "mmap", truncate_after_source_mapping)
     assert worker._process_single_file(path)[1] == []
     assert _revision_row(worker.cache) == []
 

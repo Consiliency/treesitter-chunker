@@ -24,6 +24,7 @@ from __future__ import annotations
 import hashlib
 import mmap
 import os
+import stat
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -265,10 +266,19 @@ class StreamingChunker:
 _COPY_BLOCK_SIZE = 1024 * 1024
 
 
+def _can_snapshot_streaming(path: Path) -> bool:
+    info = path.stat()
+    return stat.S_ISREG(info.st_mode) and info.st_size > 0
+
+
 def _streaming_snapshot(
     path: Path, language: str
 ) -> tuple[list[CodeChunk], _CacheFileMetadata] | None:
     """Copy in bounded blocks. Return None if private storage is unavailable."""
+    # The lookup may have raced a replacement. Apply the public reader's
+    # stat-zero shortcut and ordinary handling of special files at capture.
+    if not _can_snapshot_streaming(path):
+        return None
     digest = hashlib.sha256()
     size = 0
     try:
@@ -277,6 +287,11 @@ def _streaming_snapshot(
         return None
     with snapshot:
         with path.open("rb") as source:
+            if os.fstat(source.fileno()).st_size == 0:
+                return None
+            # Some regular pseudo-files allow reads but reject mapping. Keep
+            # ordinary streaming's source error. Never access the live map.
+            mmap.mmap(source.fileno(), 0, access=mmap.ACCESS_READ).close()
             while block := source.read(_COPY_BLOCK_SIZE):
                 try:
                     if snapshot.write(block) != len(block):

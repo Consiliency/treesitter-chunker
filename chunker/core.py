@@ -1399,6 +1399,7 @@ def chunk_file(
 def _chunk_file_snapshot(
     path: Path, language: str
 ) -> tuple[list[CodeChunk], FileMetadata]:
+    ensure_regular_file(path)
     with path.open("rb") as source:
         raw = source.read()
         mtime = os.fstat(source.fileno()).st_mtime
