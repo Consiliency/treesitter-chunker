@@ -1,7 +1,7 @@
 """Incremental processing interface for efficient chunk updates."""
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any
@@ -33,7 +33,12 @@ class ChunkChange:
 
 @dataclass
 class ChunkDiff:
-    """Diff between two sets of chunks."""
+    """Diff between two sets of chunks.
+
+    Index writers apply both changes and occurrence_updates. Each occurrence
+    update pairs a content-unchanged old chunk with its new occurrence when
+    the index key or row has changed. It counts once as unchanged.
+    """
 
     changes: list[ChunkChange]
     added_chunks: list[CodeChunk]
@@ -41,6 +46,7 @@ class ChunkDiff:
     modified_chunks: list[tuple[CodeChunk, CodeChunk]]
     unchanged_chunks: list[CodeChunk]
     summary: dict[str, int]
+    occurrence_updates: list[tuple[CodeChunk, CodeChunk]] = field(default_factory=list)
 
 
 @dataclass
@@ -127,7 +133,7 @@ class IncrementalProcessor(ABC):
         Args:
             full_chunks: Complete chunks from last full processing
             incremental_chunks: Chunks from incremental processing
-            changed_regions: Line ranges that changed
+            changed_regions: Inclusive line ranges that changed across the supplied chunks
 
         Returns:
             Merged chunk list
