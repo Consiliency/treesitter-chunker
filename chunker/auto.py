@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 import warnings
+from importlib.metadata import version as distribution_version
 from io import StringIO
 from itertools import batched
 from pathlib import Path
@@ -93,7 +94,7 @@ def _extraction_result(
         if getattr(chunk, "metadata", None):
             item["metadata"] = chunk.metadata
         chunk_dicts.append(item)
-    metadata["tree_sitter_version"] = "0.20.0"
+    metadata["tree_sitter_version"] = distribution_version("tree-sitter")
     return AutoChunkResult(chunk_dicts, language, False, False, metadata)
 
 
@@ -485,7 +486,7 @@ class ZeroConfigAPI(ZeroConfigContract):
         else:
             if extracted is not None:
                 return _extraction_result(extracted, language, unruled_source)
-        code_chunks = self._fallback_chunker.chunk_text(text, "<text>")
+        code_chunks = self._fallback_chunker.chunk_in_memory(text)
         chunks = []
         for chunk in code_chunks:
             chunk_dict = {

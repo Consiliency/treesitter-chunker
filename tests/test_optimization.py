@@ -532,6 +532,24 @@ class TestOptimizationIntegration:
         """Create optimizer with real token counter."""
         return ChunkOptimizer()
 
+    def test_token_split_line_cursor(self, real_optimizer):
+        content = "alpha\nbeta\ngamma"
+        parent = CodeChunk(
+            "python",
+            "x.py",
+            "expression_statement",
+            10,
+            12,
+            0,
+            len(content),
+            "",
+            content,
+        )
+        parts = real_optimizer.split_large_chunks([parent], max_tokens=2)
+        gamma = parts[-1]
+        assert gamma.content == "gamma"
+        assert (gamma.start_line, gamma.end_line) == (12, 12)
+
     @classmethod
     def test_real_token_counting(cls, real_optimizer):
         """Test with real token counting if tiktoken is available."""

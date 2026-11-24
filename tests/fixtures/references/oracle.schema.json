@@ -121,6 +121,33 @@
         }
       }
     },
+    "parent_context": {
+      "description": "Exact parent signatures from outermost to innermost for the anchored probe.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["issue", "node_type", "row", "column", "parents"],
+        "properties": {
+          "issue": {"$ref": "#/$defs/issue"},
+          "node_type": {"$ref": "#/$defs/node_type"},
+          "row": {"$ref": "#/$defs/position"},
+          "column": {"$ref": "#/$defs/position"},
+          "parents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["scope", "summary"],
+              "properties": {
+                "scope": {"$ref": "#/$defs/scope_id"},
+                "summary": {"type": "string", "minLength": 1}
+              }
+            }
+          }
+        }
+      }
+    },
     "dependency_context": {
       "description": "Dependency context produced for a definition: the found node and text that must and must not appear in its summary.",
       "type": "array",

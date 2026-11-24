@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
+from dataclasses import fields
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from chunker.exceptions import ChunkerError
 from chunker.interfaces.export import (
@@ -13,14 +15,88 @@ from chunker.interfaces.export import (
     ExportFormat,
     ExportMetadata,
     ExportTransformer,
+    RelationshipType,
     StructuredExporter,
 )
+from chunker.types import CodeChunk
 
 if TYPE_CHECKING:
     import io
     from collections.abc import Iterator
 
-    from chunker.types import CodeChunk
+_Record = TypeVar("_Record", CodeChunk, ChunkRelationship)
+_CHUNK_FIELDS = frozenset(field.name for field in fields(CodeChunk))
+_RELATIONSHIP_FIELDS = frozenset(field.name for field in fields(ChunkRelationship))
+
+
+def _same_field(original: Any, value: Any) -> bool:
+    """An echoed protected field must preserve scalar and list element types."""
+    if type(original) is not type(value):
+        return False
+    if isinstance(original, list):
+        return len(original) == len(value) and all(
+            _same_field(a, b) for a, b in zip(original, value, strict=True)
+        )
+    return bool(original == value)
+
+
+def _apply_field(record: CodeChunk | ChunkRelationship, name: str, value: Any) -> None:
+    if name == "metadata":
+        nullable = isinstance(record, ChunkRelationship) and value is None
+        if not nullable and not (
+            isinstance(value, dict) and all(isinstance(key, str) for key in value)
+        ):
+            raise ValueError("expected string-keyed metadata")
+        record.metadata = deepcopy(value)
+    elif isinstance(record, CodeChunk) and name == "content":
+        if not isinstance(value, str):
+            raise ValueError("expected string content")
+        record.content = deepcopy(value)
+    elif isinstance(record, ChunkRelationship) and name == "relationship_type":
+        if not isinstance(value, (RelationshipType, str)):
+            raise ValueError("expected a RelationshipType member or its string value")
+        record.relationship_type = RelationshipType(value)
+    else:
+        known = _CHUNK_FIELDS if isinstance(record, CodeChunk) else _RELATIONSHIP_FIELDS
+        if name not in known:
+            raise ValueError("unknown field")
+        if not _same_field(getattr(record, name), value):
+            raise ValueError("protected field")
+
+
+def _transform(record: _Record, stages: tuple[ExportTransformer, ...]) -> _Record:
+    """Apply a snapshot of registrations to one retained record."""
+    if isinstance(record, CodeChunk):
+        label = f"chunk {record.chunk_id!r}"
+    else:
+        label = f"relationship {record.source_chunk_id!r} -> {record.target_chunk_id!r}"
+    for position, stage in enumerate(stages, 1):
+        operation = "copying input"
+        try:
+            if position == 1:
+                # Preserve legacy IDs: dataclass reconstruction invokes __post_init__.
+                record = deepcopy(record)
+            argument = deepcopy(record)
+            operation = "invoking hook"
+            if isinstance(argument, CodeChunk):
+                patch = stage.transform_chunk(argument)
+            else:
+                patch = stage.transform_relationship(argument)
+            operation = "validating patch"
+            if not isinstance(patch, dict):
+                raise TypeError("expected a dict of field replacements")
+            for name, value in patch.items():
+                operation = "validating field name"
+                if not isinstance(name, str):
+                    raise TypeError("expected a string field name")
+                operation = f"applying field {name!r}"
+                _apply_field(record, name, value)
+        except Exception as exc:
+            raise ChunkerError(
+                f"Transformer {position} ({type(stage).__name__}) failed "
+                f"on {label} while {operation}"
+            ) from exc
+    return record
 
 
 class StructuredExportOrchestrator(StructuredExporter):
@@ -54,10 +130,10 @@ class StructuredExportOrchestrator(StructuredExporter):
         self._filters.append(filter_func)
 
     def add_transformer(self, transformer: ExportTransformer) -> None:
-        """Add a transformer to the export pipeline.
+        """Append a patch stage, including duplicate registrations.
 
-        Args:
-            transformer: Transformer to add
+        Each export snapshots the stages before filtering. Retained records
+        pass through them in registration order (on demand when streaming).
         """
         self._transformers.append(transformer)
 
@@ -79,17 +155,24 @@ class StructuredExportOrchestrator(StructuredExporter):
         fmt = self._determine_format(output, metadata)
         if fmt not in self._exporters:
             raise ChunkerError(f"No exporter registered for fmt: {fmt}")
+        exporter = self._exporters[fmt]
+        stages = tuple(self._transformers)
         filtered_chunks = self._apply_chunk_filters(chunks)
         filtered_relationships = self._apply_relationship_filters(
             relationships,
         )
+        if stages:
+            filtered_chunks = [_transform(chunk, stages) for chunk in filtered_chunks]
+            filtered_relationships = [
+                _transform(rel, stages) for rel in filtered_relationships
+            ]
         if metadata is None:
             metadata = self._create_metadata(
                 fmt,
                 filtered_chunks,
                 filtered_relationships,
+                len(stages),
             )
-        exporter = self._exporters[fmt]
         exporter.export(filtered_chunks, filtered_relationships, output, metadata)
 
     def export_streaming(
@@ -109,10 +192,16 @@ class StructuredExportOrchestrator(StructuredExporter):
         if fmt not in self._exporters:
             raise ChunkerError(f"No exporter registered for fmt: {fmt}")
         exporter = self._exporters[fmt]
+        stages = tuple(self._transformers)
         filtered_chunks = self._filter_chunk_iterator(chunk_iterator)
         filtered_relationships = self._filter_relationship_iterator(
             relationship_iterator,
         )
+        if stages:
+            filtered_chunks = (_transform(chunk, stages) for chunk in filtered_chunks)
+            filtered_relationships = (
+                _transform(rel, stages) for rel in filtered_relationships
+            )
         exporter.export_streaming(filtered_chunks, filtered_relationships, output)
 
     def supports_format(self, fmt: ExportFormat) -> bool:
@@ -193,42 +282,12 @@ class StructuredExportOrchestrator(StructuredExporter):
             result = [r for r in result if filter_func.should_include_relationship(r)]
         return result
 
-    def _apply_chunk_transformers(
-        self,
-        chunks: list[CodeChunk],
-    ) -> list[dict[str, Any]]:
-        """Apply all transformers to chunks."""
-        result = []
-        for chunk in chunks:
-            transformed = chunk.__dict__.copy()
-            for transformer in self._transformers:
-                transformed = transformer.transform_chunk(chunk)
-            result.append(transformed)
-        return result
-
-    def _apply_relationship_transformers(
-        self,
-        relationships: list[ChunkRelationship],
-    ) -> list[dict[str, Any]]:
-        """Apply all transformers to relationships."""
-        result = []
-        for rel in relationships:
-            transformed = {
-                "source_chunk_id": rel.source_chunk_id,
-                "target_chunk_id": rel.target_chunk_id,
-                "relationship_type": rel.relationship_type.value,
-                "metadata": rel.metadata or {},
-            }
-            for transformer in self._transformers:
-                transformed = transformer.transform_relationship(rel)
-            result.append(transformed)
-        return result
-
     def _create_metadata(
         self,
         fmt: ExportFormat,
         chunks: list[Any],
-        relationships: list[Any],
+        relationships: list[ChunkRelationship],
+        transformer_count: int,
     ) -> ExportMetadata:
         """Create export metadata."""
         source_files = list(
@@ -246,7 +305,7 @@ class StructuredExportOrchestrator(StructuredExporter):
             relationship_count=len(relationships),
             options={
                 "filters": len(self._filters),
-                "transformers": len(self._transformers),
+                "transformers": transformer_count,
                 "batch_size": self._batch_size,
             },
         )
@@ -275,30 +334,3 @@ class StructuredExportOrchestrator(StructuredExporter):
             )
             if should_include:
                 yield rel
-
-    def _transform_chunk_iterator(
-        self,
-        iterator: Iterator[CodeChunk],
-    ) -> Iterator[dict[str, Any]]:
-        """Create a transforming iterator for chunks."""
-        for chunk in iterator:
-            transformed = chunk.__dict__.copy()
-            for transformer in self._transformers:
-                transformed = transformer.transform_chunk(chunk)
-            yield transformed
-
-    def _transform_relationship_iterator(
-        self,
-        iterator: Iterator[ChunkRelationship],
-    ) -> Iterator[dict[str, Any]]:
-        """Create a transforming iterator for relationships."""
-        for rel in iterator:
-            transformed = {
-                "source_chunk_id": rel.source_chunk_id,
-                "target_chunk_id": rel.target_chunk_id,
-                "relationship_type": rel.relationship_type.value,
-                "metadata": rel.metadata or {},
-            }
-            for transformer in self._transformers:
-                transformed = transformer.transform_relationship(rel)
-            yield transformed

@@ -206,7 +206,7 @@ class FileTypeDetector(FallbackStrategy):
                 for pattern in patterns:
                     if re.search(pattern, sample, re.MULTILINE):
                         return file_type
-        except (FileNotFoundError, ImportError, IndexError) as e:
+        except (OSError, ImportError, IndexError) as e:
             logger.warning(
                 "Error detecting file type for %s: %s",
                 file_path,

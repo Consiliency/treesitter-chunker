@@ -252,7 +252,8 @@ lightweight prose skip the test, platform and `controlled-linux` lanes; every
 other PR runs them all.
 Stacked code PRs run the full 3-OS matrix, even when only prose differs from
 their parent. Unknown paths, executable documentation and deleted build inputs
-run all lanes. The gate rejects failed, cancelled or unexpectedly skipped jobs.
+run all lanes. A valid Git pathname containing non-UTF-8 bytes runs all PR lanes,
+even when its suffix looks like prose. The gate rejects failed, cancelled or unexpectedly skipped jobs.
 `[skip ci]` leaves the gate pending, which blocks merge.
 
 Nightly and manual full dispatch run tests/ and spec_tests/ on Linux, macOS and

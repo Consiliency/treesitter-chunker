@@ -54,6 +54,10 @@ for chunk in result.chunks:
     print(chunk['content'])
 ```
 
+When `auto_chunk_file` or `chunk_text` succeeds with Tree-sitter,
+`result.metadata["tree_sitter_version"]` gives the installed `tree-sitter`
+distribution version.
+
 ## Key Features
 
 ### 1. Automatic Language Detection
