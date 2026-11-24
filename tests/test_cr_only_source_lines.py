@@ -354,3 +354,16 @@ def test_julia_grouping_uses_parser_rows(gap, types):
             row(source.encode(), c.byte_start),
             row(source.encode(), c.byte_end),
         )
+
+
+def test_dart_declaration_includes_body_on_remapped_input(tmp_path):
+    source = b"\r \nString greet(String name) {\n  return name;\n}\n"
+    path = tmp_path / "app.dart"
+    path.write_bytes(source)
+    (declaration,) = chunk_file(path, "dart")
+    start = source.index(b"String greet")
+    end = source.index(b"return name;\n}") + len(b"return name;\n}")
+    assert declaration.node_type == "function_declaration"
+    assert (declaration.byte_start, declaration.byte_end) == (start, end)
+    assert declaration.content.encode() == source[start:end]
+    assert (declaration.start_line, declaration.end_line) == (3, 5)

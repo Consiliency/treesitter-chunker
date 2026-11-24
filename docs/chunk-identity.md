@@ -45,8 +45,8 @@ lines, Boundary IR node spans and call-site locations (symbol-graph `calls`
 relationships and `call_facts`, and Boundary IR call edges). LF and CRLF files
 parse exactly as before.
 
-For other languages the regular, mmap and VFS streaming chunkers report physical
-source rows for nodes recognized by the existing parser. LF, CRLF and lone CR
+For non-Python files containing a lone CR, the regular, mmap and VFS streaming
+chunkers report physical rows for nodes recognized by the existing parser. LF, CRLF and lone CR
 each advance the row once, after their final byte. This preserves grammar
 behavior, including regular Dockerfile continuation repair. Chunk endpoints
 use the start and exclusive end cursors. Call end rows describe the last
@@ -55,8 +55,8 @@ parser-row semantics. Synthetic Svelte template-control and reactive chunks
 report the source line that produced them. Their legacy identity byte offsets
 can point earlier on mixed endings or after a multibyte script tag.
 
-Complexity metrics have their own contract (treesitter-chunker#597). Raw
-spans can end between CR and LF when the parser includes CR in a token, such
+The complexity metrics `lines_of_code` and `logical_lines` count LF only
+(treesitter-chunker#597). Raw spans can end between CR and LF when the parser includes CR in a token, such
 as a Python comment. Source slicing retains those exact bytes.
 
 An explicit `identity_path` still determines regular chunk identities independently

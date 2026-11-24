@@ -1,5 +1,6 @@
 """Same-version Boundary v3 migration for physical source rows."""
 
+import hashlib
 import json
 from unittest.mock import patch
 
@@ -33,6 +34,42 @@ def extract(root, cache, **opts):
     )
 
 
+def legacy_v3_key(payload):
+    """P06 key encoding, independent of the current cache field selection."""
+    fields = [
+        "path",
+        "content_hash",
+        "language",
+        "grammar_version",
+        "runtime_version",
+        "tool_version",
+        "schema_version",
+        "resolution_mode",
+        "fail_fast",
+        "include_retrieval_metadata",
+    ]
+    if payload.get("semantic_schema_version") is not None:
+        fields.extend(
+            ("semantic_min_confidence", "semantic_resolvers", "semantic_schema_version")
+        )
+    fields.extend(
+        field
+        for field in (
+            "call_resolution",
+            "call_resolution_version",
+            "call_resolution_symlink",
+        )
+        if field in payload
+    )
+    encoded = json.dumps(
+        {field: payload[field] for field in fields},
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+    return "boundary:v3:" + hashlib.sha256(encoded).hexdigest()
+
+
 @pytest.mark.parametrize(
     "opts",
     [
@@ -47,6 +84,7 @@ def test_legacy_records_migrate_once(sources, tmp_path, opts):
     cache = tmp_path / "cache"
     # Seed v3 using the previous file identity and the parser's LF-only rows.
     with (
+        patch.object(adapter, "_build_boundary_cache_key", legacy_v3_key),
         patch.object(
             adapter,
             "_cache_source_identity",

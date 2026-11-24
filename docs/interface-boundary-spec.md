@@ -469,8 +469,9 @@ affected saved IR and refresh line-based joins, non-call edge IDs derived from
 lines, and document digests. Node spans report the physical rows at the start
 and exclusive end cursor. A call ends on the row of its last included byte.
 CRLF advances after LF. Call-site identities retain their owner and byte anchors.
-Synthetic Svelte template-control and reactive rows identify the source line
-that produced the chunk, while stored offsets retain their legacy calculation.
+In Svelte files containing a lone CR, synthetic template-control and reactive
+chunks report the source line that produced them. Their stored byte offsets
+retain the legacy calculation.
 
 Each cache key includes the installed `tree-sitter-language-pack` and
 `tree-sitter` runtime versions. Python and JavaScript keys additionally bind the
