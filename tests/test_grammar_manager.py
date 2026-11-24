@@ -136,14 +136,20 @@ class TestGrammarManager:
         assert invalid.read_bytes() == b"keep this file"
 
     @staticmethod
-    def test_fetch_preserves_unrecognized_directory(grammar_manager, temp_dir):
+    @pytest.mark.parametrize(
+        "notes_path", ["notes", "grammar.js/notes", "src/parser.c/notes"]
+    )
+    def test_fetch_preserves_unrecognized_directory(
+        grammar_manager, temp_dir, notes_path
+    ):
         target = temp_dir / "grammars" / "tree-sitter-python"
-        target.mkdir()
-        (target / "notes").write_bytes(b"keep these notes")
+        notes = target / notes_path
+        notes.parent.mkdir(parents=True)
+        notes.write_bytes(b"keep these notes")
         with patch("chunker.grammar_manager.subprocess.run") as run:
             assert grammar_manager.fetch_grammars(["python"]) == {"python": False}
             run.assert_not_called()
-        assert (target / "notes").read_bytes() == b"keep these notes"
+        assert notes.read_bytes() == b"keep these notes"
 
     @staticmethod
     @pytest.mark.parametrize("dangling", [True, False])
