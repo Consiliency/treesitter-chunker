@@ -156,6 +156,38 @@ CALL_TEMPLATE = b"def alpha():\r    beta(\r        1)\r\rdef beta(x):\r    retur
 NEWLINES = {"lf": b"\n", "cr": b"\r", "crlf": b"\r\n"}
 
 
+@pytest.mark.parametrize("newline", [*NEWLINES, "mixed"])
+def test_complexity_line_metrics(tmp_path: Path, newline: str):
+    # The four executable lines are the definition, the if and both returns.
+    # U+2028 inside the string is data, and the final comment may own a CR.
+    lines = [
+        b"def alpha(x):",
+        b'    """Doc',
+        b'    more."""',
+        b"",
+        b"    if x:",
+        b'        return "one\xe2\x80\xa8two"',
+        b"    return 1",
+        b"    # end",
+    ]
+    endings = list(NEWLINES.values()) if newline == "mixed" else [NEWLINES[newline]]
+    raw = (
+        b"# preamble"
+        + endings[0]
+        + b"".join(line + endings[i % len(endings)] for i, line in enumerate(lines))
+    )
+    path = tmp_path / "metrics.py"
+    path.write_bytes(raw)
+    (chunk,) = [
+        c for c in chunk_file(path, "python") if c.node_type == "function_definition"
+    ]
+    start = physical_line(raw, raw.index(lines[0]))
+    end = physical_line(raw, raw.index(lines[-1]) + len(lines[-1]))
+    assert (chunk.start_line, chunk.end_line) == (start, end)
+    metrics = chunk.metadata["complexity"]
+    assert (metrics["lines_of_code"], metrics["logical_lines"]) == (end - start + 1, 4)
+
+
 def call_oracle(raw: bytes) -> tuple[int, int, int, int]:
     """Raw span and physical lines of the ``beta(...)`` call in ``raw``."""
     start = raw.index(b"beta(")
