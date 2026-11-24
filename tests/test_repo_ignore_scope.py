@@ -2,6 +2,7 @@
 
 import os
 import subprocess
+import warnings
 from pathlib import Path
 
 import pytest
@@ -12,6 +13,12 @@ from chunker.repo.patterns import GitignorePattern
 from chunker.repo.processor import RepoProcessor
 
 SCENARIOS = [
+    (
+        "escaped-separator",
+        {"pkg": [r"a\/b", r"z\\/c", r"\/unanchored", r"trailing\/"]},
+        ["a/b/file.py", "deep/a/b/file.py", "z/c", "unanchored", "trailing/file.py"],
+    ),
+    ("all", {"pkg": ["*", "!keep.py"]}, ["keep.py", "other.py"]),
     ("anchor", {"pkg": ["/generated.py"]}, ["generated.py", "hand.py"]),
     ("basename", {"pkg": ["generated.py"]}, ["generated.py", "hand.py"]),
     ("internal-slash", {"pkg": ["lib/output.py"]}, ["lib/output.py", "output.py"]),
@@ -275,3 +282,11 @@ def test_cached_ancestor_decisions(tmp_path, monkeypatch):
     calls.clear()
     assert not matcher.should_ignore("deep/dir/two.py")
     assert set(calls) == {Path("deep/dir/two.py")}
+
+
+def test_literal_bracket_under_strict_warning_policy(tmp_path):
+    (tmp_path / ".gitignore").write_text("file[[]x].py\n/other.py\n", encoding="utf-8")
+    with warnings.catch_warnings(action="error", category=FutureWarning):
+        matcher = load_gitignore_patterns(tmp_path)
+    assert matcher.should_ignore("file[x].py")
+    assert matcher.should_ignore("other.py")

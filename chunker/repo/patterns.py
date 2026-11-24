@@ -2,9 +2,25 @@
 
 import os
 import re
+import warnings
 from pathlib import Path
 
-from pathspec.patterns.gitwildmatch import GitWildMatchPattern
+try:
+    from pathspec.patterns.gitignore.spec import GitIgnoreSpecPattern
+except ImportError:  # pathspec 0.x
+    from pathspec.patterns.gitwildmatch import (
+        GitWildMatchPattern as GitIgnoreSpecPattern,
+    )
+
+
+def _ends_in_escape(text: str) -> bool:
+    return (len(text) - len(text.rstrip("\\"))) % 2 == 1
+
+
+# NUL cannot occur in a filename. Marking the end of both the pattern and the
+# entry prevents pathspec's implicit match of descendants, across its supported
+# compiler versions. Directory inheritance is handled by the matcher.
+_ENTRY_END = "\0"
 
 
 class GitignorePattern:
@@ -15,7 +31,7 @@ class GitignorePattern:
         self.base_dir = base_dir
         # Git discards unescaped trailing spaces, even after an escaped space.
         line = pattern.rstrip(" ")
-        if line != pattern and (len(line) - len(line.rstrip("\\"))) % 2:
+        if line != pattern and _ends_in_escape(line):
             line += " "
         self.is_negation = line.startswith("!")
         self.is_directory_only = line.endswith("/")
@@ -24,19 +40,29 @@ class GitignorePattern:
         self.pattern: re.Pattern[str] | None = None
         if line in ("", "!") or line.startswith("#"):
             return
-        # pathspec 0.12 strips whitespace at both ends. Protect significant
-        # leading whitespace and terminal whitespace other than escaped space.
+        # Git accepts an escaped internal separator. pathspec splits on the
+        # slash first and would treat the preceding escape as dangling.
+        segments = line.split("/")
+        for index, segment in enumerate(segments[:-1]):
+            if _ends_in_escape(segment):
+                if segment in ("\\", "!\\"):
+                    return
+                segments[index] = segment[:-1]
+        if _ends_in_escape(segments[-1]):
+            return
+        line = "/".join(segments)
         if line[0].isspace():
             line = "\\" + line
-        if line[-1].isspace() and not line.endswith("\\ "):
-            prefix = line[:-1]
-            if (len(prefix) - len(prefix.rstrip("\\"))) % 2:
-                prefix = prefix[:-1]
-            line = f"{prefix}[{line[-1]}]"
+        if line.endswith("/**"):
+            # Contents include the immediate children of this directory.
+            line += "/*"
         try:
-            regex, _ = GitWildMatchPattern.pattern_to_regex(line)
+            regex, _ = GitIgnoreSpecPattern.pattern_to_regex(line + _ENTRY_END)
             if regex is not None:
-                self.pattern = re.compile(regex, re.DOTALL)
+                # Older compilers emit valid Git bracket escapes such as [[]
+                # verbatim. Python warns about potential future set syntax.
+                with warnings.catch_warnings(action="ignore", category=FutureWarning):
+                    self.pattern = re.compile(regex, re.DOTALL)
         except (ValueError, re.error):
             # One unusable rule must not discard the rest of its file.
             pass
@@ -44,10 +70,7 @@ class GitignorePattern:
     def matches(self, path: Path, is_dir: bool = False) -> bool:
         if self.pattern is None or (self.is_directory_only and not is_dir):
             return False
-        match = self.pattern.fullmatch(path.as_posix())
-        # pathspec's ps_d captures an implicit match of an ancestor. We decide
-        # ancestors separately, so that explicitly reopening one takes effect.
-        return match is not None and match.groupdict().get("ps_d") is None
+        return self.pattern.fullmatch(path.as_posix() + _ENTRY_END) is not None
 
 
 class GitignoreMatcher:
@@ -117,36 +140,43 @@ class GitignoreMatcher:
 
     def _entry_ignored(self, entry: Path, directory: bool) -> bool:
         # Search highest precedence first: nearest file, then latest line.
-        for base in entry.parents:
-            if rules := self._groups.get(base.as_posix()):
-                local = entry.relative_to(base)
+        spelling = entry.as_posix()
+        base = spelling.rpartition("/")[0]
+        while True:
+            if rules := self._groups.get(base or "."):
+                local = Path(spelling[len(base) + 1 :]) if base else entry
                 for rule in reversed(rules):
                     if rule.matches(local, directory):
                         return not rule.is_negation
-        return False
+            if not base:
+                return False
+            base = base.rpartition("/")[0]
 
     def should_ignore(self, path: str | Path, is_dir: bool = False) -> bool:
         """Return whether this entry or one of its ancestor directories is ignored."""
-        absolute = Path(os.path.normpath(self.base_dir / path))
-        if not absolute.is_relative_to(self.base_dir):
-            return False
-        relative = absolute.relative_to(self.base_dir)
-        key = (relative.as_posix(), is_dir)
-        if key in self._cache:
-            return self._cache[key]
+        relative = path if isinstance(path, Path) else Path(path)
+        if relative.anchor or ".." in relative.parts:
+            absolute = Path(os.path.normpath(self.base_dir / relative))
+            if not absolute.is_relative_to(self.base_dir):
+                return False
+            relative = absolute.relative_to(self.base_dir)
 
-        ignored = False
-        for entry in (*reversed(relative.parents), relative):
-            if not entry.parts:
-                continue
-            directory = entry != relative or is_dir
-            entry_key = (entry.as_posix(), directory)
-            if entry_key not in self._cache:
-                self._cache[entry_key] = self._entry_ignored(entry, directory)
-            if self._cache[entry_key]:
-                ignored = True
+        # Walk up to the nearest known decision, then evaluate only missing
+        # entries from parent to child. Siblings reuse their parent directly.
+        pending = []
+        entry, directory = relative, is_dir
+        while entry.parts:
+            key = (entry.as_posix(), directory)
+            if key in self._cache:
+                ignored = self._cache[key]
                 break
-        self._cache[key] = ignored
+            pending.append((entry, key))
+            entry, directory = entry.parent, True
+        else:
+            ignored = False
+        for entry, key in reversed(pending):
+            ignored = ignored or self._entry_ignored(entry, key[1])
+            self._cache[key] = ignored
         return ignored
 
     def filter_paths(self, paths: list[Path], check_is_dir: bool = True) -> list[Path]:
