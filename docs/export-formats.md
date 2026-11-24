@@ -1203,6 +1203,66 @@ node dist/cli/index.js serve --port 3000 --bundle path/to/output.slb
 # Open http://localhost:3000 in browser
 ```
 
+## Transforming structured exports
+
+Register an export transformer on `StructuredExportOrchestrator` to project
+retained chunks and relationships before they reach a structured writer.
+For example, given extracted `chunks` and `relationships`:
+
+```python
+import json
+from pathlib import Path
+
+from chunker.export import StructuredExportOrchestrator, StructuredJSONExporter
+from chunker.interfaces.export import ExportFormat, ExportTransformer
+
+
+class Annotate(ExportTransformer):
+    @staticmethod
+    def transform_chunk(chunk):
+        return {"content": "[omitted]"}
+
+    @staticmethod
+    def transform_relationship(relationship):
+        return {"metadata": {**(relationship.metadata or {}), "reviewed": True}}
+
+
+exporter = StructuredExportOrchestrator()
+exporter.register_exporter(ExportFormat.JSON, StructuredJSONExporter())
+exporter.add_transformer(Annotate())
+output = Path("review.json")
+exporter.export(chunks, relationships, output)
+records = json.loads(output.read_text(encoding="utf-8"))
+assert all(chunk["content"] == "[omitted]" for chunk in records["chunks"])
+assert all(edge["metadata"]["reviewed"] for edge in records["relationships"])
+```
+
+Each export snapshots its registrations, including duplicates. Filters see
+original records and select chunks and relationships independently. Each hook
+receives a detached typed copy of the preceding stage's result, in registration
+order. Return a dictionary of field replacements. Omitted fields retain their
+values, including fields modified only on the hook input. An empty patch
+preserves the record. A metadata patch replaces the whole dictionary. Use
+string top-level keys, deepcopy-compatible values and types the writer can
+serialize. Relationship metadata also accepts `None`.
+
+Chunk content accepts any string. Relationship type accepts a `RelationshipType`
+member or its exact string value (for example, `"calls"`). Later stages and
+writers receive the enum member. All remaining model fields are protected and
+can only be echoed with the same types and values. Source IDs, routes, spans
+and edge endpoints therefore still identify the original occurrence even if
+projected content changes length. Unknown fields, including writer-derived
+columns such as `byte_size`, cause an error. Each writer controls the fields
+it emits. For example, JSONL omits chunk metadata. Replacing content alone
+leaves other fields, including metadata, available in the export.
+
+A copying, hook or patch failure raises `ChunkerError` with the registration
+position and record identity. Batch export transforms all retained chunks,
+then relationships, before the writer opens the destination. Streaming applies
+hooks as the writer pulls each iterator and stops on failure. A JSONL file
+may already contain its header and earlier records. The writer determines
+buffering and the order in which the two iterators are consumed.
+
 ## See Also
 
 - [API Reference](api-reference.md) - Export API documentation
