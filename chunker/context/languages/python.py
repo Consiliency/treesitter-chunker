@@ -426,9 +426,14 @@ class PythonSymbolResolver(BaseSymbolResolver):
                         break
                 elif first is None:
                     first = self._binding_for(candidate, symbol_name)
-                    # These scopes cannot redirect a binding to another owner.
+                    # Directives cannot redirect a parameter, a module binding,
+                    # or a comprehension iteration target.
                     if first is not None and (
-                        current == ast or current.type in _COMPREHENSION_SCOPES
+                        current == ast
+                        or current.type in _COMPREHENSION_SCOPES
+                        or first.type in _DEFAULT_PARAMETERS
+                        or first.type == "typed_parameter"
+                        or _is_parameter_name(first)
                     ):
                         return first
             if directive is None and first is not None:
