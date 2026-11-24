@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 import warnings
+from importlib.metadata import version as distribution_version
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -251,7 +252,7 @@ class ZeroConfigAPI(ZeroConfigContract):
                     fallback_used=False,
                     metadata={
                         "file_path": str(file_path),
-                        "tree_sitter_version": "0.20.0",
+                        "tree_sitter_version": distribution_version("tree-sitter"),
                     },
                 )
         except (LanguageNotFoundError, ParserError, OSError, IndexError):
@@ -412,7 +413,9 @@ class ZeroConfigAPI(ZeroConfigContract):
                     language=language,
                     grammar_downloaded=grammar_downloaded,
                     fallback_used=False,
-                    metadata={"tree_sitter_version": "0.20.0"},
+                    metadata={
+                        "tree_sitter_version": distribution_version("tree-sitter")
+                    },
                 )
         except (LanguageNotFoundError, ParserError, IndexError, KeyError):
             if language == "baml":
