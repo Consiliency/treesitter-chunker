@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- yEd GraphML node labels now put the name on a separate line and show only
+  the structural type when the name is empty or missing. NetworkX yEd imports
+  expose the same label text (treesitter-chunker#603).
 - Python structural call resolution now treats a constant string as a
   `__main__` self-reference when a component split on format and attribute
   punctuation or whitespace (or a default `string.Template` identifier) is

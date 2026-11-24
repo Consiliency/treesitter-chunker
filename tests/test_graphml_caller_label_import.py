@@ -93,12 +93,30 @@ def test_networkx_yed_import_keeps_caller_label_beside_graphics(
     pretty, output, tmp_path
 ):
     exporter, chunks, options = _graph("yed")
-    graph = _import(exporter, options, pretty, output, tmp_path)
+    # The fixture has no top-level name property. Add one to its class only.
+    class_chunk, function_chunk = chunks
+    exporter.nodes[class_chunk.node_id].properties["name"] = "Renderer\r\nDisplay"
+    expected = {
+        class_chunk.node_id: "class_definition\nRenderer\nDisplay",
+        function_chunk.node_id: "function_definition",
+    }
+    if output == "string":
+        xml = exporter.export_string(pretty_print=pretty, **options)
+        root = ET.fromstring(xml)
+        graph = nx.parse_graphml(xml)
+    else:
+        path = tmp_path / "graph.graphml"
+        exporter.export(path, pretty_print=pretty, **options)
+        root = ET.parse(path).getroot()
+        graph = nx.read_graphml(path)
+    yed = "{http://www.yworks.com/xml/graphml}"
+    assert {
+        node.attrib["id"]: node.findtext(f"{GRAPHML}data/{yed}ShapeNode/{yed}NodeLabel")
+        for node in root.iter(f"{GRAPHML}node")
+    } == expected
     for chunk in chunks:
         data = graph.nodes[chunk.node_id]
-        # NetworkX replaces ``label`` with the yEd NodeLabel graphics text,
-        # which starts with the structural type; caller metadata is separate.
-        assert data["label"].startswith(chunk.node_type)
+        assert data["label"] == expected[chunk.node_id]
         assert {name: data[DECLARED[name]] for name in NODE_CALLER} == NODE_CALLER
     edge = graph.edges[chunks[0].node_id, chunks[1].node_id]
     assert edge["label"] == "CALLS"

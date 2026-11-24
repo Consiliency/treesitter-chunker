@@ -90,7 +90,8 @@ class GraphMLyEdExporter(GraphMLExporter):
         label.set("fontFamily", "Arial")
         label.set("fontSize", "12")
         label.set("textColor", style["text"])
-        label.text = f"{node.label}\\n{node.properties.get('name', '')}"
+        name = node.properties.get("name", "")
+        label.text = node.label if name == "" else f"{node.label}\n{name}"
         shape = ET.SubElement(shape_node, "y:Shape")
         shape.set("type", style["shape"])
 
