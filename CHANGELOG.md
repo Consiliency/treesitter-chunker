@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Call resolution, `"imports"` mode (experimental): a Python file in which any
+  token spells a namespace-reaching name (`globals`, `locals`, `vars`,
+  `f_globals`, `f_locals`, `f_builtins`, `__globals__`, `__import__`,
+  `getmodule`, `getclosurevars`, `__loader__`, `__spec__`, `load_module`,
+  `exec_module`, `get_field`, `builtins`, the annotation evaluators such as
+  `typing.get_type_hints`), as a name, attribute, keyword or constant string, or
+  that uses a bare `eval`/`exec` or imports `__main__`, now counts as handing
+  out every module it imports, so another file writing through that namespace
+  (`d["svc"].t = f`) makes the module's own calls unprovable instead of
+  resolving them wrongly (treesitter-chunker#724). A package `__init__.py` hands
+  out its submodules too, and a handed-out `sys`, `importlib` or `builtins`
+  shuts off cross-file resolution like passing it on. Three uses are exempt
+  because the object they apply to is provably not the file's own namespace:
+  `exec(code, mod.__dict__)` and `spec.loader.exec_module(mod)` on a module the
+  function itself creates with `types.ModuleType`, and `__import__` of a
+  constant name that is not the file's own package or a module-system module
+  such as `sys`; a file whose constants spell a listed name or the module
+  factory as a word loses the exemptions. A loader can return the importer from
+  `create_module`, so `module_from_spec` does not prove freshness. A write to
+  `__class__` invalidates the fresh-module receiver proof. `inspect.getmembers`,
+  `doctest.DocTestFinder` and `globs`, `rlcompleter`, `__builtins__`,
+  `PyEval_GetGlobals`, a resolver given the file's own name
+  (`pkgutil.resolve_name(__name__)`) and pytest's `request.module` count too.
+  The Python fact version moves to 43.
 - Python reference lookup excludes def splat parameters and
   assignment-expression targets while retaining reads of the same names
   (treesitter-chunker#544).
