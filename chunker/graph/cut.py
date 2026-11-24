@@ -23,7 +23,8 @@ def graph_cut(
     Compute a minimal subgraph around seeds bounded by radius and budget.
 
     Edges may use src/dst or source_id/target_id. Each nonempty src or dst
-    takes precedence over its alternate key.
+    takes precedence over its alternate key. An edge is skipped if its source
+    or target has no nonempty value.
 
     Returns:
       - node_ids: minimal set of node ids selected

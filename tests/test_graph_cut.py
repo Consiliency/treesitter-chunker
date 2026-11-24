@@ -36,12 +36,25 @@ def test_graph_cut_radius_budget_and_weights():
 def test_graph_cut_preserves_edges_between_selected_nodes(source_key, target_key):
     nodes = [{"id": node_id} for node_id in ("A", "B", "C")]
     forward = {source_key: "A", target_key: "B", "type": "CALLS"}
-    outside = {source_key: "B", target_key: "C", "type": "CALLS"}
+    outgoing = {source_key: "B", target_key: "C", "type": "CALLS"}
+    incoming = {source_key: "C", target_key: "A", "type": "CALLS"}
     back = {source_key: "B", target_key: "A", "type": "REFERENCES"}
 
-    selected, induced = graph_cut(["A"], nodes, [forward, outside, back], radius=1)
+    edges = [forward, outgoing, incoming, back]
+    selected, induced = graph_cut(["A"], nodes, edges, radius=1)
 
     assert set(selected) == {"A", "B"}
     assert induced == [forward, back]
     assert induced[0] is forward
     assert induced[1] is back
+
+
+def test_graph_cut_prefers_nonempty_canonical_endpoints():
+    nodes = [{"id": node_id} for node_id in ("A", "B", "C")]
+    canonical = {"src": "A", "dst": "B", "source_id": "C", "target_id": "C"}
+    fallback = {"src": "", "dst": "", "source_id": "B", "target_id": "A"}
+
+    selected, induced = graph_cut(["A"], nodes, [canonical, fallback], radius=1)
+
+    assert set(selected) == {"A", "B"}
+    assert induced == [canonical, fallback]
