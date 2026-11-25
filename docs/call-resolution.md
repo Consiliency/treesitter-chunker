@@ -13,13 +13,28 @@ collects under the selected root and filters.
 | `structural` (experimental, Tier 1) | Uses scope to narrow ambiguous calls to bare names. For Python, a call can resolve to a single unconditional, undecorated `def` or `class` that the caller's scope selects. For JavaScript, TypeScript and TSX, a lexical declaration can prove the target. At the top level of a script, other files in the run must also be clear of possible declarations of the same global. |
 | `imports` (experimental, Tier 2) | Also follows supported import bindings, such as a relative ES import in JS/TS or `from m import f` and `m.f()` in Python. The import must identify one file in the run and lead to one proven definition. |
 
-**A binding must prove the target.** The experimental modes can resolve an
-ambiguous edge only when a binding proves which existing candidate the call
-reaches. Without a proof, language family and symbol kind filters can still
-remove candidates, and the edge stays `ambiguous`. The pass only removes
-candidates from ambiguous edges and preserves all existing resolved and
-unresolved edges.
-A narrowed edge carries `provenance.call_resolution` and `provenance.call_rules`.
+A binding must prove a target before these modes can resolve an ambiguous
+edge. Family and kind filters can also remove candidates while leaving the
+edge ambiguous. A changed edge records the mode in `provenance.call_resolution`
+and the applied rules in `provenance.call_rules`.
+
+In `imports` mode a bare call to an imported name with an explicit alias can acquire a target
+outside its name candidates. For example, `from svc import exp as alias`
+and `import { exp as alias } from './svc.js'` let `alias()` resolve to the
+exported definition when Tier 2 proves exactly one target. The edge records
+`t2.import_alias`, `resolution: resolved` and a singleton `candidates` list.
+Previously unresolved and ambiguous calls can resolve, and an unrelated
+single name match can be replaced. The reference and `call_site_id` stay
+stable. Consumers persisting imports-mode targets or counts should refresh
+them and compare calls by site ID. Without this proof the existing lookup
+result still applies, including a possible singleton name match.
+
+Python withholds new alias targets across the run when a private import
+spelling could be mangled, or when an absolute import could select a module
+from a different entry script's directory. A Python file with unavailable
+import facts also prevents this check from certifying the run. An ambiguity
+in another file matters because it can hide a write to the exporter or the caller. Only
+individual named import bindings qualify for substitution.
 
 In Python, `structural` skips module-scope and class-body proofs in files
 that can bind names dynamically, for example through `exec`, `globals()`,
@@ -44,6 +59,29 @@ Python can therefore resolve fewer calls in `imports` than in
 `structural`. The tool does not detect cross-file closure-cell writes or
 writes to a caller's frame locals for Tier 1 proofs. A Tier 1 edge that such
 a write makes wrong stays `resolved` in both modes.
+
+### Reference corpus results
+
+These frozen reference roots use the previous gain-table filters. Each row compares the same call sites in `imports` mode before and after treesitter-chunker#684. The Python rows use the Python filter. The JS/TS projections use automatic language detection. Subroots overlap their parent roots.
+
+| Reference root | Filter | Call sites | Resolved before | Resolved after | From unresolved | From ambiguous | Corrected singleton |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Code-Index-MCP | Python | 105,704 | 23,898 | 23,898 | 0 | 0 | 0 |
+| treesitter-chunker package | Python | 24,694 | 7,904 | 7,904 | 0 | 0 | 0 |
+| treesitter-chunker repository | Python | 73,099 | 25,865 | 25,865 | 0 | 0 | 0 |
+| Code-Index-MCP server | Python | 31,851 | 8,196 | 8,196 | 0 | 0 | 0 |
+| pmcp/src | Python | 10,349 | 4,101 | 4,101 | 0 | 0 | 0 |
+| pmcp | Python | 52,376 | 19,385 | 19,385 | 0 | 0 | 0 |
+| spec/src | Python | 7,351 | 2,720 | 2,720 | 0 | 0 | 0 |
+| spec | Python | 39,514 | 12,605 | 12,605 | 0 | 0 | 0 |
+| agent-toolkit | Auto (JS/TS projection) | 32,354 | 7,878 | 7,878 | 0 | 0 | 0 |
+| avatar-client | Auto (JS/TS projection) | 29,951 | 10,700 | 10,700 | 0 | 0 | 0 |
+| graph-studio | Auto (JS/TS projection) | 32,597 | 7,203 | 7,203 | 0 | 0 | 0 |
+| graphbase | Auto (JS/TS projection) | 3,061 | 536 | 540 | 4 | 0 | 0 |
+| message-board-ui | Auto (JS/TS projection) | 20,225 | 5,065 | 5,065 | 0 | 0 | 0 |
+| omniagent-plus | Auto (JS/TS projection) | 18,058 | 3,901 | 3,901 | 0 | 0 | 0 |
+| self-no-fixtures-no-site | Auto (JS/TS projection) | 938 | 78 | 78 | 0 | 0 | 0 |
+| spec | Auto (JS/TS projection) | 10,680 | 3,731 | 3,731 | 0 | 0 | 0 |
 
 ## When import proofs are skipped
 

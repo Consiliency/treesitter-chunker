@@ -200,7 +200,7 @@ canonical source path in both top-level `file` and `metadata.file`. These fields
 are required only for syntax call edges; non-call syntax edges and semantic call
 edges keep their existing shapes. Default resolution remains heuristic and does
 not establish language-level binding; the experimental opt-in call resolution
-below narrows only call edges that are already ambiguous. Parser forms that an
+below can narrow ambiguous calls and substitute a proven renamed import. Parser forms that an
 extractor does not recognize are not manufactured as facts.
 
 Call-target lookup accepts only complete `[A-Za-z_][A-Za-z0-9_]*` identifier/member
@@ -423,9 +423,14 @@ JavaScript causes (test files: `test_*.py`, `*_test.py`, `conftest.py`, or a
 treesitter-chunker#682, Python Tier 2 resolved no additional calls: every tree
 had such production code.
 
-A narrowed edge changes only `target`, `resolution`, `candidates` and
+In imports mode, a bare named import alias with a single proven export can
+resolve outside its original candidate set (`t2.import_alias`). The
+replacement updates previously unresolved, ambiguous or wrongly resolved
+calls. See [Call resolution](call-resolution.md) for examples and proof limits.
+
+A changed edge updates only `target`, `resolution`, `candidates` and
 `metadata.is_internal`, and adds `provenance.call_resolution` (the mode) and
-`provenance.call_rules` (the rule IDs that removed candidates, in application
+`provenance.call_rules` (the rule IDs that narrowed or substituted candidates, in application
 order). A narrowed resolved edge has every field of a natively resolved edge
 with its usual meaning. Unchanged edges keep their provenance exactly.
 `run.options.call_resolution` records the mode. These keys are additive, so
@@ -435,8 +440,8 @@ appears when the mode is `"name"`.
 Node IDs, `definition_id`s, `#N` suffixes, edge `id`s and `call_site_id`s are
 byte-identical with the option on and off. Because `target` is a sort key, a
 narrowed edge can move within `edges`; consumers key edges on `id`.
-`metrics.resolved_edges` and `metrics.ambiguous_edges` can change, but not their
-sum, `unresolved_edges` or `edges_total`. `parity_digest` changes for every
+The resolved, ambiguous and unresolved metrics track the resulting status of
+each edge. Their sum and `edges_total` stay constant. `parity_digest` changes for every
 on-mode document, because `run.options` is part of the parity view. Semantic
 resolvers run after syntax edges are built, so they see the narrowed edges.
 

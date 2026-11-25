@@ -221,12 +221,12 @@
             },
             "enforcement_grade": { "type": "string" },
             "call_resolution": {
-              "description": "Experimental opt-in call resolution (treesitter-chunker#682): the mode that narrowed this syntax call edge. Present only on narrowed edges.",
+              "description": "Experimental opt-in call resolution (treesitter-chunker#682): the mode that changed the candidates of this syntax call edge. Present only on changed edges.",
               "type": "string",
               "enum": ["structural", "imports"]
             },
             "call_rules": {
-              "description": "Rule IDs that removed candidates from this call edge, in application order. Present only on narrowed edges.",
+              "description": "Rule IDs that narrowed or substituted candidates for this call edge, in application order. Present only on changed edges.",
               "type": "array",
               "minItems": 1,
               "items": { "type": "string" }

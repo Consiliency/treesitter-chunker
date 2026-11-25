@@ -1,7 +1,8 @@
 """Opt-in scope-aware call resolution (treesitter-chunker#682), experimental.
 
 The ``call_resolution`` option narrows call edges that name-only resolution
-leaves ``ambiguous``. It only removes candidates, and an edge becomes
+leaves ``ambiguous``. Imports mode can also substitute a proven named import
+alias outside the original candidates. A changed edge becomes
 ``resolved`` only when its one remaining candidate is proven by a binding
 (plan ``plans/detailed-scoped-call-resolution-682.md`` sections 6.3 and 7).
 

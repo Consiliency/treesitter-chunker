@@ -679,9 +679,15 @@ def test_rule_and_reason_vocabularies() -> None:
         "t1.ts_overload",
         "t1.js_hoist",
         "t2.import",
+        "t2.import_alias",
         "t2.namespace",
     }
-    assert {"t1.lexical", "t2.import", "t2.namespace"} == engine.BINDING_RULE_IDS
+    assert {
+        "t1.lexical",
+        "t2.import",
+        "t2.import_alias",
+        "t2.namespace",
+    } == engine.BINDING_RULE_IDS
     assert {
         "interface",
         "type",
@@ -696,7 +702,7 @@ def test_rule_and_reason_vocabularies() -> None:
     assert not {"stub", "script-goal-deferred", "namespace-deferred"} & (
         KNOWN_NONE_REASONS
     )
-    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "23", "python": "43"}
+    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "23", "python": "44"}
     assert [engine.language_family(name) for name in ("tsx", "javascript", "go")] == [
         "js",
         "js",

@@ -558,6 +558,9 @@ def module_facts(
     hazard = parse_hazard(source, analysis.root)
     module_bindings = {
         "imports": sorted(facts.imports),
+        "private_import_alias": any(
+            name.startswith("__") and not name.endswith("__") for name in import_infos
+        ),
         "uses": [list(use) for use in sorted(facts.uses)],
         "taints": [list(taint) for taint in sorted(facts.taints)],
         "stars": sorted(facts.stars),
@@ -2489,6 +2492,9 @@ class PyModuleRun:
     test_shutoff: Mapping[str, str] = field(default_factory=dict)
     test_scope: frozenset[str] = frozenset()
 
+    # Extra proof needed to introduce a target outside the name candidates.
+    alias_substitution_safe: bool = False
+
     @property
     def file_set(self) -> frozenset[str]:
         """The run's Python file paths (one hashable set, for the pytest
@@ -2843,6 +2849,34 @@ def _production(
     return frozenset(production)
 
 
+def _alias_substitution_safe(builder: _Builder) -> bool:
+    """Guard the call, re-exports and potential writers under any entry script.
+
+    The ordinary resolver models the importing file's script directory. A
+    transitive importer can instead see the directory of a different entry
+    script. Private import operands in class contexts can also bind a
+    different runtime spelling than the one recorded for a writer or caller.
+    """
+    alternate_roots = {
+        path.rsplit("/", 1)[1].removesuffix(".py")
+        for path in builder.files
+        if "/" in path
+    }
+    alternate_roots.update(
+        path.rsplit("/", 1)[1] for path in builder.directories if "/" in path
+    )
+    for facts in builder.bindings.values():
+        if facts.get("private_import_alias") is not False:
+            return False
+        for ref in facts["imports"]:
+            if ref.partition(".")[0] in alternate_roots or any(
+                part.startswith("__") and not part.endswith("__")
+                for part in ref.split(".")
+            ):
+                return False
+    return True
+
+
 def build_py_module_run(
     facts: Sequence[Mapping[str, Any]],
     directory_symlinks: bool | None = None,
@@ -2952,6 +2986,7 @@ def build_py_module_run(
             )
     return PyModuleRun(
         files=builder.files,
+        alias_substitution_safe=_alias_substitution_safe(builder),
         modules=builder.modules,
         directories=builder.directories,
         nodes=builder.nodes,

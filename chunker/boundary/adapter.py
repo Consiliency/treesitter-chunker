@@ -310,7 +310,7 @@ def _edge_record(
     if resolution_mode == "strict":
         provenance["enforcement_grade"] = "strict"
     # Opt-in call resolution (treesitter-chunker#682): a narrowed call edge
-    # carries the mode and the rule IDs that removed candidates. Unchanged
+    # carries the mode and the rule IDs that changed its candidates. Unchanged
     # edges never carry them.
     relationship_provenance = relationship.get("provenance")
     if isinstance(relationship_provenance, dict):

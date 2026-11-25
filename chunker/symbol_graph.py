@@ -701,7 +701,8 @@ def assemble_symbol_graph(
     is not ``False``, Tier 2 treats every test file as production (P5-2).
 
     ``call_resolution`` (experimental) narrows ambiguous call edges with the
-    per-file ``scope_facts``, which every fact must then carry.
+    per-file ``scope_facts``, which every fact must then carry. Imports mode
+    can also substitute a proven target for a renamed import.
     ``language_filter`` is the run's ``language`` argument; the run's file
     set comes from the facts, so assembly does no filesystem access.
     """

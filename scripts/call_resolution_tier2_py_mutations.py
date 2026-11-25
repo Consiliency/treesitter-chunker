@@ -33,6 +33,7 @@ PYS = CR + "py_scope.py"
 ENG = CR + "engine.py"
 T1 = "tests/test_call_resolution_tier1_py.py::"
 TESTS = (
+    "tests/test_call_resolution_import_alias.py",
     "tests/test_call_resolution_tier2_py.py",
     "tests/test_call_resolution_engine.py::test_expected_imports_tables_hold_at_this_head",
     # treesitter-chunker#699 S2: the shared string-code classifier's Tier 1
@@ -78,6 +79,25 @@ TESTS = (
 
 # (id, file, old text, new text). The old text must occur in the file once.
 MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "alias-substitution",
+        ENG,
+        "if alias and RULE_IMPORT in binding_rules:",
+        "if False:",
+    ),
+    (
+        "alias-private-local",
+        PYM,
+        'facts.get("private_import_alias") is not False',
+        "False",
+    ),
+    ("alias-entry-shadow", PYM, 'ref.partition(".")[0] in alternate_roots', "False"),
+    (
+        "alias-private-import",
+        PYM,
+        'part.startswith("__") and not part.endswith("__")',
+        "False",
+    ),
     # Module paths (9.5).
     (
         "script-dir-shadow",

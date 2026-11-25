@@ -19,12 +19,13 @@
      "file": "use.ts",
      "imports": {
       "candidates": [
-       "h1.ts:1:helper",
-       "h2.ts:1:helper"
+       "svc.ts:1:t"
       ],
       "outcome": "import",
-      "resolution": "ambiguous",
-      "rules": []
+      "resolution": "resolved",
+      "rules": [
+       "t2.import_alias"
+      ]
      },
      "line": 2,
      "pr": 5,
