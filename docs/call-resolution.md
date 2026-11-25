@@ -5,6 +5,22 @@ APIs `extract_boundary_ir` and `extract_symbol_graph` take the same values
 through `call_resolution`. An extraction run is the set of files the tool
 collects under the selected root and filters.
 
+## What a resolved call means
+
+A `resolved` call edge names the declaration that the call's name statically
+refers to under the language's binding and module-resolution rules. This is
+what existing edges have always represented in every mode. The default
+`name` mode uses a heuristic to identify that declaration.
+
+The edge does not guarantee what runs. A decorator can return a different
+callable, or code can replace one by monkeypatching, writing to a closure
+cell or frame, or modifying an object recovered from an exception. Compiler
+lowering and loader hooks can also change what runs.
+
+When the declaration itself is uncertain, the resolver withholds the
+binding-based result. For example, if both `svc.js` and `svc.ts` could
+supply an import, `imports` mode leaves the name-based result in place.
+
 ## Choose a mode
 
 | Mode | What it does |
@@ -64,9 +80,7 @@ follows the helper. Competing assignments, deletion and ambiguous bindings
 withhold substitution. A failed proof retains the previous resolution, including
 a possible unrelated singleton.
 
-A resolved edge identifies the statically selected declaration. Decorator
-replacement, closure-cell or frame writes, monkeypatching and compiler lowering
-can change runtime behavior. Greenfield and Code-Index-MCP should refresh stored
+Greenfield and Code-Index-MCP should refresh stored
 imports-mode edges, including already-resolved calls, and compare by
 `call_site_id`. Local proofs do not require a module filename inventory.
 
@@ -91,8 +105,8 @@ The resolver can prove a fresh module for a function local constructed with
 return an existing module, including the importer itself.
 Python can therefore resolve fewer calls in `imports` than in
 `structural`. The tool does not detect cross-file closure-cell writes or
-writes to a caller's frame locals for Tier 1 proofs. A Tier 1 edge that such
-a write makes wrong stays `resolved` in both modes.
+writes to a caller's frame locals for Tier 1 proofs. If such a write replaces
+the callable, a Tier 1 edge still names the declaration in both modes.
 
 ### Reference corpus results
 
@@ -158,8 +172,8 @@ describes the exact rules.
 ## Known limits
 
 The proofs depend on the collected source and the binding and loading rules
-the tool models. A resolved edge can be wrong when runtime behavior falls
-outside those rules.
+the tool models. Runtime behavior outside those rules can change which
+callable executes.
 
 ### Not yet covered (fixes planned)
 
