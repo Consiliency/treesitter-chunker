@@ -715,6 +715,7 @@ def test_single_file_self_import_lacks_sibling_inventory(tmp_path: Path) -> None
         ("svc.js", "svc.js/index.ts", "svc.jsx"),
         ("theme.css", "theme.css.ts", "theme.d.css.ts"),
         ("svc.js", "svc.ts", "svc.js.mjs"),
+        ("svc.js", "svc.ts", "svc.js.node"),
         ("svc.js", "svc.ts", "svc.jsx/index.mjs"),
         ("svc", "svc.ts", "svc/package.json"),
         ("svc", "svc.ts", "svc.json"),
@@ -758,39 +759,41 @@ def test_lone_directory_index(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    ("option", "value"),
-    [
-        ("moduleSuffixes", [".test", ""]),
-        ("paths", {}),
-        ("baseUrl", "."),
-        ("rootDirs", ["a", "b"]),
-        ("customConditions", ["dev"]),
-        ("allowArbitraryExtensions", True),
-        ("moduleResolution", "bundler"),
-    ],
+    "location", ["settings.jsonc", "build/options", "docs/input.bin"]
 )
+@pytest.mark.parametrize("option", ["rootDirs", "moduleSuffixes"])
+def test_resolution_token_any_file(tmp_path: Path, location: str, option: str) -> None:
+    _write(tmp_path, {"use.ts": JS_USE, "svc.ts": JS_SVC})
+    file = tmp_path / location
+    file.parent.mkdir(exist_ok=True)
+    file.write_bytes(b"\xff" + option.encode() + b"\x00")
+    _assert_alias_withheld(tmp_path)
+
+
+@pytest.mark.parametrize("specifier", ["svc.js", "/svc.js"])
+@pytest.mark.parametrize("bridge", [False, True])
+def test_nonrelative_alias(tmp_path: Path, specifier: str, bridge: bool) -> None:
+    files = {"use.ts": JS_USE, "svc.js": JS_SVC}
+    if bridge:
+        files["use.ts"] = JS_USE.replace("./svc.js", "./bridge.js")
+        files["bridge.js"] = f"export {{exp}} from '{specifier}';"
+    else:
+        files["use.ts"] = JS_USE.replace("./svc.js", specifier)
+    _write(tmp_path, files)
+    _assert_alias_withheld(tmp_path)
+
+
 @pytest.mark.parametrize(
-    "location",
-    [
-        "project/tsconfig.json",
-        "project/nested/jsconfig.json",
-        "tsconfig.json",
-        "project/build/tsconfig.json",
-    ],
+    "sibling", ["svc.ios.ts", "svc.test.ts", "svc-native.js", "svcExtra.cjs"]
 )
-def test_unmodeled_lookup_config(
-    tmp_path: Path, option: str, value: Any, location: str
-) -> None:
-    _write(
-        tmp_path,
-        {
-            "project/use.ts": JS_USE,
-            "project/svc.ts": JS_SVC,
-            "project/svc.test.ts": JS_SVC,
-            location: json.dumps({"compilerOptions": {option: value}}),
-        },
-    )
-    _assert_alias_withheld(tmp_path / "project")
+@pytest.mark.parametrize("bridge", [False, True])
+def test_alias_prefix_sibling(tmp_path: Path, sibling: str, bridge: bool) -> None:
+    files = {"use.ts": JS_USE, "svc.ts": JS_SVC, sibling: JS_SVC}
+    if bridge:
+        files["use.ts"] = JS_USE.replace("./svc.js", "./bridge.js")
+        files["bridge.js"] = "export {exp} from './svc.js';"
+    _write(tmp_path, files)
+    _assert_alias_withheld(tmp_path)
 
 
 @pytest.mark.parametrize(
@@ -837,24 +840,6 @@ def test_checker_prefers_ambient_declaration_after_disk_lookup(tmp_path: Path) -
     _assert_alias_withheld(tmp_path)
 
 
-@pytest.mark.parametrize(
-    "config",
-    [
-        {"files": ["../global.d.ts"]},
-        {"compilerOptions": {"typeRoots": ["../types"]}},
-        {"compilerOptions": {"module": "NodeNext"}},
-    ],
-)
-def test_external_or_implicit_project_lookup(
-    tmp_path: Path, config: dict[str, Any]
-) -> None:
-    _write(
-        tmp_path,
-        {"use.ts": JS_USE, "svc.js": JS_SVC, "tsconfig.json": json.dumps(config)},
-    )
-    _assert_alias_withheld(tmp_path)
-
-
 def test_repeated_compiler_options_keep_the_first_suffix_active(tmp_path: Path) -> None:
     _write(
         tmp_path,
@@ -873,8 +858,9 @@ def test_repeated_compiler_options_keep_the_first_suffix_active(tmp_path: Path) 
     reason="mode 000 requires an unprivileged POSIX user",
 )
 @pytest.mark.parametrize("mode", ["strict", "permissive"])
-def test_unreadable_directory_only_invalidates_js_inventory(
-    tmp_path: Path, mode: str
+@pytest.mark.parametrize("directory", [False, True])
+def test_unreadable_entry_only_invalidates_js_inventory(
+    tmp_path: Path, mode: str, directory: bool
 ) -> None:
     _write(
         tmp_path,
@@ -888,7 +874,10 @@ def test_unreadable_directory_only_invalidates_js_inventory(
         },
     )
     private = tmp_path / "private"
-    private.mkdir()
+    if directory:
+        private.mkdir()
+    else:
+        private.touch()
     private.chmod(0)
     try:
         graph = extract_symbol_graph(
@@ -911,7 +900,14 @@ def test_unreadable_directory_only_invalidates_js_inventory(
 
 
 @pytest.mark.parametrize(
-    "location", ["tsconfig.build.json", "projects/custom.json", "build/custom.json"]
+    "location",
+    [
+        "tsconfig.build.jsonc",
+        "build-options",
+        "tsconfig.build.json",
+        "projects/custom.json",
+        "build/custom.json",
+    ],
 )
 def test_build_config_selects_suffixed_file(tmp_path: Path, location: str) -> None:
     prefix = "../" if "/" in location else ""
@@ -922,10 +918,10 @@ def test_build_config_selects_suffixed_file(tmp_path: Path, location: str) -> No
             location: json.dumps(
                 {
                     "compilerOptions": {
-                        "module": "commonjs",
+                        "module": "amd",
                         "moduleResolution": "node",
                         "moduleSuffixes": [".test", ""],
-                        "noEmit": True,
+                        "outFile": "../bundle.js",
                     },
                     "files": [prefix + "use.ts"],
                 }
@@ -961,8 +957,11 @@ def test_unrelated_json_and_dependency_config_allow_alias(tmp_path: Path) -> Non
         {
             "use.ts": JS_USE,
             "svc.ts": JS_SVC,
-            "data.json": '{"metadata":{"compilerOptions":{"moduleSuffixes":[".test",""]}}}',
-            "node_modules/dep/tsconfig.build.json": '{"compilerOptions":{"moduleResolution":"bundler"}}',
+            "data.json": '{"metadata":true}',
+            "other/svc.ios.ts": JS_SVC,
+            "svc-notes.md": "notes",
+            ".git/info/attributes": "moduleSuffixes",
+            "node_modules/dep/tsconfig.build.json": '{"compilerOptions":{"rootDirs":["src","other"]}}',
         },
     )
     edge = _site(
@@ -980,7 +979,7 @@ def test_walk_error_keeps_link_scan_independent(
     scandir = os.scandir
 
     def scan(path):
-        if path == str(private):
+        if os.fspath(path) == str(private):
             raise PermissionError(path)
         return scandir(path)
 
@@ -988,14 +987,23 @@ def test_walk_error_keeps_link_scan_independent(
     assert module_layout(tmp_path) == (False, None)
 
 
-@pytest.mark.parametrize("name", ["tsconfig.build.json", "jsconfig.test.json"])
-def test_named_projects_without_compiler_options(tmp_path: Path, name: str) -> None:
-    _write(
-        tmp_path,
-        {
-            name: '{"references":[{"path":"../external"}]}',
-            "use.ts": JS_USE,
-            "svc.ts": JS_SVC,
-        },
-    )
-    _assert_alias_withheld(tmp_path)
+def test_unreadable_file_invalidates_only_alias_inventory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    private = tmp_path / "build-options"
+    private.touch()
+    original = Path.open
+
+    def deny(path, *args, **kwargs):
+        if path == private:
+            raise PermissionError(path)
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", deny)
+    assert module_layout(tmp_path) == (False, None)
+
+
+def test_oversize_file_invalidates_alias_inventory(tmp_path: Path) -> None:
+    with (tmp_path / "build-options").open("wb") as stream:
+        stream.truncate(4 * 1024 * 1024 + 1)
+    assert module_layout(tmp_path) == (False, None)

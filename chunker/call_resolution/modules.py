@@ -518,12 +518,17 @@ def alias_module_run(run: ModuleRun, variant_paths: Sequence[str]) -> ModuleRun 
     if any(module.has_ambient_module for module in run.files.values()):
         return None
     disk_paths: dict[str, set[str]] = {}
+    disk_names: dict[str, set[str]] = {}
     for path in variant_paths:
         if path.lower().endswith(TYPESCRIPT_SUFFIXES):
             module = run.files.get(path)
             if module is None or not module.supported:
                 return None
-        disk_paths.setdefault(_fold(path), set()).add(path)
+        folded = _fold(path)
+        disk_paths.setdefault(folded, set()).add(path)
+        if folded.endswith(_ALIAS_EXTENSIONS):
+            directory, _, name = folded.rpartition("/")
+            disk_names.setdefault(directory, set()).add(name)
     blocked = {path for path, module in run.files.items() if module.has_decorator}
     # CommonJS namespace calls receive the exports object. The emitted body
     # can write it even without an explicit ``this`` in the source (e.g. a
@@ -533,6 +538,7 @@ def alias_module_run(run: ModuleRun, variant_paths: Sequence[str]) -> ModuleRun 
         run,
         index=replace(
             run.index,
+            names={key: frozenset(names) for key, names in disk_names.items()},
             alias_blocked=frozenset(blocked),
             alias_disk_paths={
                 key: frozenset(paths) for key, paths in disk_paths.items()
@@ -543,6 +549,13 @@ def alias_module_run(run: ModuleRun, variant_paths: Sequence[str]) -> ModuleRun 
 
 def _unique_alias_target(index: ModuleIndex, requested: str, target: str) -> bool:
     """Over-approximate disk lookups; only the ordinary resolver can nominate a target."""
+    directory, _, selected = _fold(target).rpartition("/")
+    prefix = posixpath.splitext(selected)[0]
+    if any(
+        name != selected and name.startswith(prefix)
+        for name in index.names.get(directory, ())
+    ):
+        return False
     base = _fold(requested)
     # Node's CommonJS loader also probes JSON and native addons.
     extensions = (*_ALIAS_EXTENSIONS, ".json", ".node")

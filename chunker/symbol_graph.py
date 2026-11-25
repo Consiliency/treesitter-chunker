@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import os
 import re
+import stat
 from bisect import bisect_left
 from collections import defaultdict
 from collections.abc import Sequence
@@ -17,7 +17,6 @@ from typing import Any
 from .auto import ZeroConfigAPI
 from ._internal.registry import baml_companion_available
 from .call_resolution import engine as call_resolution_engine
-from .call_resolution.modules import TYPESCRIPT_SUFFIXES
 from .call_resolution.facts import (
     compute_scope_facts,
     unsupported_scope_facts,
@@ -85,199 +84,79 @@ def _should_skip_path(path: Path) -> bool:
     return any(part in SKIP_PARTS for part in path.parts)
 
 
-_CONFIG_FILES = {"tsconfig.json", "jsconfig.json"}
-_RESOLUTION_OPTIONS = {
-    "modulesuffixes",
-    "paths",
-    "baseurl",
-    "rootdirs",
-    "customconditions",
-    "allowarbitraryextensions",
-    "typeroots",
-    "types",
-    "noresolve",
-}
+_ALIAS_SCAN_LIMIT = 4 * 1024 * 1024
 
 
-def _unique_config_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-    # tsc can combine repeated compilerOptions objects. Last-key-wins JSON
-    # decoding would silently discard settings participating in resolution.
-    values: dict[str, Any] = {}
-    for key, value in pairs:
-        folded = key.lower()
-        if folded in values:
-            raise ValueError("duplicate compiler configuration key")
-        values[folded] = value
-    return values
-
-
-def _unmodeled_config(path: Path) -> bool:
-    """An inherited, unreadable or unmodeled configuration cannot prove uniqueness."""
-    name = path.name.lower()
-    try:
-        # TS option names are case-insensitive. Unsupported JSONC syntax
-        # conservatively withholds aliases too.
-        if not path.is_file():
-            return True
-        # An arbitrary JSON asset might be a project selected with tsc -p.
-        # Bound the amount decoded to classify it; withhold if it is too large.
-        if path.stat().st_size > 4 * 1024 * 1024:
-            return True
-        config = json.loads(
-            path.read_text(encoding="utf-8-sig"), object_pairs_hook=_unique_config_keys
-        )
-        named_project = name.startswith(("tsconfig", "jsconfig"))
-        # Withholding on extends also covers extensionless, package and nested
-        # base configs without guessing which inherited settings are effective.
-        if not named_project and not (
-            isinstance(config, dict)
-            and ("compileroptions" in config or "extends" in config)
-        ):
-            return False
-        if (
-            not isinstance(config, dict)
-            or "extends" in config
-            or "references" in config
-        ):
-            return True
-        # A project may explicitly include ambient declarations outside the
-        # inventory. Unknown path forms cannot establish a closed project.
-        for key in ("files", "include"):
-            entries = config.get(key, [])
-            if not isinstance(entries, list) or any(
-                not isinstance(entry, str)
-                or entry.startswith(("/", "\\"))
-                or ":" in entry
-                or ".." in entry.replace("\\", "/").split("/")
-                for entry in entries
-            ):
-                return True
-        options = config.get("compileroptions", {})
-        if not isinstance(options, dict):
-            return True
-        if "moduleresolution" not in options and str(
-            options.get("module", "")
-        ).lower() in {
-            "node16",
-            "node18",
-            "node20",
-            "nodenext",
-            "preserve",
-        }:
-            return True
-        return bool(_RESOLUTION_OPTIONS.intersection(options)) or str(
-            options.get("moduleresolution", "node")
-        ).lower() not in {"node", "node10"}
-    except (OSError, ValueError, AttributeError, RecursionError):
+def _unsafe_alias_file(path: Path) -> bool:
+    info = path.lstat()
+    if stat.S_ISLNK(info.st_mode) or path.is_junction():
         return True
-
-
-def _unsafe_ancestor_config(root: Path) -> bool:
-    parents = set(root.absolute().parents) | set(root.resolve().parents)
-    for parent in parents:
-        # Visible @types packages can introduce wildcard declarations outside
-        # the extraction root. The run has no facts for these inputs.
-        if (parent / "node_modules" / "@types").is_dir():
-            return True
-        for name in _CONFIG_FILES:
-            config = parent / name
-            try:
-                config.stat()
-            except FileNotFoundError:
-                continue
-            except OSError:
-                return True
-            # An ancestor project can include source files beside the root.
-            return True
-    return False
-
-
-def _unsafe_excluded_project(directory: Path) -> bool:
-    def scan_error(error: OSError) -> None:
-        raise error
-
-    try:
-        if directory.is_symlink() or directory.is_junction():
-            return True
-        for folder, directories, files in directory.walk(on_error=scan_error):
-            if any((folder / name).is_junction() for name in directories):
-                return True
-            inspect_configs = (
-                "node_modules" not in folder.relative_to(directory.parent).parts
-            )
-            for file in files:
-                name = file.lower()
-                if name.endswith(TYPESCRIPT_SUFFIXES) or (folder / file).is_symlink():
-                    return True
-                if (
-                    inspect_configs
-                    and name.endswith(".json")
-                    and _unmodeled_config(folder / file)
-                ):
-                    return True
+    if not stat.S_ISREG(info.st_mode):
         return False
-    except OSError:
+    if info.st_size > _ALIAS_SCAN_LIMIT:
         return True
+    with path.open("rb") as stream:
+        data = stream.read(_ALIAS_SCAN_LIMIT + 1).lower()
+    return (
+        len(data) > _ALIAS_SCAN_LIMIT
+        or b"rootdirs" in data
+        or b"modulesuffixes" in data
+    )
 
 
 def module_layout(path: str | Path) -> tuple[bool, tuple[str, ...] | None]:
-    """Directory links and an on-disk filename snapshot for the JS/TS alias proof.
-
-    Read filenames again for incremental assembly: a sibling can change
-    import resolution without changing any cached source file.
-    """
+    """Return the ordinary link flag and a fresh inventory for JS alias lookup."""
     root = Path(path)
-    if not root.is_dir():
-        # Single-file extraction supplies no inventory of sibling modules.
-        return False, None
-    linked = False
-    variants: list[str] = []
-
-    unsafe = _unsafe_ancestor_config(root)
+    linked = has_directory_symlink(root)
+    if linked or not root.is_dir():
+        return linked, None
 
     def scan_error(error: OSError) -> None:
-        # Main's directory-link walk skips unreadable subtrees and continues
-        # looking for actual links. Only the JS alias inventory is incomplete.
-        nonlocal unsafe
-        unsafe = True
+        raise error
 
+    variants: list[str] = []
     try:
-        for current, directories, filenames in os.walk(
-            root, followlinks=False, onerror=scan_error
-        ):
-            if not unsafe:
-                unsafe = any(
-                    _unmodeled_config(Path(current) / name)
-                    for name in filenames
-                    if name.lower().endswith(".json")
-                )
-            kept = []
-            for name in directories:
-                if name in SKIP_PARTS:
-                    # A nested compiler project can affect the proof even
-                    # when extraction excludes its sources.
-                    unsafe = unsafe or _unsafe_excluded_project(Path(current) / name)
-                    continue
-                entry = Path(current) / name
-                if entry.is_symlink() or entry.is_junction():
-                    linked = True
-                else:
-                    kept.append(name)
-            directories[:] = kept
-            if not unsafe:
-                variants.extend(
-                    (Path(current) / name).relative_to(root).as_posix()
-                    for name in filenames
-                )
+        for folder, directories, files in root.walk(on_error=scan_error):
+            directories[:] = [
+                d for d in directories if d not in {".git", "node_modules"}
+            ]
+            if (folder / "node_modules" / "@types").is_dir():
+                return linked, None
+            if any((folder / name).is_junction() for name in directories):
+                return linked, None
+            for name in files:
+                entry = folder / name
+                if _unsafe_alias_file(entry):
+                    return linked, None
+                variants.append(entry.relative_to(root).as_posix())
     except OSError:
-        # An incomplete directory inventory cannot support an alias proof.
-        return True, None
-    return linked, None if unsafe or linked else tuple(variants)
+        # A partial inventory invalidates only the JS alias proof.
+        return linked, None
+    return linked, tuple(variants)
 
 
 def has_directory_symlink(path: str | Path) -> bool:
-    """Whether the imports-mode directory scan found a symlink or junction."""
-    return module_layout(path)[0]
+    """Whether a directory symlink lies under ``path`` outside the skipped
+    directories (P5-2). Collection never follows one, so Tier 2's O-2
+    promotion cannot see what it reaches."""
+    root = Path(path)
+    if not root.is_dir():
+        return False
+    try:
+        for current, directories, _ in os.walk(root, followlinks=False):
+            kept = []
+            for name in directories:
+                if name in SKIP_PARTS:
+                    continue
+                entry = Path(current) / name
+                # P5-16: a Windows directory junction behaves like a link.
+                if entry.is_symlink() or entry.is_junction():
+                    return True
+                kept.append(name)
+            directories[:] = kept
+    except OSError:
+        return True
+    return False
 
 
 def collect_source_files(path: str | Path, language: str | None = None) -> list[Path]:

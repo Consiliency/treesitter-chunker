@@ -55,7 +55,7 @@ a re-export or a path to a writer. A decorator anywhere in a module on the
 export chain withholds substitution, including member and parameter
 decorators on unrelated classes. Substitution is also withheld into namespace-call receivers. Under CommonJS emit a replacement constructor
 or a downleveled class field can write to the receiver's exports. Substitution also requires a unique
-source at every hop. For example, either a lone `svc.js` or a lone `svc.ts`
+source and a relative specifier (starting with `./` or `../`) at every hop. For example, either a lone `svc.js` or a lone `svc.ts`
 can supply `./svc.js`, but siblings with the same stem, including declaration
 files, make the target uncertain for both JS and TS importers. Substitution is withheld across a
 run containing JSX or a module-scope binding named `require`, `module`,
@@ -67,14 +67,14 @@ only direct method calls on those names are accepted for substitution.
 Callers assembling previously collected facts must supply the filename
 inventory from `module_layout` to enable alias substitution. It includes
 extensionless files, alternate source and declaration extensions, and directory
-indexes. An opaque directory package or compiler configuration can also
-prevent a unique lookup. This includes `moduleSuffixes`, `paths`, `baseUrl`,
-`rootDirs`, `customConditions`, `allowArbitraryExtensions`, inherited configs,
-and explicit resolution modes other than `node` or `node10`. The guard checks
-JSON files throughout the extraction root, including build-specific projects
-and custom filenames, except under `node_modules`. An unreadable directory
-or JSON file that cannot be classified (including one over 4 MiB) withholds
-alias substitution. TypeScript can
+indexes. A package manifest at a possible directory target withholds substitution.
+A JS/TS sibling whose filename starts with the selected file's stem also
+withholds it, including `svc.test.ts`, `svc.ios.ts` and `svc-native.ts` beside
+`svc.ts`. The extraction root is scanned for the text `rootDirs` and
+`moduleSuffixes` regardless of filename. Either token, an unreadable entry,
+or a regular file larger than the 4 MiB scan limit withholds JS/TS alias
+substitution throughout the root. The scan skips `.git` and `node_modules`.
+TypeScript can
 bind an export to a wildcard declaration such as `declare module "*.js"`
 even when its resolver finds a physical JS file. A string-named module
 declaration, or a TypeScript input without complete facts, therefore
