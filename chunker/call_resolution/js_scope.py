@@ -289,6 +289,8 @@ class _Scope:
     merge_scope: _Scope | None = None
     merge_name: str = ""
     always_merged: bool = False
+    # Cached by ``_nested_call``: whether any decorator occurs in the body.
+    decorated: bool | None = None
 
     def bind(self, name: str, binding: _Binding) -> None:
         self.bindings.setdefault(name, []).append(binding)
@@ -1657,7 +1659,17 @@ class _Analysis:
 
     @staticmethod
     def _nested_call(ident: Any, scope: _Scope, binding: _Binding) -> bool:
-        """One direct function-body binding, called in that same body."""
+        """One direct function-body binding, called in that same body.
+
+        A decorator expression anywhere in the body is evaluated in an
+        enclosing scope that this analysis does not model exactly (a
+        parameter decorator can assign the body's helper), so any decorator
+        in the body withholds the nested target.
+        """
+        if scope.decorated is None:
+            scope.decorated = _contains_type(scope.node, "decorator")
+        if scope.decorated:
+            return False
         statement = binding.statement
         if statement is None or not _same(statement.parent, scope.node):
             return False
@@ -1937,6 +1949,17 @@ def _inside_class(node: Any) -> bool:
         if current.type in _CLASSES:
             return True
         current = current.parent
+    return False
+
+
+def _contains_type(node: Any, kind: str) -> bool:
+    """Whether a node of type ``kind`` occurs anywhere below ``node``."""
+    stack = [node]
+    while stack:
+        current = stack.pop()
+        if current.type == kind:
+            return True
+        stack.extend(current.named_children)
     return False
 
 

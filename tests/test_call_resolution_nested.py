@@ -212,6 +212,40 @@ def _assert_helper_fallback(path: Path) -> None:
     assert _helper_edge(path, "imports") == _helper_edge(path, "name")
 
 
+@pytest.mark.parametrize("param", ["helper", "value"])
+def test_decorator_in_body_withholds(tmp_path: Path, param: str) -> None:
+    """A parameter decorator is evaluated in the enclosing scope and can
+    assign the body's helper, so any decorator in the body withholds."""
+    (tmp_path / "use.ts").write_text(
+        'function helper() { return "global" }\n'
+        "function decorator(_value: unknown) { return (..._args: any[]) => {} }\n"
+        'function other() { return "second" }\n'
+        "function outer() {\n"
+        '  function helper() { return "first" }\n'
+        "  class Example {\n"
+        f"    constructor(@decorator((helper as any) = other) {param}: unknown) {{}}\n"
+        "  }\n"
+        "  return helper()\n"
+        "}\n"
+        "console.log(outer())\n",
+        encoding="utf-8",
+    )
+    _assert_helper_fallback(tmp_path)
+
+
+def test_undecorated_class_in_body_still_resolves(tmp_path: Path) -> None:
+    (tmp_path / "use.ts").write_text(
+        'function helper() { return "global" }\n'
+        "function outer() {\n"
+        '  function helper() { return "first" }\n'
+        "  class Example { constructor(value: unknown) {} }\n"
+        "  return helper()\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    assert _helper_edge(tmp_path, "imports") != _helper_edge(tmp_path, "name")
+
+
 def test_shorthand_arguments_write_withholds(tmp_path: Path) -> None:
     """Sloppy ``{ arguments }`` exposes the mapped parameter that the nested
     declaration shares, so a write through it can replace ``helper``."""
