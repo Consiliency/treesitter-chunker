@@ -179,6 +179,8 @@ Relationship-resolution status values (`resolved`, `ambiguous`,
 `unresolved`) and strict/permissive mode semantics are downstream of the Phase 0
 baseline. They extend the frozen top-level schema rather than redefining it.
 
+For call edges, see [What a resolved call means](call-resolution.md#what-a-resolved-call-means).
+
 Imports and dependencies remain deduplicated by source, target, relationship
 type and normalized reference. Calls instead preserve every recognized syntax
 site. The public symbol graph exposes resolution-independent `call_facts`; each
