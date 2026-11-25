@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"29"`` for the ``js`` family and ``"45"`` for
+Schema (fact version ``"30"`` for the ``js`` family and ``"45"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -316,10 +316,12 @@ logger = logging.getLogger(__name__)
 # the fixtures' digests change only by the version. R-724-7 limits freshness
 # to types.ModuleType because a loader may return an existing module.
 # js "26": record module decorators and hazards in compiler-generated calls.
-# JS 27 / Python 44: bare calls eligible for nested declaration substitution.
+# Main JS 27 recorded string-named ambient modules for renamed-import proofs.
+# On the nested-helper branch, JS 27 / Python 44 marked eligible bare calls.
 # JS 28 / Python 45: comment-aware operands and conservative nested scope proofs.
 # JS 29: TS instantiation expressions preserve the underlying operand.
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "29", "python": "45"}
+# JS 30 combines both branches. Python facts are unchanged from version 45.
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "30", "python": "45"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.
@@ -689,6 +691,7 @@ _MODULE_BINDING_KEYS = frozenset(
     {
         "stars",
         "has_decorator",
+        "has_ambient_module",
         "unsafe_alias_emit",
         "commonjs",
         "opaque",
@@ -750,6 +753,7 @@ def valid_module_bindings(value: object) -> bool:
             for key in ("stars", "taints", "imports", "filename_taints", "shutoff")
         )
         and isinstance(value["has_decorator"], bool)
+        and isinstance(value["has_ambient_module"], bool)
         and isinstance(value["unsafe_alias_emit"], bool)
         and set(value["shutoff"]) <= set(SHUTOFF_CAUSES)
         and isinstance(value["ns_uses"], list)

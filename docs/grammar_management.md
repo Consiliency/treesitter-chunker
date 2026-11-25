@@ -551,8 +551,26 @@ Status: ✅ healthy
    Has grammar.js: True
 ```
 
-### `grammar install <language> <repo_url> [--branch <branch>]`
-Installs a grammar from a Git repository.
+### `grammar install <language> <repo_url> [--branch <branch>] [--allow-npm-scripts]`
+Installs a grammar from a Git repository. When the repository contains
+`package.json`, install and update run `npm install --ignore-scripts`. This
+prevents npm lifecycle hooks such as `postinstall` from running code from the
+grammar or its dependencies during dependency installation.
+
+If a grammar requires those hooks, review the revision and its dependencies
+before passing `--allow-npm-scripts`. The hooks run with your user permissions.
+Each opt-in dependency install removes the managed checkout's `node_modules`
+and runs `npm install --ignore-scripts=false` once. This can download
+dependencies again. npm runs the current revision's approved dependency hooks
+before the grammar's install hooks, including on retry after a default install.
+With npm 12, dependency hooks also need approval under npm's `allowScripts`
+policy. The command reports npm's warnings, including which packages need review.
+In the grammar checkout, run `npm install-scripts ls` to inspect pending hooks.
+If you trust a specific dependency, run `npm install-scripts approve <package>`
+there, then retry the incomplete grammar command with `--allow-npm-scripts`.
+
+Python callers can pass `allow_npm_scripts=True` to
+`UserGrammarTools.install_grammar` or `UserGrammarTools.update_grammar`.
 
 **Example:**
 ```bash
@@ -578,8 +596,13 @@ python -m chunker.cli grammar install typescript https://github.com/tree-sitter/
 🎉 Successfully installed typescript grammar!
 ```
 
-### `grammar update <language>`
-Updates an existing grammar to the latest version.
+### `grammar update <language> [--allow-npm-scripts]`
+Updates an existing grammar to the latest version. To enable required hooks for
+a trusted new revision, pass the option on that update, for example
+`python -m chunker.cli grammar update rust --allow-npm-scripts`. If generation fails, you can retry
+the same revision with the option. A completed update skips npm and generation
+until a new revision is available. If another install or update is already using
+the checkout, the command reports it as busy. Retry after that operation finishes.
 
 **Example:**
 ```bash
@@ -661,7 +684,7 @@ Status: ⚠️ missing
    Steps:
       1. Clone grammar repository: git clone <repo_url> grammars/tree-sitter-java
       2. Navigate to grammar directory: cd grammars/tree-sitter-java
-      3. Install dependencies: npm install (if package.json exists)
+      3. Install dependencies: npm install --ignore-scripts (if package.json exists)
       4. Generate grammar: tree-sitter generate
       5. Copy .so file to build directory: cp *.so ../../chunker/data/grammars/build/
 ```
@@ -721,7 +744,7 @@ Validates all installed grammars.
 **Solutions:**
 1. Check if grammar source exists in `grammars/` directory
 2. Clone the grammar repository: `git clone <repo_url> grammars/tree-sitter-<language>`
-3. Install dependencies: `npm install` (if package.json exists)
+3. Install dependencies: `npm install --ignore-scripts` (if package.json exists)
 4. Generate grammar: `tree-sitter generate`
 5. Copy .so file to build directory
 
@@ -756,7 +779,7 @@ The system automatically generates recovery plans for problematic grammars:
    Steps:
       1. Clone grammar repository: git clone <repo_url> grammars/tree-sitter-<language>
       2. Navigate to grammar directory: cd grammars/tree-sitter-<language>
-      3. Install dependencies: npm install (if package.json exists)
+      3. Install dependencies: npm install --ignore-scripts (if package.json exists)
       4. Generate grammar: tree-sitter generate
       5. Copy .so file to build directory: cp *.so ../../chunker/data/grammars/build/
 ```
@@ -1157,9 +1180,8 @@ SDK and `MACOSX_DEPLOYMENT_TARGET`, `__DATE__`/`__TIME__`, debug flags, annobin 
 Tools are resolved once in the parent per operation, before child cwd dispatch.
 Explicit downloader `CC` is one executable, never shell-split; missing explicit CC
 fails without fallback. Legacy downloader C++ retains its existing command.
-Absolute executable selection does not sandbox Git, Makefiles, or npm lifecycle
-scripts. UserGrammarTools npm behavior is unchanged
-(Consiliency/treesitter-chunker#641); publishing found shared libraries remains
+Grammar generation and native builds still require trusted sources. Disabling npm
+lifecycle scripts covers only dependency installation. Publishing found shared libraries remains
 Consiliency/treesitter-chunker#642. CLI parse/test/validation-only npx calls,
 no-cwd diagnostic version probes, `scripts/run_deadline_load_harness.py`, the BAML
 companion, dependency-distributed wheels and historical archive scripts are excluded.

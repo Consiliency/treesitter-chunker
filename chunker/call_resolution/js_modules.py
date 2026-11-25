@@ -309,6 +309,7 @@ class _ModuleFacts:
         self.analysis = analysis
         self.source = analysis.source
         self.has_decorator = False
+        self.has_ambient_module = False
         # tsc emits loader/host names and double-underscore helpers into
         # module scope. Source bindings can redirect the generated calls.
         self.unsafe_alias_emit = any(
@@ -571,6 +572,10 @@ class _ModuleFacts:
                 # The configured JSX factory can call a namespace member or
                 # exports itself without either receiver appearing in the AST.
                 self.unsafe_alias_emit = True
+            elif kind in ("module", "internal_module"):
+                name = node.child_by_field_name("name")
+                if name is not None and name.type == "string":
+                    self.has_ambient_module = True
             elif kind == "decorator":
                 self.has_decorator = True
             elif kind in _MODULE_SYSTEM_NAME_TOKENS:
@@ -1501,6 +1506,7 @@ class _ModuleFacts:
         return {
             "stars": list(self.stars),
             "has_decorator": self.has_decorator,
+            "has_ambient_module": self.has_ambient_module,
             "unsafe_alias_emit": self.unsafe_alias_emit,
             "commonjs": self.commonjs or self.analysis.goal == "script",
             "opaque": self.opaque,

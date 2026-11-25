@@ -80,6 +80,8 @@ class StubSubprocess:
             if command[1:3] == ["remote", "get-url"]:
                 url = "https://github.com/example/tree-sitter-baml\n"
                 return subprocess.CompletedProcess(command, 0, url, "")
+            if command[1:] == ["rev-parse", "--absolute-git-dir"]:
+                return subprocess.CompletedProcess(command, 0, str(cwd), "")
             if command[1] == "rev-parse":
                 commit = "a" * 40 if command[2] == "HEAD" else "b" * 40
                 return subprocess.CompletedProcess(command, 0, commit + "\n", "")

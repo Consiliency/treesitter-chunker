@@ -12,14 +12,23 @@ refers to under the language's binding and module-resolution rules. This is
 what existing edges have always represented in every mode. The default
 `name` mode uses a heuristic to identify that declaration.
 
+For JS/TS, the target is the implementation file and export that standard
+Node/TypeScript module resolution selects from the source tree. Ambient or
+type-only overlays such as `declare module` and `.d.ts` shims are outside the
+set of call targets. Build-tool remapping is configuration, outside the
+source, and an edge does not account for it. Examples are bundler aliases and
+`browser` maps, `moduleSuffixes`, `paths`, and compiler options inherited from
+installed packages. Renamed-import substitution still withholds where its
+guards detect such settings.
+
 The edge does not guarantee what runs. A decorator can return a different
 callable, or code can replace one by monkeypatching, writing to a closure
 cell or frame, or modifying an object recovered from an exception. Compiler
 lowering and loader hooks can also change what runs.
 
-When the declaration itself is uncertain, the resolver withholds the
-binding-based result. For example, if both `svc.js` and `svc.ts` could
-supply an import, `imports` mode leaves the name-based result in place.
+When both `svc.js` and `svc.ts` could supply a renamed import,
+`imports` mode withholds alias substitution and keeps the existing result.
+Ordinary imports retain their previous Tier 2 lookup behavior.
 
 ## Choose a mode
 
@@ -51,7 +60,7 @@ a re-export or a path to a writer. A decorator anywhere in a module on the
 export chain withholds substitution, including member and parameter
 decorators on unrelated classes. Substitution is also withheld into namespace-call receivers. Under CommonJS emit a replacement constructor
 or a downleveled class field can write to the receiver's exports. Substitution also requires a unique
-source at every hop. For example, either a lone `svc.js` or a lone `svc.ts`
+source and a relative specifier (starting with `./` or `../`) at every hop. For example, either a lone `svc.js` or a lone `svc.ts`
 can supply `./svc.js`, but siblings with the same stem, including declaration
 files, make the target uncertain for both JS and TS importers. Substitution is withheld across a
 run containing JSX or a module-scope binding named `require`, `module`,
@@ -61,7 +70,20 @@ CommonJS emit can use a shadowed loader, and TypeScript helpers such as
 `Reflect` methods can intercept generated calls on the exports object, so
 only direct method calls on those names are accepted for substitution.
 Callers assembling previously collected facts must supply the filename
-inventory from `module_layout` to enable alias substitution.
+inventory from `module_layout` to enable alias substitution. It includes
+extensionless files, alternate source and declaration extensions, and directory
+indexes. A package manifest at a possible directory target withholds substitution.
+A JS/TS sibling whose filename starts with the selected file's stem also
+withholds it, including `svc.test.ts`, `svc.ios.ts` and `svc-native.ts` beside
+`svc.ts`. The extraction root is scanned for the text `rootDirs` and
+`moduleSuffixes` regardless of filename. Either token, an unreadable entry,
+or a regular file larger than the 4 MiB scan limit withholds JS/TS alias
+substitution throughout the root. The scan skips `.git` and `node_modules`.
+TypeScript can
+bind an export to a wildcard declaration such as `declare module "*.js"`
+even when its resolver finds a physical JS file. A string-named module
+declaration, or a TypeScript input without complete facts, therefore
+withholds substitution across the run.
 
 Python is intentionally excluded from renamed-import substitution. A failed
 `delattr` can expose the exporting module through `AttributeError.obj`, so
@@ -214,7 +236,9 @@ see the [Boundary IR specification](interface-boundary-spec.md#call-resolution-e
 
 ## Nested helper results on the reference corpora
 
-The frozen corpus projections overlap. “Before” uses the stacked renamed-import resolver from treesitter-chunker#789. Correcting a singleton changes its target without increasing the resolved count.
+The 16 frozen corpus projections overlap. The baseline is main at `181b5f68`, including treesitter-chunker#789. Correcting a singleton changes its target without increasing the resolved count.
+
+Across 492,802 call-site observations, 183 previously resolved calls changed target and 840 additional calls resolved. All 1,023 changed targets matched the independent scope census.
 
 | Frozen root | Calls | Resolved before | Resolved after | Corrected singletons | From ambiguous | From unresolved |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |

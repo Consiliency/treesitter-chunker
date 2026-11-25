@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import re
+import stat
 from bisect import bisect_left
 from collections import defaultdict
 from collections.abc import Sequence
@@ -82,52 +84,79 @@ def _should_skip_path(path: Path) -> bool:
     return any(part in SKIP_PARTS for part in path.parts)
 
 
+_ALIAS_SCAN_LIMIT = 4 * 1024 * 1024
+
+
+def _unsafe_alias_file(path: Path) -> bool:
+    info = path.lstat()
+    if stat.S_ISLNK(info.st_mode) or path.is_junction():
+        return True
+    if not stat.S_ISREG(info.st_mode):
+        return False
+    if info.st_size > _ALIAS_SCAN_LIMIT:
+        return True
+    with path.open("rb") as stream:
+        data = stream.read(_ALIAS_SCAN_LIMIT + 1).lower()
+    return (
+        len(data) > _ALIAS_SCAN_LIMIT
+        or b"rootdirs" in data
+        or b"modulesuffixes" in data
+    )
+
+
 def module_layout(path: str | Path) -> tuple[bool, tuple[str, ...] | None]:
-    """Directory links and JS/TS filenames, including unparsed variants.
-
-    Read filenames again for incremental assembly: a sibling can change
-    import resolution without changing any cached source file.
-    """
-    import os
-
+    """Return the ordinary link flag and a fresh inventory for JS alias lookup."""
     root = Path(path)
-    if not root.is_dir():
-        # Single-file extraction supplies no inventory of sibling modules.
-        return False, None
-    linked = False
-    variants: list[str] = []
+    linked = has_directory_symlink(root)
+    if linked or not root.is_dir():
+        return linked, None
 
     def scan_error(error: OSError) -> None:
         raise error
 
+    variants: list[str] = []
     try:
-        for current, directories, filenames in os.walk(
-            root, followlinks=False, onerror=scan_error
-        ):
+        for folder, directories, files in root.walk(on_error=scan_error):
+            directories[:] = [
+                d for d in directories if d not in {".git", "node_modules"}
+            ]
+            if (folder / "node_modules" / "@types").is_dir():
+                return linked, None
+            if any((folder / name).is_junction() for name in directories):
+                return linked, None
+            for name in files:
+                entry = folder / name
+                if _unsafe_alias_file(entry):
+                    return linked, None
+                variants.append(entry.relative_to(root).as_posix())
+    except OSError:
+        # A partial inventory invalidates only the JS alias proof.
+        return linked, None
+    return linked, tuple(variants)
+
+
+def has_directory_symlink(path: str | Path) -> bool:
+    """Whether a directory symlink lies under ``path`` outside the skipped
+    directories (P5-2). Collection never follows one, so Tier 2's O-2
+    promotion cannot see what it reaches."""
+    root = Path(path)
+    if not root.is_dir():
+        return False
+    try:
+        for current, directories, _ in os.walk(root, followlinks=False):
             kept = []
             for name in directories:
                 if name in SKIP_PARTS:
                     continue
                 entry = Path(current) / name
+                # P5-16: a Windows directory junction behaves like a link.
                 if entry.is_symlink() or entry.is_junction():
-                    linked = True
-                else:
-                    kept.append(name)
+                    return True
+                kept.append(name)
             directories[:] = kept
-            for name in filenames:
-                if name.lower().endswith(
-                    (".js", ".jsx", ".ts", ".tsx", ".mjs", ".mts", ".cjs", ".cts")
-                ):
-                    variants.append((Path(current) / name).relative_to(root).as_posix())
     except OSError:
-        # An incomplete directory inventory cannot support an alias proof.
-        return True, None
-    return linked, tuple(variants)
-
-
-def has_directory_symlink(path: str | Path) -> bool:
-    """Whether the imports-mode directory scan found a symlink or junction."""
-    return module_layout(path)[0]
+        return True
+    return False
 
 
 def collect_source_files(path: str | Path, language: str | None = None) -> list[Path]:
@@ -727,7 +756,7 @@ def assemble_symbol_graph(
     per-file ``scope_facts``, which every fact must then carry. Imports mode
     can also substitute a proven nested declaration or renamed JS/TS import.
     ``language_filter`` is the run's ``language`` argument; the run's file
-    set comes from the facts. Supply any additional JS/TS variant filenames in
+    set comes from the facts. Supply the complete filename snapshot from module_layout in
     ``variant_paths``, or None if the inventory is incomplete. Assembly does
     no filesystem access.
     """
