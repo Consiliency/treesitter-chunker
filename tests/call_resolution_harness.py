@@ -57,6 +57,7 @@ from chunker.call_resolution.engine import (
     GROUP_RULE_IDS,
     KNOWN_RULE_IDS,
     RULE_IMPORT_ALIAS,
+    language_family,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -221,7 +222,6 @@ def symbol_graph_violations(
     ]:
         found.append(Violation(2, "call relationships differ in length, order or id"))
         return found
-    symbol_ids = on["symbol_lookup"].keys()
     for off_edge, on_edge in zip(off_calls, on_calls, strict=True):
         label = str(off_edge.get("call_site_id"))
         if _without(off_edge, CALL_MUTABLE_FIELDS) != _without(
@@ -245,7 +245,9 @@ def symbol_graph_violations(
         rules = (on_edge.get("provenance") or {}).get("call_rules")
         if isinstance(rules, list) and RULE_IMPORT_ALIAS in rules:
             found.extend(
-                _alias_violations(off_edge, on_edge, mode, symbol_ids, 3, label)
+                _alias_violations(
+                    off_edge, on_edge, mode, on["symbol_lookup"], 3, label
+                )
             )
         else:
             found.extend(_narrowing_violations(off_edge, on_edge, label))
@@ -256,7 +258,7 @@ def _alias_violations(
     off: dict[str, Any],
     on: dict[str, Any],
     mode: str,
-    ids: Iterable[str],
+    symbols: dict[str, dict[str, Any]],
     check: int,
     label: str,
 ) -> list[Violation]:
@@ -272,7 +274,7 @@ def _alias_violations(
         or on["resolution"] != "resolved"
         or on["candidates"] != [target]
         or target in off["candidates"]
-        or target not in ids
+        or language_family(symbols.get(target, {}).get("language")) != "js"
         or internal is not True
     ):
         return [Violation(check, f"{label}: invalid alias substitution")]
@@ -362,14 +364,14 @@ def boundary_violations(
     off_edges, on_edges = _edges_by_id(off), _edges_by_id(on)
     if set(off_edges) != set(on_edges) or len(off["edges"]) != len(on["edges"]):
         found.append(Violation(6, "edge id sets differ"))
-    node_ids = {node["id"] for node in on["nodes"]}
+    nodes = {node["id"]: node for node in on["nodes"]}
     for edge_id in sorted(set(off_edges) & set(on_edges)):
         off_edge, on_edge = off_edges[edge_id], on_edges[edge_id]
         if not _is_syntax_call(off_edge):
             if canonical(off_edge) != canonical(on_edge):
                 found.append(Violation(6, f"{edge_id}: non-call edge differs"))
             continue
-        found.extend(_call_edge_violations(off_edge, on_edge, mode, edge_id, node_ids))
+        found.extend(_call_edge_violations(off_edge, on_edge, mode, edge_id, nodes))
     for document in (off, on):
         for edge in document["edges"]:
             if not _is_syntax_call(edge):
@@ -387,7 +389,11 @@ def boundary_violations(
 
 
 def _call_edge_violations(
-    off: dict[str, Any], on: dict[str, Any], mode: str, label: str, node_ids: set[str]
+    off: dict[str, Any],
+    on: dict[str, Any],
+    mode: str,
+    label: str,
+    nodes: dict[str, dict[str, Any]],
 ) -> list[Violation]:
     found: list[Violation] = []
     if _without(off, EDGE_MUTABLE_FIELDS) != _without(on, EDGE_MUTABLE_FIELDS):
@@ -406,7 +412,7 @@ def _call_edge_violations(
     )
     rules = (on.get("provenance") or {}).get("call_rules")
     if isinstance(rules, list) and RULE_IMPORT_ALIAS in rules:
-        return found + _alias_violations(off, on, mode, node_ids, 7, label)
+        return found + _alias_violations(off, on, mode, nodes, 7, label)
     off_candidates = list(off.get("candidates") or [])
     on_candidates = list(on.get("candidates") or [])
     if not set(on_candidates) <= set(off_candidates):

@@ -286,3 +286,150 @@ def test_identity_checks_reject_python_substitution(
     assert harness.failed_checks(compare(off, on, "imports")) == (
         {7} if boundary else {3}
     )
+
+
+@pytest.mark.parametrize("boundary", [False, True])
+def test_alias_validators_reject_python_target(tmp_path: Path, boundary: bool) -> None:
+    _write(
+        tmp_path,
+        {"use.js": JS_USE, "svc.js": JS_SVC, "other.py": "def unrelated(): pass"},
+    )
+    extract = extract_boundary_ir if boundary else extract_symbol_graph
+    off = extract(tmp_path)
+    on = extract(tmp_path, call_resolution="imports")
+    if boundary:
+        edge = _site(on["edges"])
+        (target,) = [n["id"] for n in on["nodes"] if n["symbol"] == "unrelated"]
+        edge.update(target=target, candidates=[target])
+        violations = harness.boundary_violations(off, on, "imports")
+    else:
+        edge = _site(on["relationships"])
+        (target,) = [
+            k for k, s in on["symbol_lookup"].items() if s["name"] == "unrelated"
+        ]
+        edge.update(to=target, candidates=[target])
+        violations = harness.symbol_graph_violations(off, on, "imports")
+    assert harness.failed_checks(violations) == ({7} if boundary else {3})
+
+
+@pytest.mark.parametrize("mode", ["strict", "permissive"])
+@pytest.mark.parametrize("construct", [True, False], ids=["new-alias", "bare-alias"])
+def test_class_decorator_replaces_alias_target(
+    tmp_path: Path, mode: str, construct: bool
+) -> None:
+    if construct:
+        service = (
+            "class Replacement { constructor() { console.log('replacement') } }\n"
+            "function replace(_value: Function) { return Replacement }\n"
+            "@replace\nexport class Service { constructor() { console.log('original') } }"
+        )
+        use = "import {Service as alias} from './svc.js'; export function run() { return new alias() }\nrun()"
+    else:
+        service = (
+            "function replace(value: typeof Service) { return function Actual() { return 'replacement' } as unknown as typeof Service }\n"
+            "@replace export class Service {}"
+        )
+        use = "import {Service as alias} from './svc'; export function run() { return alias() }\nconsole.log(run())"
+    _write(tmp_path, {"svc.ts": service, ("use.ts" if construct else "use.js"): use})
+    for extract, field in (
+        (extract_symbol_graph, "relationships"),
+        (extract_boundary_ir, "edges"),
+    ):
+        off = _site(extract(tmp_path, resolution_mode=mode)[field])
+        assert off["resolution"] == "unresolved"
+        on = extract(tmp_path, resolution_mode=mode, call_resolution="imports")
+        assert _site(on[field]) == off
+
+
+def test_legacy_constructor_parameter_can_replace_alias_target(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        {
+            "svc.ts": (
+                "class Replacement { constructor() { console.log('replacement') } }\n"
+                "(Reflect as any).decorate = (decorators: Function[], value: Function) => Replacement;\n"
+                "function p(_target: any, _key: any, _index: number) {}\n"
+                "export class Service { constructor(@p x = 0) { console.log('original') } }"
+            ),
+            "use.ts": "import {Service as alias} from './svc.js'; export function run(){return new alias()} run();",
+        },
+    )
+    graph = extract_symbol_graph(tmp_path, call_resolution="imports")
+    assert _site(graph["relationships"]) == _site(
+        extract_symbol_graph(tmp_path)["relationships"]
+    )
+
+
+@pytest.mark.parametrize(
+    ("declaration", "exported", "decorated"),
+    [
+        ("export class Service {}", "Service", False),
+        ("export class Service { @d m(){} }", "Service", False),
+        ("export class Service { method(@d x: number){} }", "Service", False),
+        ("export class Service { constructor(@d x: number){} }", "Service", True),
+        ('export class Service { "constructor"(@d x: number){} }', "Service", True),
+        ("export class Service { @d field = 1 }", "Service", False),
+        ("export class Service { @d accessor value = 1 }", "Service", False),
+        ("@d export class Service {}", "Service", True),
+        ("export @d class Service {}", "Service", True),
+        ("@d class Service {} export {Service}", "Service", True),
+        ("export default class Service {}", "default", False),
+        ("@d export default class Service {}", "default", True),
+        ("export default @d class Service {}", "default", True),
+        ("@d export abstract class Service {}", "Service", True),
+    ],
+)
+def test_class_alias_through_reexport(
+    tmp_path: Path, declaration: str, exported: str, decorated: bool
+) -> None:
+    _write(
+        tmp_path,
+        {
+            "svc.ts": "function d(...args: any[]) {}\n" + declaration,
+            "bridge.ts": f"export {{{exported} as Public}} from './svc.js';",
+            "use.ts": "import {Public as alias} from './bridge.js'; export function run(){return new alias()}",
+        },
+    )
+    graph = extract_symbol_graph(tmp_path, call_resolution="imports")
+    edge = _site(graph["relationships"])
+    if decorated:
+        assert edge == _site(extract_symbol_graph(tmp_path)["relationships"])
+    else:
+        (target,) = [
+            k
+            for k, s in graph["symbol_lookup"].items()
+            if s["file"] == "svc.ts" and s["name"] == "Service"
+        ]
+        _assert_target(edge, target)
+        assert edge["provenance"]["call_rules"] == ["t2.import_alias"]
+
+
+@pytest.mark.parametrize("suffix", ["js", "tsx"])
+def test_incremental_class_decorator_invalidates_target(
+    tmp_path: Path, suffix: str
+) -> None:
+    root = tmp_path / "src"
+    _write(
+        root,
+        {
+            "use.ts": "import {Service as alias} from './svc.js'; export function run(){return new alias()}"
+        },
+    )
+    for prefix in ("", "@d ", ""):
+        _write(
+            root,
+            {
+                f"svc.{suffix}": f"function d(x){{return x}}\n{prefix}export class Service {{}}"
+            },
+        )
+        cached = extract_boundary_ir(
+            root,
+            call_resolution="imports",
+            incremental=True,
+            cache_dir=tmp_path / "cache",
+        )
+        edge = _site(cached["edges"])
+        assert edge == _site(
+            extract_boundary_ir(root, call_resolution="imports")["edges"]
+        )
+        assert edge["resolution"] == ("unresolved" if prefix else "resolved")

@@ -53,8 +53,14 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "alias-substitution",
         ENG,
-        "if alias and RULE_IMPORT in binding_rules:",
-        "if False:",
+        "and RULE_IMPORT in binding_rules\n",
+        "and False\n",
+    ),
+    (
+        "alias-class-decorator",
+        ENG,
+        "        and proven.isdisjoint(context.decorated_classes)\n",
+        "",
     ),
     (
         "alias-enable-python",

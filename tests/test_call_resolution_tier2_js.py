@@ -1309,6 +1309,7 @@ def test_export_table_of_a_module(tmp_path: Path) -> None:
     assert exports["y"] == {"kind": "reexport", "source": "./r", "name": "x"}
     assert exports["a"]["this"] is False
     assert scope["module_bindings"] == {
+        "decorated_classes": [],
         "stars": ["./s"],
         "commonjs": False,
         "opaque": False,

@@ -144,6 +144,7 @@ class RunContext:
     modules: ModuleRun | None = None
     # Tier 2 Python (9.4-9.6, PR 6), in ``imports`` mode only.
     py_modules: py_modules.PyModuleRun | None = None
+    decorated_classes: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -180,6 +181,7 @@ def build_run_context(
     """Index every file's scope facts by its display path."""
     facts = list(facts)
     files: dict[str, FileContext] = {}
+    decorated_classes: set[str] = set()
     for file_facts in facts:
         scope_facts = file_facts["scope_facts"]
         declarations: defaultdict[Declaration, list[str]] = defaultdict(list)
@@ -187,6 +189,11 @@ def build_run_context(
             declarations[(str(node_type), int(byte_start), int(byte_end))].append(
                 str(symbol_id)
             )
+        if mode == MODE_IMPORTS:
+            for kind, start, end in scope_facts.get("module_bindings", {}).get(
+                "decorated_classes", ()
+            ):
+                decorated_classes.update(declarations.get((kind, start, end), ()))
         path = str(file_facts.get("path") or "")
         files[path] = FileContext(
             path=path,
@@ -215,6 +222,7 @@ def build_run_context(
         files=files,
         symbol_lookup=symbol_lookup,
         language_filter=language_filter,
+        decorated_classes=frozenset(decorated_classes),
         global_declarers={name: frozenset(paths) for name, paths in declarers.items()},
         unknown_globals=frozenset(unknown),
         modules=(
@@ -605,7 +613,11 @@ def decide(context: RunContext, relationship: Mapping[str, Any]) -> Decision:
         span_key=key,
         head=reference.partition(".")[0] or None,
     )
-    if alias and RULE_IMPORT in binding_rules:
+    if (
+        alias
+        and RULE_IMPORT in binding_rules
+        and proven.isdisjoint(context.decorated_classes)
+    ):
         after, rules = _substitute(
             before, proven, (RULE_IMPORT_ALIAS, *binding_rules[1:])
         )

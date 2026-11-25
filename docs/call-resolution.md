@@ -31,7 +31,10 @@ result still applies, including a possible singleton name match.
 JS/TS substitution is withheld when a recorded loader path changes under URL
 parsing (an embedded tab, LF or CR, or leading or trailing control characters
 or spaces). Different loaders can then select different files, including on
-a re-export or a path to a writer.
+a re-export or a path to a writer. Substitution is also withheld for a
+class with a class decorator, even through re-exports, because the decorator
+can replace the exported constructor. A legacy TypeScript decorator on a
+constructor parameter can also replace the binding through `Reflect.decorate`.
 
 Python is intentionally excluded from renamed-import substitution. A failed
 `delattr` can expose the exporting module through `AttributeError.obj`, so
