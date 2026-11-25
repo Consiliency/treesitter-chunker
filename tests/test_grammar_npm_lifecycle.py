@@ -78,6 +78,8 @@ def test_npm_postinstall(
                 clone_fixture(Path(argv[-1]))
             elif argv[1:3] == ["remote", "get-url"]:
                 stdout = url
+            elif argv[1:] == ["rev-parse", "--absolute-git-dir"]:
+                stdout = str(tmp_path)
             elif argv[1] == "rev-parse":
                 stdout = argv[2]  # distinct HEAD and origin/main
         else:
@@ -178,13 +180,13 @@ def test_failed_update_retries_current_revision(
     monkeypatch.setattr(subprocess, "run", run)
     monkeypatch.setattr(UserGrammarTools, "_publish_library", lambda *args: True)
 
-    def update(**kwargs):
+    def update(*, during_validation=None, **kwargs):
         # CLI retries construct a new tools object.
         tools = UserGrammarTools(build, sources)
         monkeypatch.setattr(
             tools.manager,
             "diagnose_grammar_issues",
-            lambda language: SimpleNamespace(status="healthy"),
+            during_validation or (lambda language: SimpleNamespace(status="healthy")),
         )
         return tools.update_grammar(language, **kwargs)
 
@@ -207,7 +209,20 @@ def test_failed_update_retries_current_revision(
             assert any("Failed to update repository" in e for e in refused["errors"])
             assert git("rev-parse", "HEAD", cwd=checkout) == latest
             git("update-ref", "refs/remotes/origin/main", latest)
-        retry = update(allow_npm_scripts=True)
+
+        def overlapping_operations(_language):
+            other = UserGrammarTools(build, sources)
+            for result in (
+                other.update_grammar(language),
+                other.install_grammar(
+                    language, "https://github.com/example/tree-sitter-fixture"
+                ),
+            ):
+                assert result["status"] == "error"
+                assert "checkout is busy" in " ".join(result["errors"])
+            return SimpleNamespace(status="healthy")
+
+        retry = update(allow_npm_scripts=True, during_validation=overlapping_operations)
         assert retry["status"] == "success", retry
         assert builds == [
             "--ignore-scripts",

@@ -370,6 +370,10 @@ class TestUserGrammarTools:
                 # Create the directory that git clone would create
                 Path(args[0][-1]).mkdir()
                 return Mock(returncode=0)
+            if args[0][1:] == ["rev-parse", "--absolute-git-dir"]:
+                return Mock(stdout=str(kwargs["cwd"]))
+            if args[0][1:] == ["rev-parse", "HEAD"]:
+                return Mock(stdout="same")
             if "tree-sitter" in args[0] and "generate" in args[0]:
                 # Create the .so file that tree-sitter generate would create
                 target_dir = tools.grammars_dir / "tree-sitter-test_lang"
@@ -424,6 +428,10 @@ class TestUserGrammarTools:
                 # Create the directory that git clone would create
                 Path(args[0][-1]).mkdir()
                 return Mock(returncode=0)
+            if args[0][1:] == ["rev-parse", "--absolute-git-dir"]:
+                return Mock(stdout=str(kwargs["cwd"]))
+            if args[0][1:] == ["rev-parse", "HEAD"]:
+                return Mock(stdout="same")
             if "tree-sitter" in args[0] and "generate" in args[0]:
                 # Fail tree-sitter generate
                 raise subprocess.CalledProcessError(1, "tree-sitter")
@@ -483,6 +491,7 @@ class TestUserGrammarTools:
         # (git remote get-url origin → validate_grammar_source) before fetching,
         # so the first call now reads an allowlisted (github.com) remote URL.
         mock_run.side_effect = [
+            Mock(stdout=str(source_dir / ".git")),
             Mock(
                 returncode=0,
                 stdout="https://github.com/tree-sitter/tree-sitter-test_lang\n",
@@ -526,6 +535,7 @@ class TestUserGrammarTools:
         # Mock git commands - same commit. SUPPLY hardening prepends a
         # get-url + validate step before fetching.
         mock_run.side_effect = [
+            Mock(stdout=str(source_dir / ".git")),
             Mock(
                 returncode=0,
                 stdout="https://github.com/tree-sitter/tree-sitter-test_lang\n",

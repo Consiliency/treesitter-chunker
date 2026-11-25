@@ -7,6 +7,8 @@ import subprocess
 from chunker.grammar_management import _build_tools
 import sys
 import tempfile
+from contextlib import ExitStack
+from filelock import FileLock, Timeout
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -49,6 +51,21 @@ def _run_git(git: str, checkout: Path, *args: str) -> subprocess.CompletedProces
     return subprocess.run(
         [git, *args], cwd=checkout, check=True, capture_output=True, text=True
     )
+
+
+def _lock_checkout(stack: ExitStack, git: str, checkout: Path) -> None:
+    # Linked worktrees keep .git in a separate per-checkout directory.
+    directory = Path(
+        _run_git(git, checkout, "rev-parse", "--absolute-git-dir").stdout.strip()
+    )
+    if not directory.is_absolute() or not directory.is_dir():
+        raise ValueError(f"Invalid Git directory for {checkout}")
+    try:
+        stack.enter_context(FileLock(directory / "treesitter-chunker.lock", timeout=0))
+    except Timeout as error:
+        raise RuntimeError(
+            f"Grammar checkout is busy: {checkout}. Retry after the current operation."
+        ) from error
 
 
 def _install_npm_dependencies(
@@ -287,6 +304,7 @@ class UserGrammarTools:
             "warnings": warnings,
         }
 
+        locks = ExitStack()
         try:
             _require_language_component(language)
             if self._refuse_shipped_target(language, result):
@@ -300,6 +318,7 @@ class UserGrammarTools:
             if target_dir.exists():
                 warnings.append(f"Directory {target_dir} already exists")
                 try:
+                    _lock_checkout(locks, git, target_dir)
                     # Re-pin origin to the validated URL before fetching.
                     subprocess.run(
                         [git, "remote", "set-url", "origin", "--", repo_url],
@@ -340,7 +359,20 @@ class UserGrammarTools:
                         )
                         _run_git(git, clone, "update-ref", _PENDING_UPDATE_REF, "HEAD")
                         _run_git(git, clone, "reset", "--hard", "HEAD")
+                        initial = _run_git(
+                            git, clone, "rev-parse", "HEAD"
+                        ).stdout.strip()
                         clone.rename(target_dir)
+                    _lock_checkout(locks, git, target_dir)
+                    # Another caller could have run between rename and lock.
+                    if (
+                        _run_git(git, target_dir, "rev-parse", "HEAD").stdout.strip()
+                        != initial
+                    ):
+                        raise RuntimeError(
+                            "Grammar checkout changed during install. Retry the install."
+                        )
+                    _run_git(git, target_dir, "update-ref", _PENDING_UPDATE_REF, "HEAD")
                     result["steps_completed"].append("Cloned repository")
                 except subprocess.CalledProcessError as e:
                     result["errors"].append(f"Failed to clone repository: {e}")
@@ -411,6 +443,8 @@ class UserGrammarTools:
         except Exception as e:
             result["status"] = "error"
             result["errors"].append(f"Unexpected error: {e}")
+        finally:
+            locks.close()
 
         return result
 
@@ -486,6 +520,7 @@ class UserGrammarTools:
             "warnings": warnings,
         }
 
+        locks = ExitStack()
         try:
             _require_language_component(language)
             if self._refuse_shipped_target(language, result):
@@ -501,6 +536,7 @@ class UserGrammarTools:
                 # checkout with a tampered remote cannot pull attacker code
                 # (SUPPLY hardening — codex finding on the update path).
                 git = selected_tools.require("git")
+                _lock_checkout(locks, git, source_dir)
                 stored_origin = _run_git(
                     git, source_dir, "remote", "get-url", "origin"
                 ).stdout.strip()
@@ -600,6 +636,8 @@ class UserGrammarTools:
         except Exception as e:
             result["status"] = "error"
             result["errors"].append(f"Unexpected error during update: {e}")
+        finally:
+            locks.close()
 
         return result
 

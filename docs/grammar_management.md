@@ -600,7 +600,8 @@ Updates an existing grammar to the latest version. To enable required hooks for
 a trusted new revision, pass the option on that update, for example
 `python -m chunker.cli grammar update rust --allow-npm-scripts`. If generation fails, you can retry
 the same revision with the option. A completed update skips npm and generation
-until a new revision is available.
+until a new revision is available. If another install or update is already using
+the checkout, the command reports it as busy. Retry after that operation finishes.
 
 **Example:**
 ```bash

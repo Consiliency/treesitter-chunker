@@ -332,6 +332,8 @@ def test_user_tools_parent_resolution(
         )
         if argv[1:] == ["rev-parse", "origin/main"] and operation != "current":
             stdout = "new"
+        if argv[1:] == ["rev-parse", "--absolute-git-dir"]:
+            stdout = str(tmp_path)
         if argv[1] == "for-each-ref":
             stdout = ""
         if argv[1] == "clone":
@@ -350,6 +352,7 @@ def test_user_tools_parent_resolution(
     pending = "refs/worktree/treesitter-chunker/pending-update"
     mark = ["update-ref", pending, "HEAD"]
     clear = ["update-ref", "-d", pending]
+    locate_lock = ["rev-parse", "--absolute-git-dir"]
     if operation == "install-new":
         import shutil
 
@@ -371,10 +374,15 @@ def test_user_tools_parent_resolution(
                 ],
                 mark,
                 ["reset", "--hard", "HEAD"],
+                ["rev-parse", "HEAD"],
+                locate_lock,
+                ["rev-parse", "HEAD"],
+                mark,
                 clear,
             ]
             if operation == "install-new"
             else [
+                locate_lock,
                 [
                     "remote",
                     "set-url",
@@ -392,6 +400,7 @@ def test_user_tools_parent_resolution(
     elif operation in {"update", "current"}:
         result = tool.update_grammar("repro", **script_options)
         expected_git = [
+            locate_lock,
             ["remote", "get-url", "origin"],
             ["fetch", "origin"],
             ["rev-parse", "HEAD"],
@@ -428,11 +437,12 @@ def test_user_tools_parent_resolution(
     for argv, kwargs in calls:
         assert Path(argv[0]).is_absolute(), "every invocation must be parent-resolved"
         assert argv[0] == str(Path(f"parent-bin/{Path(argv[0]).name}").absolute())
-        if operation == "install-new" and argv[1:] in (
-            mark,
-            ["reset", "--hard", "HEAD"],
-        ):
-            assert kwargs["cwd"] == clone
+        if operation == "install-new" and kwargs.get("cwd") == clone:
+            assert argv[1:] in (
+                mark,
+                ["reset", "--hard", "HEAD"],
+                ["rev-parse", "HEAD"],
+            )
         elif argv[1] != "clone":
             assert kwargs["cwd"] == root
     script_flag = "--ignore-scripts=false" if script_options else "--ignore-scripts"
@@ -978,6 +988,8 @@ def test_missing_tools_keep_public_error_shapes(
         )
         if argv[1:] == ["rev-parse", "origin/main"]:
             stdout = "new"
+        if argv[1:] == ["rev-parse", "--absolute-git-dir"]:
+            stdout = str(tmp_path)
         return SimpleNamespace(returncode=0, stdout=stdout, stderr="")
 
     monkeypatch.setattr(_build_tools, "resolve_tool", resolve)
