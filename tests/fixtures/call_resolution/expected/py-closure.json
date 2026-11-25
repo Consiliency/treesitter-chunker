@@ -17,6 +17,16 @@
      ],
      "caller": "outer.inner",
      "file": "a.py",
+     "imports": {
+      "candidates": [
+       "a.py:6:outer.helper"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t2.nested_local"
+      ]
+     },
      "line": 10,
      "pr": 1,
      "reference": "helper",

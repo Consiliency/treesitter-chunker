@@ -200,7 +200,7 @@ canonical source path in both top-level `file` and `metadata.file`. These fields
 are required only for syntax call edges; non-call syntax edges and semantic call
 edges keep their existing shapes. Default resolution remains heuristic and does
 not establish language-level binding; the experimental opt-in call resolution
-below can narrow ambiguous calls and substitute a proven renamed JS/TS import. Parser forms that an
+below can narrow ambiguous calls and substitute a proven nested declaration or renamed JS/TS import. Parser forms that an
 extractor does not recognize are not manufactured as facts.
 
 Call-target lookup accepts only complete `[A-Za-z_][A-Za-z0-9_]*` identifier/member
@@ -424,7 +424,10 @@ treesitter-chunker#682, Python Tier 2 resolved no additional calls: every tree
 had such production code.
 
 In imports mode, a bare JS/TS named import alias with a single proven export can
-resolve outside its original candidate set (`t2.import_alias`). The
+resolve outside its original candidate set (`t2.import_alias`). A bare call
+in JS/TS, TSX or Python can select a proven same-file nested declaration
+outside that set (`t2.nested_local`). This identifies the static declaration;
+runtime replacement can change the invoked object. The
 replacement updates previously unresolved, ambiguous or wrongly resolved
 calls. See [Call resolution](call-resolution.md) for examples and proof limits.
 

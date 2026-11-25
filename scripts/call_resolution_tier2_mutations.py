@@ -33,6 +33,7 @@ JSS = CR + "js_scope.py"
 STR = CR + "js_strings.py"
 FACTS = CR + "facts.py"
 TESTS = (
+    "tests/test_call_resolution_nested.py",
     "tests/test_call_resolution_import_alias.py",
     "tests/test_call_resolution_tier2_js.py",
     "tests/test_call_resolution_engine.py::test_expected_imports_tables_hold_at_this_head",
@@ -44,6 +45,36 @@ TESTS = (
 
 # (id, file, old text, new text). The old text must occur in the file.
 MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "nested-substitution",
+        ENG,
+        "if nested and binding_rules == (RULE_LEXICAL,):",
+        "if False:",
+    ),
+    (
+        "nested-js-tdz",
+        JSS,
+        "or statement.end_byte > ident.start_byte",
+        "or False",
+    ),
+    (
+        "nested-js-owner",
+        JSS,
+        "if node.type in _NESTED_LOOKUP_BARRIERS:",
+        "if False:",
+    ),
+    (
+        "nested-python-order",
+        CR + "py_scope.py",
+        "return node is not None and decl.end_byte <= child.start_byte",
+        "return node is not None",
+    ),
+    (
+        "nested-arbitrary-local",
+        ENG,
+        'and (raw or {}).get("nested_name") == reference',
+        "and True",
+    ),
     (
         "alias-pick-first",
         ENG,

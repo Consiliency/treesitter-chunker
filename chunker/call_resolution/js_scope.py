@@ -200,6 +200,7 @@ _FUNCTION_DECLARATIONS = frozenset(
 _SELF_NAMED_FUNCTIONS = frozenset({"function_expression", "generator_function"})
 _CLASSES = frozenset({"class", "class_declaration", "abstract_class_declaration"})
 _NAMESPACES = frozenset({"internal_module", "module"})
+_NESTED_LOOKUP_BARRIERS = _FUNCTIONS | _CLASSES | _NAMESPACES
 # Block scopes keyed by their own node.
 _BLOCK_SCOPE_NODES = frozenset(
     {"switch_body", "for_statement", "for_in_statement", "catch_clause"}
@@ -1621,7 +1622,7 @@ class _Analysis:
                 return scope
         return None
 
-    def lookup(self, ident: Any) -> dict[str, Any]:
+    def lookup(self, ident: Any, *, bare_call: bool = False) -> dict[str, Any]:
         """The outcome of a value lookup of ``ident``'s name."""
         name = _text(ident, self.source)
         through_merged = False
@@ -1642,9 +1643,42 @@ class _Analysis:
                 through_merged = True
             bindings = scope.bindings.get(name)
             if bindings:
-                return self._decide(scope, name, bindings, through_merged)
+                outcome = self._decide(scope, name, bindings, through_merged)
+                if (
+                    bare_call
+                    and scope.kind == _FUNCTION_SCOPE
+                    and outcome["outcome"] == "local"
+                    and len(bindings) == 1
+                    and self._nested_call(ident, scope, bindings[0])
+                ):
+                    outcome["nested_name"] = name
+                return outcome
         # A merged namespace's other declarations may bind the name.
         return _none(NAMESPACE_MERGED if through_merged else "unbound")
+
+    @staticmethod
+    def _nested_call(ident: Any, scope: _Scope, binding: _Binding) -> bool:
+        """One direct function-body binding, called in that same body."""
+        statement = binding.statement
+        if statement is None or not _same(statement.parent, scope.node):
+            return False
+        decl = binding.decl
+        if decl.type == "function_declaration":
+            if not _same(decl, statement):
+                return False
+        elif (
+            decl.type not in _FUNCTION_VALUES
+            or statement.type != "lexical_declaration"
+            or statement.end_byte > ident.start_byte
+        ):
+            return False
+        # _declaration only promotes direct single-const function values.
+        node = ident.parent
+        while node is not None and not _same(node, scope.node):
+            if node.type in _NESTED_LOOKUP_BARRIERS:
+                return False
+            node = node.parent
+        return node is not None
 
     def top_level_outcome(self, name: str) -> dict[str, Any]:
         """The outcome of a value lookup of ``name`` at the program scope:
@@ -2032,7 +2066,11 @@ def analyze(
             # the engine reports as no-binding-fact (5.4).
             continue
         head = _callee_head(node)
-        outcome = analysis.lookup(head) if head is not None else _none("unbound")
+        outcome = (
+            analysis.lookup(head, bare_call=node.type == "identifier")
+            if head is not None
+            else _none("unbound")
+        )
         member = _namespace_member(node, head, source)
         if member is not None and outcome.get("outcome") == "import":
             # ``ns.f()`` (Tier 2, section 9.1): the property a two-segment

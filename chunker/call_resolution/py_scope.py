@@ -4571,6 +4571,47 @@ class _Analysis:
                 return self._decide(scope, name)
         return self._module_lookup(name)  # pragma: no cover - module ends the chain
 
+    def nested_call(self, ident: Any) -> bool:
+        """The local lookup selected a direct function-body declaration.
+
+        In a closure, require the declaration to precede creation of the
+        nested caller. Definition headers execute in a different scope.
+        """
+        owner = self.decided
+        if owner is None or owner.kind != _FUNCTION:
+            return False
+        name = _text(ident, self.source)
+        bindings = owner.bindings.get(name, ())
+        if len(bindings) != 1 or bindings[0].cls != SYMBOL:
+            return False
+        decl = bindings[0].decl
+        body = owner.node.child_by_field_name("body")
+        if not _same(decl.parent, body):
+            return False
+        child = ident
+        node = ident.parent
+        while node is not None and not _same(node, body):
+            if node.type == "function_definition":
+                scope = self.scopes.get((node.id, "scope"))
+                if (
+                    not _same(child, node.child_by_field_name("body"))
+                    or scope is None
+                    or name in scope.nonlocals
+                    or name in scope.globals
+                ):
+                    return False
+            elif node.type in _COMPREHENSIONS or node.type in (
+                "lambda",
+                "class_definition",
+                "type_alias_statement",
+                "decorator",
+                "type",
+                "type_parameter",
+            ):
+                return False
+            child, node = node, node.parent
+        return node is not None and decl.end_byte <= child.start_byte
+
     def _module_lookup(self, name: str) -> dict[str, Any]:
         if self.dynamic:
             return _none("dynamic-scope")
@@ -5811,6 +5852,12 @@ def analyze(
         head = _callee_head(node)
         key = f"{start}:{end}"
         outcome = analysis.lookup(head) if head is not None else _none("unbound")
+        if (
+            node.type == "identifier"
+            and outcome["outcome"] == "local"
+            and analysis.nested_call(node)
+        ):
+            outcome["nested_name"] = _text(node, source)
         bindings[key] = outcome
         if head is None or not tier2:
             continue

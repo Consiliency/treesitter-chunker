@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"23"`` for the ``js`` family and ``"43"`` for
+Schema (fact version ``"27"`` for the ``js`` family and ``"44"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -34,6 +34,8 @@ Schema (fact version ``"23"`` for the ``js`` family and ``"43"`` for
     A ``local`` outcome that lands on a script-goal top level also has
     ``"global": <name>``: the engine proves it only if no other file of the
     run declares that name as a script global (section 7.2).
+    A singleton local proof eligible for nested substitution also carries
+    ``"nested_name": <bare callee spelling>``.
     The JS/TS import binding is ``{"source": <specifier>, "name": <imported
     name, "default" or "*">, "form": "named" | "default" | "namespace"}``,
     with the specifier and a quoted name decoded exactly (a literal that
@@ -314,7 +316,8 @@ logger = logging.getLogger(__name__)
 # the fixtures' digests change only by the version. R-724-7 limits freshness
 # to types.ModuleType because a loader may return an existing module.
 # js "26": record module decorators and hazards in compiler-generated calls.
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "26", "python": "43"}
+# JS 27 / Python 44: bare calls eligible for nested declaration substitution.
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "27", "python": "44"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.
@@ -654,7 +657,18 @@ def valid_outcome(value: object) -> bool:
         proof = value.get("proof")
         rules = value.get("rules")
         return (
-            set(value) - {"global"} == {"outcome", "proof", "rules"}
+            set(value) - {"global", "nested_name"} == {"outcome", "proof", "rules"}
+            and (
+                "nested_name" not in value
+                or (
+                    isinstance(value["nested_name"], str)
+                    and bool(value["nested_name"])
+                    and "global" not in value
+                    and isinstance(proof, list)
+                    and len(proof) == 1
+                    and rules == []
+                )
+            )
             and isinstance(value.get("global", ""), str)
             and isinstance(proof, list)
             and bool(proof)

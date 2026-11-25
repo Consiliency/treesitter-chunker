@@ -25,8 +25,9 @@ filesystem access. The engine narrows call relationships in place:
    A filter alone therefore never resolves an edge.
 
 For ordinary narrowing every step only removes candidates, and a step that
-would empty the set is skipped. In imports mode a bare JS/TS named import alias may instead
-substitute exactly one proven export outside C0 at any initial cardinality.
+would empty the set is skipped. In imports mode a bare call may substitute
+one proven nested declaration or renamed JS/TS export outside C0 at any
+initial cardinality.
 An edge newly resolves only when its one remaining candidate is in ``P``.
 """
 
@@ -48,6 +49,7 @@ RULE_TS_OVERLOAD = "t1.ts_overload"
 RULE_JS_HOIST = "t1.js_hoist"
 RULE_IMPORT = "t2.import"
 RULE_IMPORT_ALIAS = "t2.import_alias"
+RULE_NESTED_LOCAL = "t2.nested_local"
 RULE_NAMESPACE = "t2.namespace"
 KNOWN_RULE_IDS = (
     RULE_LEXICAL,
@@ -57,11 +59,12 @@ KNOWN_RULE_IDS = (
     RULE_JS_HOIST,
     RULE_IMPORT,
     RULE_IMPORT_ALIAS,
+    RULE_NESTED_LOCAL,
     RULE_NAMESPACE,
 )
 # Rules that prove a binding; every resolved edge names one of them.
 BINDING_RULE_IDS = frozenset(
-    {RULE_LEXICAL, RULE_IMPORT, RULE_NAMESPACE, RULE_IMPORT_ALIAS}
+    {RULE_LEXICAL, RULE_IMPORT, RULE_NAMESPACE, RULE_IMPORT_ALIAS, RULE_NESTED_LOCAL}
 )
 # A ``script_globals`` entry for a file that may write a global of any name.
 GLOBAL_WILDCARD = "*"
@@ -575,7 +578,13 @@ def decide(context: RunContext, relationship: Mapping[str, Any]) -> Decision:
         and context.modules is not None
         and context.modules.alias_loads_stable
     )
-    if not ambiguous and not alias:
+    nested = (
+        context.mode == MODE_IMPORTS
+        and is_bare_identifier(reference)
+        and (raw or {}).get("outcome") == "local"
+        and (raw or {}).get("nested_name") == reference
+    )
+    if not ambiguous and not alias and not nested:
         return not_eligible
     if family == "python" and not is_bare_identifier(reference):
         # Tier 2 Python: a member chain whose head the lookup binds to an
@@ -624,8 +633,6 @@ def decide(context: RunContext, relationship: Mapping[str, Any]) -> Decision:
                 return Decision(
                     call_site_id, True, outcome, before, after, proven, rules
                 )
-    if not ambiguous:
-        return not_eligible
     proven, outcome, binding_rules = proof(
         raw,
         context.mode,
@@ -636,6 +643,12 @@ def decide(context: RunContext, relationship: Mapping[str, Any]) -> Decision:
         span_key=key,
         head=reference.partition(".")[0] or None,
     )
+    if nested and binding_rules == (RULE_LEXICAL,):
+        after, rules = _substitute(before, proven, (RULE_NESTED_LOCAL,))
+        if rules:
+            return Decision(call_site_id, True, outcome, before, after, proven, rules)
+    if not ambiguous:
+        return not_eligible
     after, rules = narrow(
         before,
         proven,
