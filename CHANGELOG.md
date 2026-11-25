@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   per-dependency approval, and blocked hooks are reported. A failed update
   stays retryable at the same revision, and overlapping operations on one
   checkout are refused. Grammars split into npm workspaces have a known gap,
-  tracked in #790. (Consiliency/treesitter-chunker#641)
+  tracked in Consiliency/treesitter-chunker#790. (Consiliency/treesitter-chunker#641)
 
 ### Added
 
