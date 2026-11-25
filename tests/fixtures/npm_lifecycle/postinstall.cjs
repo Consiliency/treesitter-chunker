@@ -1,1 +1,1 @@
-require('node:fs').writeFileSync('postinstall.marker', 'ran');
+require('node:fs').appendFileSync('postinstall.marker', 'ran\n');

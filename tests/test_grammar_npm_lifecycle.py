@@ -19,10 +19,16 @@ from chunker.grammar_management import _build_tools
 
 @pytest.mark.parametrize("operation", ["install", "update"])
 @pytest.mark.parametrize(
-    ("allow_scripts", "approved"), [(False, True), (True, False), (True, True)]
+    ("allow_scripts", "approved", "retry"),
+    [
+        pytest.param(False, True, False, id="default"),
+        pytest.param(True, False, False, id="unapproved"),
+        pytest.param(True, True, False, id="fresh"),
+        pytest.param(True, True, True, id="retry"),
+    ],
 )
 def test_npm_postinstall(
-    tmp_path, monkeypatch, capsys, operation, allow_scripts, approved
+    tmp_path, monkeypatch, capsys, operation, allow_scripts, approved, retry
 ):
     npm = shutil.which("npm")
     if not npm or not shutil.which("node"):
@@ -55,6 +61,7 @@ def test_npm_postinstall(
         if approved:
             manifest = checkout / "package.json"
             package = json.loads(manifest.read_text(encoding="utf-8"))
+            package["scripts"]["postinstall"] = "node consume-dependency.cjs"
             package["allowScripts"] = {"file:fixture-dependency.tgz": True}
             manifest.write_text(json.dumps(package), encoding="utf-8")
 
@@ -111,16 +118,16 @@ def test_npm_postinstall(
         assert (dependency / "package.json").is_file()
         return output
 
-    if not allow_scripts or approved:
+    if not allow_scripts or retry:
         invoke(argv)
         assert not marker.exists()
         assert not dep_marker.exists()
     if allow_scripts:
         output = invoke([*argv, "--allow-npm-scripts"])
-        assert marker.read_text(encoding="utf-8") == "ran"
+        assert marker.read_text(encoding="utf-8") == "ran\n"
 
     if allow_scripts and (approved or npm_major < 12):
-        assert dep_marker.read_text(encoding="utf-8") == "ran"
+        assert dep_marker.read_text(encoding="utf-8") == "ran\n"
     else:
         assert not dep_marker.exists()
     if allow_scripts and not approved and npm_major >= 12:

@@ -74,7 +74,7 @@ def _install_npm_dependencies(
     scripts_option = (
         "--ignore-scripts=false" if allow_npm_scripts else "--ignore-scripts"
     )
-    commands = ("install", "rebuild") if allow_npm_scripts else ("install",)
+    commands = ("rebuild", "install") if allow_npm_scripts else ("install",)
     for command in commands:
         completed = subprocess.run(
             [npm, command, scripts_option, "--json=false", "--loglevel=warn"],
