@@ -33,12 +33,19 @@ parsing (an embedded tab, LF or CR, or leading or trailing control characters
 or spaces). Different loaders can then select different files, including on
 a re-export or a path to a writer. A decorator anywhere in a module on the
 export chain withholds substitution, including member and parameter
-decorators on unrelated classes. Substitution is also withheld into modules that
-receive namespace member calls. Under CommonJS emit a replacement constructor
+decorators on unrelated classes. Substitution is also withheld into namespace-call receivers. Under CommonJS emit a replacement constructor
 or a downleveled class field can write to the receiver's exports. Substitution also requires a unique
 source at every hop. For example, either a lone `svc.js` or a lone `svc.ts`
 can supply `./svc.js`, but siblings with the same stem, including declaration
-files, make the target uncertain for both JS and TS importers.
+files, make the target uncertain for both JS and TS importers. Substitution is withheld across a
+run containing JSX or a module-scope binding named `require`, `module`,
+`exports` or beginning with `__`. JSX can emit calls on the exports object,
+CommonJS emit can use a shadowed loader, and TypeScript helpers such as
+`__assign` can replace a source declaration. Taking or replacing `Object` or
+`Reflect` methods can intercept generated calls on the exports object, so
+only direct method calls on those names are accepted for substitution.
+Callers assembling previously collected facts must supply the filename
+inventory from `module_layout` to enable alias substitution.
 
 Python is intentionally excluded from renamed-import substitution. A failed
 `delattr` can expose the exporting module through `AttributeError.obj`, so
@@ -150,7 +157,7 @@ outside those rules.
 | Code or names supplied as data | A third-party evaluator runs a downloaded string, a worker sends pickled data to a Python `Connection.recv()`, or a JS program reads `caller` or `getFunction` from JSON. Python bytes `%` templates, runtime-built templates and `string.Template` subclasses with a custom delimiter such as `#` can hide a `__main__` lookup. A formatting callback can also cut `__main__` out of a larger component or receive a name joined across a replacement field. |
 | Writes inside a library | `functools.update_wrapper` writes to an object passed to it, or `argparse` populates a supplied namespace. A catch-all `__getattr__` can also supply an annotation hook to `update_wrapper`. Known Python module escapes are tracked in `imports`. |
 | Capabilities obtained outside the run | An installed package can re-export Python's `builtins` under another name or hide access to Node's code evaluation APIs. Native extensions and startup hooks such as `sitecustomize` can also change bindings. |
-| Patched built-in prototypes | An `Object.prototype` getter named `send`, or a replacement for `EventEmitter.prototype.on`, `once` or `emit`, receives `process` as `this` when code checks `process.send`, calls `process.on(…)` or calls `process.exit()`. With `esModuleInterop`, a function stored as `Object.prototype.__importDefault` also receives `process` from a static import, because the emitted helper lookup `this.__importDefault` falls through to `Object.prototype`. The exempt `process` uses are safe unless a built-in prototype is patched. Node's own code makes the same inherited lookups without any `process` token, for example when `new Buffer()` reads `noDeprecation`. |
+| Patched built-in methods and prototypes | An `Object.prototype` getter named `send`, or a replacement for `EventEmitter.prototype.on`, `once` or `emit`, receives `process` as `this` when code checks `process.send`, calls `process.on(…)` or calls `process.exit()`. With `esModuleInterop`, a function stored as `Object.prototype.__importDefault` also receives `process` from a static import, because the emitted helper lookup `this.__importDefault` falls through to `Object.prototype`. The exempt `process` uses are safe unless a built-in prototype is patched. Node's own code makes the same inherited lookups without any `process` token, for example when `new Buffer()` reads `noDeprecation`. |
 | `process` reached without its name | A reflective or destructuring lookup on `globalThis` finds `process` without spelling it: `Reflect.get(globalThis, k)`, a computed destructuring key such as `const { ["pro" + "cess"]: g } = globalThis`, or `Object.getOwnPropertyDescriptor(globalThis, k)` and `Object.values(globalThis)`. The same applies to keys read from data. A computed subscript such as `globalThis[k]` is already an `evaluator` cause. |
 | Evaluators handed over by another file | Another file can re-export `exec` under a different name (`run_code = exec`), hand over a module such as `code` through its own attribute (`compat.code.X`), or proxy one through a module `__getattr__`. The tool checks each file's own spellings, so a name supplied this way from another file is not seen. |
 | Replacement function bodies | After `f.__code__ = other.__code__`, the edge can still name `f`, the right definition, even though calling it runs different code. |

@@ -473,9 +473,9 @@ class ModuleRun:
     # Test-classified files no production file reaches.
     test_scope: frozenset[str] = frozenset()
 
-    # Alias substitution requires literal paths to agree with URL parsing,
-    # including paths that may reach a writer through another module.
-    alias_specifiers_stable: bool = False
+    # Alias substitution requires stable source paths and emitted loads,
+    # including paths to writers elsewhere in the run.
+    alias_loads_stable: bool = False
     namespace_call_receivers: frozenset[str] = frozenset()
 
     @property
@@ -537,6 +537,7 @@ def build_module_run(
         str((item.get("scope_facts") or {}).get("language")) in INLINE_SCRIPT_LANGUAGES
         for item in facts
     )
+    unsafe_alias_emit = False
     ns_uses: list[tuple[str, str | None, str, str, str]] = []
     causes: list[tuple[str, str]] = []
     symlinks: set[str] = set()
@@ -548,6 +549,7 @@ def build_module_run(
         path = str(item.get("path") or "")
         supported = bool(scope.get("supported"))
         bindings = scope.get("module_bindings") or {}
+        unsafe_alias_emit |= bool(bindings.get("unsafe_alias_emit"))
         if bindings.get("symlink"):
             symlinks.add(path)
         if not supported:
@@ -656,7 +658,8 @@ def build_module_run(
         dict(shutoff[False]),
         frozenset(files) - production,
         namespace_call_receivers=frozenset(namespace_call_receivers),
-        alias_specifiers_stable=all(
+        alias_loads_stable=not unsafe_alias_emit
+        and all(
             source == source.strip(_C0_AND_SPACE) and not _URL_NOISE.search(source)
             for sources in edges.values()
             for source in sources

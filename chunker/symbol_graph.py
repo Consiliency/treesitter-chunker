@@ -714,7 +714,7 @@ def assemble_symbol_graph(
     call_resolution: CallResolution = "name",
     language_filter: str | None = None,
     directory_symlinks: bool | None = None,
-    variant_paths: Sequence[str] | None = (),
+    variant_paths: Sequence[str] | None = None,
 ) -> dict[str, Any]:
     """Assemble public symbol graph output from per-file facts.
 

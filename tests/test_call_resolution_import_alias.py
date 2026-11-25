@@ -10,7 +10,13 @@ import pytest
 
 from chunker.boundary import extract_boundary_ir
 from chunker.call_resolution import engine
-from chunker.symbol_graph import extract_symbol_graph
+from chunker.symbol_graph import (
+    assemble_symbol_graph,
+    collect_source_files,
+    extract_symbol_facts_for_file,
+    extract_symbol_graph,
+    module_layout,
+)
 from tests import call_resolution_harness as harness
 
 
@@ -585,6 +591,103 @@ def test_downlevel_class_field_writes_namespace_receiver(tmp_path: Path) -> None
                 "import {exp as alias} from './svc.js';\n"
                 "export function run(){ (svc.Install as unknown as () => void)(); return alias(); }\n"
                 "console.log(run());"
+            ),
+        },
+    )
+    _assert_alias_withheld(tmp_path)
+
+
+def test_filtered_facts_need_layout_for_alias_substitution(tmp_path: Path) -> None:
+    _write(tmp_path, {"use.js": JS_USE, "svc.js": JS_SVC})
+    facts = [
+        extract_symbol_facts_for_file(
+            path, tmp_path, "javascript", call_resolution="imports"
+        )
+        for path in collect_source_files(tmp_path, "javascript")
+    ]
+    options = {"language_filter": "javascript", "call_resolution": "imports"}
+
+    def assembled(**layout: Any) -> dict[str, Any]:
+        return _site(assemble_symbol_graph(facts, **options, **layout)["relationships"])
+
+    assert assembled()["resolution"] == "unresolved"
+    assert assembled(variant_paths=module_layout(tmp_path)[1])["provenance"][
+        "call_rules"
+    ] == ["t2.import_alias"]
+    _write(tmp_path, {"svc.ts": JS_SVC})
+    assert assembled()["resolution"] == "unresolved"
+    assert (
+        assembled(variant_paths=module_layout(tmp_path)[1])["resolution"]
+        == "unresolved"
+    )
+
+
+def test_jsx_implicit_namespace_call(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        {
+            "svc.ts": "export function exp(){return 'original'}\nfunction other(){return 'replacement'}\n"
+            "export function createElement(this:any,...args:any[]){this.exp=other}",
+            "use.tsx": "import * as React from './svc.js';\nimport {exp as alias} from './svc.js';\n"
+            "export function run(){ <div/>; return alias(); }\nconsole.log(run());",
+        },
+    )
+    _assert_alias_withheld(tmp_path)
+
+
+def test_commonjs_emit_calls_shadowed_require(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        {
+            "svc.js": JS_SVC,
+            "use.js": "function require(){return {exp(){return 'replacement'}}}\n"
+            + JS_USE
+            + "\nconsole.log(run());",
+        },
+    )
+    _assert_alias_withheld(tmp_path)
+
+
+def test_downlevel_helper_overwrites_hoisted_export(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        {
+            "svc.ts": "export function __assign(...args:any[]):any{return 'original'}\n"
+            "export const demote=(a:any)=>({...a});",
+            "bridge.ts": "export {__assign as exp} from './svc.js';",
+            "use.ts": "import {exp as alias} from './bridge.js';\n"
+            "export function run(){return alias({}, {val:'generated'}).val}\nconsole.log(run());",
+        },
+    )
+    _assert_alias_withheld(tmp_path)
+
+
+def test_jsx_factory_can_receive_exports(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        {
+            "svc.tsx": "/** @jsx exports.install */\ndeclare const exports:any;\n"
+            "function other(){return 'replacement'}\n"
+            "export function exp(){return 'original'}\n"
+            "export function install(this:any, ...args:any[]){this.exp=other}\n"
+            "export function go(){<div/>}",
+            "use.js": "import {exp as alias, go} from './svc.js';\n"
+            "export function run(){go();return alias()}\nconsole.log(run());",
+        },
+    )
+    _assert_alias_withheld(tmp_path)
+
+
+def test_modified_commonjs_emit_intrinsic(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        {
+            "svc.js": JS_SVC,
+            "use.js": (
+                "const def = Object.defineProperty;\n"
+                "Object.defineProperty = function(o,k,d){\n"
+                " if(k==='__esModule') def(o,'exp',{get(){return ()=> 'replacement'},set(){}});\n"
+                " return def(o,k,d);\n};\n" + JS_USE + "\nconsole.log(run());"
             ),
         },
     )

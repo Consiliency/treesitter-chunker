@@ -42,6 +42,7 @@ from chunker.symbol_graph import (
     extract_symbol_facts_for_file,
     extract_symbol_graph,
     has_directory_symlink,
+    module_layout,
 )
 
 MODE = "imports"
@@ -81,13 +82,14 @@ def _run(
     ]
     for item in facts:
         assert valid_scope_facts(item["scope_facts"], item["language"])
-    links = has_directory_symlink(root)
+    links, variants = module_layout(root)
     graph = assemble_symbol_graph(
         facts,
         total_files=len(facts),
         call_resolution=MODE,
         language_filter=language,
         directory_symlinks=links,
+        variant_paths=variants,
     )
     context = engine.build_run_context(
         facts,
@@ -95,6 +97,7 @@ def _run(
         MODE,
         language_filter=language,
         directory_symlinks=links,
+        variant_paths=variants,
     )
     off = extract_symbol_graph(root, language)
     structural = extract_symbol_graph(root, language, call_resolution="structural")
@@ -1310,6 +1313,7 @@ def test_export_table_of_a_module(tmp_path: Path) -> None:
     assert exports["a"]["this"] is False
     assert scope["module_bindings"] == {
         "has_decorator": False,
+        "unsafe_alias_emit": False,
         "stars": ["./s"],
         "commonjs": False,
         "opaque": False,

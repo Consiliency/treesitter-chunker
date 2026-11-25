@@ -28,7 +28,7 @@ from chunker.symbol_graph import (
     assemble_symbol_graph,
     collect_source_files,
     extract_symbol_facts_for_file,
-    has_directory_symlink,
+    module_layout,
 )
 from tests import call_resolution_harness as harness
 
@@ -702,7 +702,7 @@ def test_rule_and_reason_vocabularies() -> None:
     assert not {"stub", "script-goal-deferred", "namespace-deferred"} & (
         KNOWN_NONE_REASONS
     )
-    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "25", "python": "43"}
+    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "26", "python": "43"}
     assert [engine.language_family(name) for name in ("tsx", "javascript", "go")] == [
         "js",
         "js",
@@ -814,13 +814,14 @@ def _imports_mode(run: Any) -> tuple[list[dict[str, Any]], dict[str, Any], Any]:
     off = assemble_symbol_graph(
         off_facts, total_files=len(facts), language_filter=run.language
     )
-    links = has_directory_symlink(run.path)
+    links, variants = module_layout(run.path)
     graph = assemble_symbol_graph(
         facts,
         total_files=len(facts),
         call_resolution=IMPORTS_MODE,
         language_filter=run.language,
         directory_symlinks=links,
+        variant_paths=variants,
     )
     context = engine.build_run_context(
         facts,
@@ -828,6 +829,7 @@ def _imports_mode(run: Any) -> tuple[list[dict[str, Any]], dict[str, Any], Any]:
         IMPORTS_MODE,
         language_filter=run.language,
         directory_symlinks=links,
+        variant_paths=variants,
     )
     return off["relationships"], graph, context
 

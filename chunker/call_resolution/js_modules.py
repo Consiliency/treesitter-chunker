@@ -26,6 +26,8 @@ interface and a function of one name merge.
 
 ``has_decorator``
     A decorator anywhere in this module can run code or replace a binding.
+``unsafe_alias_emit``
+    JSX or a module-scope binding can redirect compiler-generated calls.
 ``stars``
     The specifiers of ``export * from`` (step 4), in source order.
 ``commonjs``
@@ -315,6 +317,12 @@ class _ModuleFacts:
         self.analysis = analysis
         self.source = analysis.source
         self.has_decorator = False
+        # tsc emits loader/host names and double-underscore helpers into
+        # module scope. Source bindings can redirect the generated calls.
+        self.unsafe_alias_emit = any(
+            name in {"require", "module", "exports"} or name.startswith("__")
+            for name in analysis.program.bindings
+        )
         self.entries: dict[str, list[tuple[Any, ...]]] = {}
         self.stars: list[str] = []
         self.commonjs = False
@@ -572,7 +580,11 @@ class _ModuleFacts:
         handled: set[int] = set()
         for node in _walk(analysis.root):
             kind = node.type
-            if kind == "decorator":
+            if kind in ("jsx_element", "jsx_self_closing_element", "jsx_fragment"):
+                # The configured JSX factory can call a namespace member or
+                # exports itself without either receiver appearing in the AST.
+                self.unsafe_alias_emit = True
+            elif kind == "decorator":
                 self.has_decorator = True
             elif kind in _MODULE_SYSTEM_NAME_TOKENS:
                 self._name(node, handled)
@@ -853,6 +865,18 @@ class _ModuleFacts:
         from .js_scope import _declaration_name
 
         text = _text(node, self.source)
+        if text in ("Object", "Reflect"):
+            # CommonJS emit calls intrinsic methods with the exports object.
+            # Taking or replacing those methods can intercept that object.
+            # A direct call such as Object.keys(value) does not hand them out.
+            member = node.parent
+            if not (
+                member.type == "member_expression"
+                and _same(member.child_by_field_name("object"), node)
+                and _parent_type(member) == "call_expression"
+                and _same(member.parent.child_by_field_name("function"), member)
+            ):
+                self.unsafe_alias_emit = True
         if text in _MODULE_SYSTEM_TOKEN_NAMES:
             # Any role (R-718-3): a variable or parameter name also reaches
             # runtime as a string, through a function's inferred ``.name``
@@ -1518,6 +1542,7 @@ class _ModuleFacts:
         return {
             "stars": list(self.stars),
             "has_decorator": self.has_decorator,
+            "unsafe_alias_emit": self.unsafe_alias_emit,
             "commonjs": self.commonjs or self.analysis.goal == "script",
             "opaque": self.opaque,
             "symlink": self.symlink,

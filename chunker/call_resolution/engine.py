@@ -177,7 +177,7 @@ def build_run_context(
     *,
     language_filter: str | None = None,
     directory_symlinks: bool | None = None,
-    variant_paths: Sequence[str] | None = (),
+    variant_paths: Sequence[str] | None = None,
 ) -> RunContext:
     """Index every file's scope facts by its display path."""
     facts = list(facts)
@@ -573,7 +573,7 @@ def decide(context: RunContext, relationship: Mapping[str, Any]) -> Decision:
         and family == "js"
         and binding.get("form") == "named"
         and context.modules is not None
-        and context.modules.alias_specifiers_stable
+        and context.modules.alias_loads_stable
     )
     if not ambiguous and not alias:
         return not_eligible
