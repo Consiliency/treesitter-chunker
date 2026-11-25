@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Grammar install and update (`chunker grammar install`/`update` and the
+  Python API) no longer run npm lifecycle scripts from the cloned grammar or
+  its dependencies by default. They now run `npm install --ignore-scripts`.
+  For a grammar you trust, `--allow-npm-scripts` (or `allow_npm_scripts=True`)
+  removes the checkout's `node_modules` and runs one ordinary install with
+  scripts enabled, so dependencies may download again. npm 12 still requires
+  per-dependency approval, and blocked hooks are reported. A failed update
+  stays retryable at the same revision, and overlapping operations on one
+  checkout are refused. Grammars split into npm workspaces have a known gap,
+  tracked in Consiliency/treesitter-chunker#790. (Consiliency/treesitter-chunker#641)
+
+### Added
+
+- **Experimental**, `call_resolution="imports"`: renamed JS/TS imports
+  (`import { save as store } from './db'; store()`) can resolve to the proven
+  export, recorded as `t2.import_alias`. Only relative specifiers are
+  eligible. Substitution is withheld whenever the target file or export could
+  differ, for example competing `.js`/`.ts` sources, look-alike suffix
+  siblings, decorators, `rootDirs`/`moduleSuffixes` settings or unreadable
+  paths. Python is intentionally excluded. On the reference corpora, graphbase
+  gains 4 resolved calls and every other root is unchanged. Refresh persisted
+  imports-mode results. (Consiliency/treesitter-chunker#684)
+- **Experimental**, `call_resolution="imports"`: a bare call to a function's
+  own nested helper in JS, TS, TSX or Python resolves to that nested
+  declaration (`t2.nested_local`), even where it previously resolved to an
+  unrelated same-name symbol. Static rebinding withholds substitution, as does
+  any analysis uncertainty: `nonlocal`/`global`, reassignment, `del`,
+  duplicate or conditional definitions, direct `eval`, decorators in the body,
+  and `arguments` aliasing. Across the 16 reference roots, 183 resolved calls
+  move to the correct declaration and 840 more calls resolve. Scope fact
+  versions advance to Python 45 and JS-family 31. Two shared corrections come
+  with it in all modes:
+  - `(/* note */ eval)(src)` is recognised as a direct eval, so some lexical
+    edges become ambiguous.
+  - `export default f<T>` exports `f`.
+
+  (Consiliency/treesitter-chunker#685)
+
+### Changed
+
+- The call-resolution guide now states what a resolved edge means. It names
+  the declaration that the call's name statically refers to. For JS/TS, that
+  is the file selected by standard Node/TypeScript resolution of the source
+  tree. Run-time replacement and build-tool remapping are out of scope.
+  Existing edges already followed this contract. (Consiliency/treesitter-chunker#684)
+
 ### Fixed
 
 - Call resolution, `"imports"` mode (experimental): a Python file in which any
