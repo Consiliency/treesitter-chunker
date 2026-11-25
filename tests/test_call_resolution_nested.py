@@ -298,3 +298,60 @@ def test_eval_operand(tmp_path: Path, ext: str, callee: str) -> None:
         ]
     else:
         _assert_helper_fallback(tmp_path)
+
+
+# Shared-helper corrections accepted with #685 (executive ruling R4-791-1).
+
+
+def _helper_by_mode(path: Path) -> dict[str, tuple[str, str | None, list[str]]]:
+    result = {}
+    for mode in ("name", "structural", "imports"):
+        graph = extract_symbol_graph(path, call_resolution=mode)
+        (edge,) = [
+            e
+            for e in graph["relationships"]
+            if e["type"] == "calls" and e.get("reference") == "helper"
+        ]
+        target = graph["symbol_lookup"].get(edge.get("to"), {})
+        result[mode] = (
+            edge["resolution"],
+            target.get("file"),
+            edge["provenance"].get("call_rules", []),
+        )
+    return result
+
+
+def test_comment_wrapped_direct_eval_is_dynamic_for_every_rule(tmp_path: Path) -> None:
+    """``(/* c */ eval)(src)`` is a direct eval that can assign module
+    bindings, so the module-local proof is withheld in every mode."""
+    (tmp_path / "use.js").write_text(
+        "export function helper() { return 1 }\n"
+        "export function run() { return helper() }\n"
+        "export function calculate(source) { return (/* direct */ eval)(source) }\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "decoy.js").write_text(
+        "export function helper() { return 2 }\n", encoding="utf-8"
+    )
+    for mode, (resolution, _, _) in _helper_by_mode(tmp_path).items():
+        assert resolution == "ambiguous", mode
+
+
+def test_instantiation_expression_default_export_resolves(tmp_path: Path) -> None:
+    """``export default helper<string>`` exports ``helper`` itself."""
+    (tmp_path / "lib.ts").write_text(
+        "function helper<T>(value: T) { return value }\n"
+        "export default helper<string>\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "use.ts").write_text(
+        'import helper from "./lib"\n'
+        'export function run() { return helper("ok") }\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "decoy.ts").write_text(
+        "export function helper() { return 0 }\n", encoding="utf-8"
+    )
+    modes = _helper_by_mode(tmp_path)
+    assert modes["imports"] == ("resolved", "lib.ts", ["t2.import"])
+    assert modes["name"][0] == "ambiguous"
