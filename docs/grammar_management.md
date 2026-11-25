@@ -559,14 +559,14 @@ grammar or its dependencies during dependency installation.
 
 If a grammar requires those hooks, review the revision and its dependencies
 before passing `--allow-npm-scripts`. The hooks run with your user permissions.
-This switch overrides npm's `ignore-scripts` setting for this invocation only.
+The command runs `npm install` followed by `npm rebuild` so dependencies
+installed by a previous default run can execute their hooks. Both steps
+use `--ignore-scripts=false`, overriding npm's `ignore-scripts` setting for this invocation only.
 With npm 12, dependency hooks also need approval under npm's `allowScripts`
 policy. The command reports npm's warnings, including which packages need review.
 In the grammar checkout, run `npm install-scripts ls` to inspect pending hooks.
 If you trust a specific dependency, run `npm install-scripts approve <package>`
-there. To run its previously skipped hook for an already installed dependency,
-use `npm rebuild <package> --ignore-scripts=false` after approval, then retry
-the grammar command with `--allow-npm-scripts`.
+there, then retry the incomplete grammar command with `--allow-npm-scripts`.
 
 Python callers can pass `allow_npm_scripts=True` to
 `UserGrammarTools.install_grammar` or `UserGrammarTools.update_grammar`.

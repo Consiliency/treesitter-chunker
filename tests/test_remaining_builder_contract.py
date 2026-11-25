@@ -318,7 +318,10 @@ def test_user_tools_parent_resolution(
         lookups.append(name)
         return f"parent-bin/{name}"
 
+    clone = None
+
     def run(argv, **kwargs):
+        nonlocal clone
         calls.append((argv, kwargs))
         assert Path(argv[0]).is_absolute(), "clone-cwd executable must be absolute"
         assert argv[0] == str(Path(f"parent-bin/{Path(argv[0]).name}").absolute())
@@ -332,13 +335,21 @@ def test_user_tools_parent_resolution(
         if argv[1] == "for-each-ref":
             stdout = ""
         if argv[1] == "clone":
-            root.mkdir(parents=True)
+            clone = Path(argv[-1])
+            clone.mkdir(parents=True)
             if package:
-                (root / "package.json").write_text("{}", encoding="utf-8")
-        return SimpleNamespace(returncode=0, stdout=stdout, stderr="")
+                (clone / "package.json").write_text("{}", encoding="utf-8")
+        if argv[1] == "generate":
+            (root / "fixture.so").touch()
+        diagnostic = f"npm {argv[1]} warning" if Path(argv[0]).name == "npm" else ""
+        return SimpleNamespace(returncode=0, stdout=stdout, stderr=diagnostic)
 
     monkeypatch.setattr(_build_tools.shutil, "which", which)
     monkeypatch.setattr(subprocess, "run", run)
+    monkeypatch.setattr(tool, "_publish_library", lambda *args: True)
+    pending = "refs/worktree/treesitter-chunker/pending-update"
+    mark = ["update-ref", pending, "HEAD"]
+    clear = ["update-ref", "-d", pending]
     if operation == "install-new":
         import shutil
 
@@ -351,12 +362,16 @@ def test_user_tools_parent_resolution(
             [
                 [
                     "clone",
+                    "--no-checkout",
                     "--branch",
                     "main",
                     "--",
                     "https://github.com/example/repro",
-                    str(root),
-                ]
+                    str(clone),
+                ],
+                mark,
+                ["reset", "--hard", "HEAD"],
+                clear,
             ]
             if operation == "install-new"
             else [
@@ -368,12 +383,14 @@ def test_user_tools_parent_resolution(
                     "https://github.com/example/repro",
                 ],
                 ["fetch", "origin"],
+                mark,
                 ["checkout", "--detach", "main"],
+                clear,
             ]
         )
-        assert result["errors"] == ["No .so files found after generation"]
+        assert result["status"] == "success", result
     elif operation in {"update", "current"}:
-        tool.update_grammar("repro", **script_options)
+        result = tool.update_grammar("repro", **script_options)
         expected_git = [
             ["remote", "get-url", "origin"],
             ["fetch", "origin"],
@@ -383,19 +400,16 @@ def test_user_tools_parent_resolution(
         if operation == "update":
             expected_git.extend(
                 [
-                    [
-                        "update-ref",
-                        "refs/worktree/treesitter-chunker/pending-update",
-                        "new",
-                    ],
+                    mark,
                     ["checkout", "--detach", "new"],
+                    clear,
                 ]
             )
         else:
             expected_git.append(
                 [
                     "for-each-ref",
-                    "--format=%(objectname)",
+                    "--format=%(refname)",
                     "refs/worktree/treesitter-chunker/pending-update",
                 ]
             )
@@ -414,11 +428,22 @@ def test_user_tools_parent_resolution(
     for argv, kwargs in calls:
         assert Path(argv[0]).is_absolute(), "every invocation must be parent-resolved"
         assert argv[0] == str(Path(f"parent-bin/{Path(argv[0]).name}").absolute())
-        if argv[1] != "clone":
+        if operation == "install-new" and argv[1:] in (
+            mark,
+            ["reset", "--hard", "HEAD"],
+        ):
+            assert kwargs["cwd"] == clone
+        elif argv[1] != "clone":
             assert kwargs["cwd"] == root
     script_flag = "--ignore-scripts=false" if script_options else "--ignore-scripts"
+    npm_commands = ["install", "rebuild"] if script_options else ["install"]
+    if "npm" in expected_tools:
+        for cmd in npm_commands:
+            assert f"npm {cmd} warning" in result["warnings"]
     assert [argv[1:] for argv, _ in calls if Path(argv[0]).name == "npm"] == (
-        [["install", script_flag]] if "npm" in expected_tools else []
+        [[cmd, script_flag, "--json=false", "--loglevel=warn"] for cmd in npm_commands]
+        if "npm" in expected_tools
+        else []
     )
     assert [argv[1:] for argv, _ in calls if Path(argv[0]).name == "tree-sitter"] == (
         [["generate"]] if "tree-sitter" in expected_tools else []
@@ -943,8 +968,9 @@ def test_missing_tools_keep_public_error_shapes(
         if Path(argv[0]).name == missing:
             raise FileNotFoundError(f"Executable not found: {missing}")
         if argv[1] == "clone":
-            root.mkdir(parents=True)
-            (root / "package.json").write_text("{}", encoding="utf-8")
+            destination = Path(argv[-1])
+            destination.mkdir(parents=True)
+            (destination / "package.json").write_text("{}", encoding="utf-8")
         stdout = (
             "https://github.com/example/repro"
             if argv[1:3] == ["remote", "get-url"]

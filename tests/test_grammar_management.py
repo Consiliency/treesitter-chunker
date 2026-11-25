@@ -368,8 +368,7 @@ class TestUserGrammarTools:
         def mock_run_side_effect(*args, **kwargs):
             if "git" in args[0] and "clone" in args[0]:
                 # Create the directory that git clone would create
-                target_dir = tools.grammars_dir / "tree-sitter-test_lang"
-                target_dir.mkdir()
+                Path(args[0][-1]).mkdir()
                 return Mock(returncode=0)
             if "tree-sitter" in args[0] and "generate" in args[0]:
                 # Create the .so file that tree-sitter generate would create
@@ -423,8 +422,7 @@ class TestUserGrammarTools:
         def mock_run_side_effect(*args, **kwargs):
             if "git" in args[0] and "clone" in args[0]:
                 # Create the directory that git clone would create
-                target_dir = tools.grammars_dir / "tree-sitter-test_lang"
-                target_dir.mkdir()
+                Path(args[0][-1]).mkdir()
                 return Mock(returncode=0)
             if "tree-sitter" in args[0] and "generate" in args[0]:
                 # Fail tree-sitter generate

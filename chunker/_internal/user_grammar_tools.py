@@ -26,7 +26,8 @@ logger = logging.getLogger(__name__)
 #: ``*.so``/``*.dylib``/``*.dll`` scans never list or load a staged file.
 STAGED_SUFFIX = ".staged"
 
-# refs/worktree/ is private to each checkout, including linked Git worktrees.
+# Only the presence of this per-worktree ref matters. Git needs an object to
+# create a ref, so point it at HEAD when marking generation incomplete.
 _PENDING_UPDATE_REF = "refs/worktree/treesitter-chunker/pending-update"
 
 _ADMISSION_EXPLANATIONS = {
@@ -51,19 +52,23 @@ def _run_git(git: str, checkout: Path, *args: str) -> subprocess.CompletedProces
 
 
 def _install_npm_dependencies(
-    npm: str, source_dir: Path, *, allow_npm_scripts: bool
-) -> str:
+    npm: str, source_dir: Path, warnings: list[str], *, allow_npm_scripts: bool
+) -> None:
     scripts_option = (
         "--ignore-scripts=false" if allow_npm_scripts else "--ignore-scripts"
     )
-    completed = subprocess.run(
-        [npm, "install", scripts_option],
-        cwd=source_dir,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    return completed.stderr.strip()
+    commands = ("install", "rebuild") if allow_npm_scripts else ("install",)
+    for command in commands:
+        completed = subprocess.run(
+            [npm, command, scripts_option, "--json=false", "--loglevel=warn"],
+            cwd=source_dir,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        diagnostic = completed.stderr.strip()
+        if diagnostic and diagnostic not in warnings:
+            warnings.append(diagnostic)
 
 
 def publish_native_grammar(
@@ -273,12 +278,13 @@ class UserGrammarTools:
             Installation result with status and details
         """
         selected_tools = _build_tools.ToolSelection()
+        warnings: list[str] = []
         result = {
             "language": language,
             "status": "unknown",
             "steps_completed": [],
             "errors": [],
-            "warnings": [],
+            "warnings": warnings,
         }
 
         try:
@@ -290,40 +296,21 @@ class UserGrammarTools:
                 raise ValueError("Grammar branch must not start with '-'")
             # Step 1: Clone repository
             target_dir = self.grammars_dir / f"tree-sitter-{language}"
+            git = selected_tools.require("git")
             if target_dir.exists():
-                result["warnings"].append(f"Directory {target_dir} already exists")
-                # Try to update instead
+                warnings.append(f"Directory {target_dir} already exists")
                 try:
-                    # Re-pin origin to the validated URL before fetching so the
-                    # update never trusts a tampered stored remote (SUPPLY hardening).
+                    # Re-pin origin to the validated URL before fetching.
                     subprocess.run(
-                        [
-                            selected_tools.require("git"),
-                            "remote",
-                            "set-url",
-                            "origin",
-                            "--",
-                            repo_url,
-                        ],
+                        [git, "remote", "set-url", "origin", "--", repo_url],
                         cwd=target_dir,
                         check=False,
                         capture_output=True,
                         text=True,
                     )
-                    subprocess.run(
-                        [selected_tools.require("git"), "fetch", "origin"],
-                        cwd=target_dir,
-                        check=True,
-                        capture_output=True,
-                        text=True,
-                    )
-                    subprocess.run(
-                        [selected_tools.require("git"), "checkout", "--detach", branch],
-                        cwd=target_dir,
-                        check=True,
-                        capture_output=True,
-                        text=True,
-                    )
+                    _run_git(git, target_dir, "fetch", "origin")
+                    _run_git(git, target_dir, "update-ref", _PENDING_UPDATE_REF, "HEAD")
+                    _run_git(git, target_dir, "checkout", "--detach", branch)
                     result["steps_completed"].append("Updated existing repository")
                 except subprocess.CalledProcessError as e:
                     result["errors"].append(f"Failed to update repository: {e}")
@@ -331,20 +318,29 @@ class UserGrammarTools:
                     return result
             else:
                 try:
-                    subprocess.run(
-                        [
-                            selected_tools.require("git"),
-                            "clone",
-                            "--branch",
-                            branch,
-                            "--",
-                            repo_url,
-                            str(target_dir),
-                        ],
-                        check=True,
-                        capture_output=True,
-                        text=True,
-                    )
+                    # Publish the clone with its marker already set. An interrupted
+                    # clone must never appear to update as a completed generation.
+                    self.grammars_dir.mkdir(parents=True, exist_ok=True)
+                    with tempfile.TemporaryDirectory(dir=self.grammars_dir) as staging:
+                        clone = Path(staging) / "clone"
+                        subprocess.run(
+                            [
+                                git,
+                                "clone",
+                                "--no-checkout",
+                                "--branch",
+                                branch,
+                                "--",
+                                repo_url,
+                                str(clone),
+                            ],
+                            check=True,
+                            capture_output=True,
+                            text=True,
+                        )
+                        _run_git(git, clone, "update-ref", _PENDING_UPDATE_REF, "HEAD")
+                        _run_git(git, clone, "reset", "--hard", "HEAD")
+                        clone.rename(target_dir)
                     result["steps_completed"].append("Cloned repository")
                 except subprocess.CalledProcessError as e:
                     result["errors"].append(f"Failed to clone repository: {e}")
@@ -355,20 +351,19 @@ class UserGrammarTools:
             package_json = target_dir / "package.json"
             if package_json.exists():
                 try:
-                    diagnostic = _install_npm_dependencies(
+                    _install_npm_dependencies(
                         selected_tools.require("npm"),
                         target_dir,
+                        warnings,
                         allow_npm_scripts=allow_npm_scripts,
                     )
-                    if diagnostic:
-                        result["warnings"].append(diagnostic)
                     result["steps_completed"].append("Installed npm dependencies")
                 except subprocess.CalledProcessError as e:
-                    result["warnings"].append(
+                    warnings.append(
                         f"Failed to install npm dependencies: {e}",
                     )
                     if e.stderr:
-                        result["warnings"].append(e.stderr.strip())
+                        warnings.append(e.stderr.strip())
 
             # Step 3: Generate grammar
             try:
@@ -405,17 +400,11 @@ class UserGrammarTools:
             health = self.manager.diagnose_grammar_issues(language)
             if health.status == "healthy":
                 result["status"] = "success"
-                _run_git(
-                    selected_tools.require("git"),
-                    target_dir,
-                    "update-ref",
-                    "-d",
-                    _PENDING_UPDATE_REF,
-                )
+                _run_git(git, target_dir, "update-ref", "-d", _PENDING_UPDATE_REF)
                 result["steps_completed"].append("Validated grammar installation")
             else:
                 result["status"] = "warning"
-                result["warnings"].append(
+                warnings.append(
                     f"Grammar installed but native admission failed: {health.validation_reason}",
                 )
 
@@ -488,12 +477,13 @@ class UserGrammarTools:
             Update result with status and details
         """
         selected_tools = _build_tools.ToolSelection()
+        warnings: list[str] = []
         result = {
             "language": language,
             "status": "unknown",
             "steps_completed": [],
             "errors": [],
-            "warnings": [],
+            "warnings": warnings,
         }
 
         try:
@@ -526,26 +516,23 @@ class UserGrammarTools:
                 if current != latest:
                     # Record work before moving HEAD so even an interrupted build
                     # can be retried by a fresh process.
-                    _run_git(git, source_dir, "update-ref", _PENDING_UPDATE_REF, latest)
+                    _run_git(git, source_dir, "update-ref", _PENDING_UPDATE_REF, "HEAD")
                     _run_git(git, source_dir, "checkout", "--detach", latest)
                     result["steps_completed"].append("Updated to latest version")
-                elif (
-                    _run_git(
-                        git,
-                        source_dir,
-                        "for-each-ref",
-                        "--format=%(objectname)",
-                        _PENDING_UPDATE_REF,
-                    ).stdout.strip()
-                    != latest
-                ):
-                    result["warnings"].append("Grammar is already up to date")
+                elif not _run_git(
+                    git,
+                    source_dir,
+                    "for-each-ref",
+                    "--format=%(refname)",
+                    _PENDING_UPDATE_REF,
+                ).stdout.strip():
+                    warnings.append("Grammar is already up to date")
                     health = self.manager.diagnose_grammar_issues(language)
                     if health.status == "healthy":
                         result["status"] = "success"
                     else:
                         result["status"] = "warning"
-                        result["warnings"].append(
+                        warnings.append(
                             f"Existing grammar failed native admission: {health.validation_reason}",
                         )
                     return result
@@ -559,18 +546,17 @@ class UserGrammarTools:
             package_json = source_dir / "package.json"
             if package_json.exists():
                 try:
-                    diagnostic = _install_npm_dependencies(
+                    _install_npm_dependencies(
                         selected_tools.require("npm"),
                         source_dir,
+                        warnings,
                         allow_npm_scripts=allow_npm_scripts,
                     )
-                    if diagnostic:
-                        result["warnings"].append(diagnostic)
                     result["steps_completed"].append("Updated dependencies")
                 except subprocess.CalledProcessError as e:
-                    result["warnings"].append(f"Failed to update dependencies: {e}")
+                    warnings.append(f"Failed to update dependencies: {e}")
                     if e.stderr:
-                        result["warnings"].append(e.stderr.strip())
+                        warnings.append(e.stderr.strip())
 
             # Regenerate grammar
             try:
@@ -603,13 +589,11 @@ class UserGrammarTools:
 
             health = self.manager.diagnose_grammar_issues(language)
             if health.status == "healthy":
-                _run_git(
-                    git, source_dir, "update-ref", "-d", _PENDING_UPDATE_REF, latest
-                )
+                _run_git(git, source_dir, "update-ref", "-d", _PENDING_UPDATE_REF)
                 result["status"] = "success"
             else:
                 result["status"] = "warning"
-                result["warnings"].append(
+                warnings.append(
                     f"Updated grammar failed native admission: {health.validation_reason}",
                 )
 

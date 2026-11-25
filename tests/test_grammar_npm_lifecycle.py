@@ -47,7 +47,7 @@ def test_npm_postinstall(
     tools = UserGrammarTools(tmp_path / "build", tmp_path / "sources")
     checkout = tools.grammars_dir / "tree-sitter-fixture"
 
-    def clone_fixture():
+    def clone_fixture(checkout):
         shutil.copytree(fixture, checkout)
         with tarfile.open(checkout / "fixture-dependency.tgz", "w:gz") as archive:
             archive.add(fixture / "dependency/package.json", "package/package.json")
@@ -61,8 +61,10 @@ def test_npm_postinstall(
     npm_major = int(
         subprocess.check_output([npm, "--version"], text=True).split(".")[0]
     )
+    monkeypatch.setenv("npm_config_json", "true")
+    monkeypatch.setenv("npm_config_loglevel", "silent")
     if operation == "update":
-        clone_fixture()
+        clone_fixture(checkout)
     monkeypatch.setattr(grammar_commands, "get_grammar_tools", lambda pins: tools)
     monkeypatch.setattr(grammar_commands, "resolve_command_pins", lambda path: None)
     real_run = subprocess.run
@@ -73,7 +75,7 @@ def test_npm_postinstall(
         stdout = ""
         if argv[0] == "git":
             if argv[1] == "clone":
-                clone_fixture()
+                clone_fixture(Path(argv[-1]))
             elif argv[1:3] == ["remote", "get-url"]:
                 stdout = url
             elif argv[1] == "rev-parse":
@@ -89,30 +91,32 @@ def test_npm_postinstall(
     argv = ["chunker", "grammar", operation, "fixture"]
     if operation == "install":
         argv.append(url)
-    if allow_scripts:
-        argv.append("--allow-npm-scripts")
-    monkeypatch.setattr(sys, "argv", argv)
-
-    # The fixture has no compiled library. Both commands finish the dependency
-    # step before reporting that the stub generator produced no .so.
-    assert main() == 1
-    output = capsys.readouterr().out
-    assert "No .so files found" in output
-    step = (
-        "Installed npm dependencies"
-        if operation == "install"
-        else "Updated dependencies"
-    )
-    assert step in output, output
     marker = checkout / "postinstall.marker"
-    if allow_scripts:
-        assert marker.read_text(encoding="utf-8") == "ran"
-    else:
-        assert not marker.exists()
-
     dependency = checkout / "node_modules" / "fixture-dependency"
-    assert (dependency / "package.json").is_file()
     dep_marker = dependency / "postinstall.marker"
+
+    def invoke(args):
+        monkeypatch.setattr(sys, "argv", args)
+        assert main() == 1  # stub generator produces no library
+        output = capsys.readouterr().out
+        assert "No .so files found" in output
+        step = (
+            "Installed npm dependencies"
+            if operation == "install"
+            else "Updated dependencies"
+        )
+        assert step in output, output
+        assert (dependency / "package.json").is_file()
+        return output
+
+    if not allow_scripts or approved:
+        invoke(argv)
+        assert not marker.exists()
+        assert not dep_marker.exists()
+    if allow_scripts:
+        output = invoke([*argv, "--allow-npm-scripts"])
+        assert marker.read_text(encoding="utf-8") == "ran"
+
     if allow_scripts and (approved or npm_major < 12):
         assert dep_marker.read_text(encoding="utf-8") == "ran"
     else:
@@ -121,7 +125,10 @@ def test_npm_postinstall(
         assert "allowScripts" in output and "fixture-dependency" in output, output
 
 
-def test_failed_update_retries_current_revision(tmp_path, monkeypatch):
+@pytest.mark.parametrize("refused_checkout", [False, True])
+def test_failed_update_retries_current_revision(
+    tmp_path, monkeypatch, refused_checkout
+):
     build = tmp_path / "build"
     sources = tmp_path / "sources"
     language = "x" * 230 if os.name == "posix" else "fixture"
@@ -189,17 +196,29 @@ def test_failed_update_retries_current_revision(tmp_path, monkeypatch):
         first = update()
         assert any("Failed to regenerate grammar" in error for error in first["errors"])
         assert git("rev-parse", "HEAD", cwd=checkout) == latest
+        if refused_checkout:
+            # C conflicts with a tracked change in B. The refused checkout must
+            # leave B eligible for regeneration when upstream returns to B.
+            (repository / "package.json").write_text('{"upstream":true}')
+            git("commit", "-am", "conflicting upstream")
+            git("update-ref", "refs/remotes/origin/main", "HEAD")
+            (checkout / "package.json").write_text('{"local":true}')
+            refused = update()
+            assert any("Failed to update repository" in e for e in refused["errors"])
+            assert git("rev-parse", "HEAD", cwd=checkout) == latest
+            git("update-ref", "refs/remotes/origin/main", latest)
         retry = update(allow_npm_scripts=True)
         assert retry["status"] == "success", retry
         assert builds == [
             "--ignore-scripts",
             "generate",
             "--ignore-scripts=false",
+            "--ignore-scripts=false",
             "generate",
         ]
         completed = update(allow_npm_scripts=True)
         assert "Grammar is already up to date" in completed["warnings"]
-        assert len(builds) == 4
+        assert len(builds) == 5
     finally:
         if os.name == "posix":
             sources.chmod(source_mode)
