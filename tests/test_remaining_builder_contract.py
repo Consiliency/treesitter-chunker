@@ -446,12 +446,10 @@ def test_user_tools_parent_resolution(
         elif argv[1] != "clone":
             assert kwargs["cwd"] == root
     script_flag = "--ignore-scripts=false" if script_options else "--ignore-scripts"
-    npm_commands = ["rebuild", "install"] if script_options else ["install"]
     if "npm" in expected_tools:
-        for cmd in npm_commands:
-            assert f"npm {cmd} warning" in result["warnings"]
+        assert "npm install warning" in result["warnings"]
     assert [argv[1:] for argv, _ in calls if Path(argv[0]).name == "npm"] == (
-        [[cmd, script_flag, "--json=false", "--loglevel=warn"] for cmd in npm_commands]
+        [["install", script_flag, "--json=false", "--loglevel=warn"]]
         if "npm" in expected_tools
         else []
     )

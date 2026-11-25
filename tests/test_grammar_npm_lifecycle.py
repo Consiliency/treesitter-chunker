@@ -25,6 +25,8 @@ from chunker.grammar_management import _build_tools
         pytest.param(True, False, None, id="unapproved"),
         pytest.param(True, True, None, id="fresh"),
         pytest.param(True, True, "same", id="retry"),
+        pytest.param(True, True, "optional", id="optional-retry"),
+        pytest.param(True, True, "linked", id="linked-retry"),
         pytest.param(True, True, "older", id="upgrade"),
     ],
 )
@@ -64,6 +66,18 @@ def test_npm_postinstall(
             package = json.loads(manifest.read_text(encoding="utf-8"))
             package["scripts"]["postinstall"] = "node consume-dependency.cjs"
             package["allowScripts"] = {"file:fixture-dependency.tgz": True}
+            if previous == "optional":
+                package["optionalDependencies"] = package.pop("dependencies")
+                package["scripts"]["postinstall"] = "node postinstall.cjs"
+                # Model a native backend unavailable on this machine.
+                dep_manifest = checkout / "dependency/package.json"
+                backend = json.loads(dep_manifest.read_text(encoding="utf-8"))
+                backend["scripts"] = {"install": 'node -e "process.exit(1)"'}
+                dep_manifest.write_text(json.dumps(backend), encoding="utf-8")
+                with tarfile.open(
+                    checkout / "fixture-dependency.tgz", "w:gz"
+                ) as archive:
+                    archive.add(dep_manifest, "package/package.json")
             if previous == "older":
                 # The old hook uses a tool that belongs only to the old revision.
                 toolchain = checkout / "old-toolchain.cjs"
@@ -131,13 +145,26 @@ def test_npm_postinstall(
             else "Updated dependencies"
         )
         assert step in output, output
-        assert (dependency / "package.json").is_file()
         return output
 
     if not allow_scripts or previous:
         invoke(argv)
+        assert (dependency / "package.json").is_file()
         assert not marker.exists()
         assert not dep_marker.exists()
+    if previous == "same":
+        (dependency / "package.json").chmod(0o444)
+    if previous == "linked":
+        modules = dependency.parent
+        outside = tmp_path / "external-packages"
+        modules.rename(outside)
+        try:
+            modules.symlink_to(outside, target_is_directory=True)
+        except OSError as error:
+            if getattr(error, "winerror", None) == 1314:
+                pytest.skip("Creating a directory symlink requires Windows privilege")
+            raise
+        (outside / "keep").write_bytes(b"external data")
     if previous == "older":
         (checkout / "old-toolchain.cjs").unlink()
         manifest = checkout / "package.json"
@@ -147,8 +174,16 @@ def test_npm_postinstall(
     if allow_scripts:
         output = invoke([*argv, "--allow-npm-scripts"])
         assert marker.read_text(encoding="utf-8") == "ran\n"
+        if previous != "optional":
+            assert (dependency / "package.json").is_file()
 
-    if allow_scripts and (approved or npm_major < 12):
+    if previous == "linked":
+        assert not modules.is_symlink()
+        assert (outside / "keep").read_bytes() == b"external data"
+        assert not (outside / "fixture-dependency/postinstall.marker").exists()
+    if previous == "optional":
+        assert not dependency.exists()
+    elif allow_scripts and (approved or npm_major < 12):
         assert dep_marker.read_text(encoding="utf-8") == "ran\n"
     else:
         assert not dep_marker.exists()
@@ -257,12 +292,11 @@ def test_failed_update_retries_current_revision(
             "--ignore-scripts",
             "generate",
             "--ignore-scripts=false",
-            "--ignore-scripts=false",
             "generate",
         ]
         completed = update(allow_npm_scripts=True)
         assert "Grammar is already up to date" in completed["warnings"]
-        assert len(builds) == 5
+        assert len(builds) == 4
     finally:
         if os.name == "posix":
             sources.chmod(source_mode)

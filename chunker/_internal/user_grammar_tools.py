@@ -3,13 +3,14 @@
 import logging
 import os
 import shutil
+import stat
 import subprocess
 from chunker.grammar_management import _build_tools
 import sys
 import tempfile
 from contextlib import ExitStack
 from filelock import FileLock, Timeout
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 from .grammar_management import SmartGrammarManager, _require_language_component
@@ -68,29 +69,43 @@ def _lock_checkout(stack: ExitStack, git: str, checkout: Path) -> None:
         ) from error
 
 
+def _retry_readonly_removal(
+    remove: Callable[..., Any], path: str, error: BaseException
+) -> None:
+    if (
+        os.name != "nt"
+        or not isinstance(error, PermissionError)
+        or remove not in (os.unlink, os.rmdir)
+    ):
+        raise error
+    Path(path).chmod(stat.S_IWRITE, follow_symlinks=False)
+    remove(path)
+
+
 def _install_npm_dependencies(
     npm: str, source_dir: Path, warnings: list[str], *, allow_npm_scripts: bool
 ) -> None:
-    commands = [("install", "--ignore-scripts")]
+    scripts_option = "--ignore-scripts"
     if allow_npm_scripts:
-        commands = [
-            ("rebuild", "--ignore-scripts=false"),
-            ("install", "--ignore-scripts=false"),
-        ]
-        if (source_dir / "node_modules").is_dir():
-            # Remove obsolete dependencies before executing hooks in the updated checkout.
-            commands.insert(0, ("install", "--ignore-scripts"))
-    for command, scripts_option in commands:
-        completed = subprocess.run(
-            [npm, command, scripts_option, "--json=false", "--loglevel=warn"],
-            cwd=source_dir,
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        diagnostic = completed.stderr.strip()
-        if diagnostic and diagnostic not in warnings:
-            warnings.append(diagnostic)
+        # Resolve the checkout, leaving the final entry itself available to unlink.
+        modules = source_dir.resolve() / "node_modules"
+        if modules.is_symlink():
+            modules.unlink()
+        elif modules.is_junction():
+            modules.rmdir()
+        elif modules.is_dir():
+            shutil.rmtree(modules, onexc=_retry_readonly_removal)
+        scripts_option = "--ignore-scripts=false"
+    completed = subprocess.run(
+        [npm, "install", scripts_option, "--json=false", "--loglevel=warn"],
+        cwd=source_dir,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    diagnostic = completed.stderr.strip()
+    if diagnostic and diagnostic not in warnings:
+        warnings.append(diagnostic)
 
 
 def publish_native_grammar(
