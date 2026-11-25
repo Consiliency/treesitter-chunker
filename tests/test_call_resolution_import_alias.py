@@ -127,6 +127,28 @@ SVC = "def exp():\n    return 1\n"
             "other.py": SVC,
             "use.py": "if flag:\n    from svc import exp as alias\nelse:\n    from other import exp as alias\ndef run():\n    return alias()",
         },
+        {
+            "svc.py": "def __getattr__(name): return len\n" + SVC,
+            "use.py": USE,
+        },
+        {
+            "svc.py": SVC + "import writer\ndef later(): pass\n",
+            "writer.py": "import svc\ntry: svc.later()\nexcept AttributeError as exc: exc.obj.exp = len",
+            "use.py": USE,
+        },
+        {"svc.py": SVC + SVC, "use.py": USE},
+        {
+            "svc.py": "def earlier(): return 'earlier'\ndef __getattr__(name): return earlier\nimport use\n"
+            + SVC,
+            "use.py": USE,
+            "entry.py": "import svc\nimport use\nprint(use.run())",
+        },
+        {
+            "svc.py": SVC,
+            "use.py": USE,
+            "writer.py": "import svc\ndef earlier(): return 'earlier'\ntry: svc.bogus\nexcept AttributeError as exc: getattr(exc,'ob'+'j').exp=earlier",
+            "entry.py": "import writer\nimport use\nprint(use.run())",
+        },
         {"svc.py": SVC, "use.py": USE, "other.py": "import svc\nsvc.exp = len\n"},
         {
             "svc.py": SVC,

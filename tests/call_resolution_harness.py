@@ -241,7 +241,8 @@ def symbol_graph_violations(
                 keys_check=2,
             )
         )
-        if RULE_IMPORT_ALIAS in (on_edge.get("provenance") or {}).get("call_rules", []):
+        rules = (on_edge.get("provenance") or {}).get("call_rules")
+        if isinstance(rules, list) and RULE_IMPORT_ALIAS in rules:
             found.extend(
                 _alias_violations(off_edge, on_edge, mode, symbol_ids, 3, label)
             )
@@ -401,7 +402,8 @@ def _call_edge_violations(
             off, on, mode, changed, label, beyond_check=6, keys_check=7
         )
     )
-    if RULE_IMPORT_ALIAS in (on.get("provenance") or {}).get("call_rules", []):
+    rules = (on.get("provenance") or {}).get("call_rules")
+    if isinstance(rules, list) and RULE_IMPORT_ALIAS in rules:
         return found + _alias_violations(off, on, mode, node_ids, 7, label)
     off_candidates = list(off.get("candidates") or [])
     on_candidates = list(on.get("candidates") or [])

@@ -79,6 +79,25 @@ TESTS = (
 
 # (id, file, old text, new text). The old text must occur in the file once.
 MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
+    ("alias-initialization-cycle", PYM, "dependencies.prepare()", "pass"),
+    (
+        "alias-module-getattr",
+        PYM,
+        'if "__getattr__" in builder.files[path].exports:',
+        "if False:",
+    ),
+    (
+        "alias-pick-first",
+        ENG,
+        "if len(proven) == 1 and proven.isdisjoint(before):\n        return tuple(proven), rules",
+        "if proven and proven.isdisjoint(before):\n        return (min(proven),), rules",
+    ),
+    (
+        "alias-receiver",
+        PYM,
+        "not _known_module_reads(builder, run, path, read)",
+        "False",
+    ),
     (
         "alias-substitution",
         ENG,

@@ -33,7 +33,13 @@ Python withholds new alias targets across the run when a private import
 spelling could be mangled, or when an absolute import could select a module
 from a different entry script's directory. A Python file with unavailable
 import facts also prevents this check from certifying the run. An ambiguity
-in another file matters because it can hide a write to the exporter or the caller. Only
+in another file matters because it can hide a write to the exporter or the caller.
+The check also withholds substitutions if the run can import a partially
+initialized module through a cycle, a module defines `__getattr__`, or a
+member read on a known module could fail. A circular import can capture a
+value supplied by `__getattr__` before the eventual definition runs. A
+failed attribute lookup exposes its receiver through `AttributeError.obj`,
+which lets a handler replace the export before the alias is bound. Only
 individual named import bindings qualify for substitution.
 
 In Python, `structural` skips module-scope and class-body proofs in files

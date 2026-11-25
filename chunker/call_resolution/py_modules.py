@@ -115,7 +115,8 @@ from __future__ import annotations
 import logging
 import re
 from collections.abc import Mapping, Sequence, Set as AbstractSet
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from graphlib import CycleError, TopologicalSorter
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -467,6 +468,7 @@ class _Facts:
     :func:`module_facts`."""
 
     imports: set[str] = field(default_factory=set)
+    alias_member_reads: set[tuple[str, ...]] = field(default_factory=set)
     uses: set[tuple[str, ...]] = field(default_factory=set)
     taints: set[tuple[str, str]] = field(default_factory=set)
     stars: set[str] = field(default_factory=set)
@@ -558,6 +560,7 @@ def module_facts(
     hazard = parse_hazard(source, analysis.root)
     module_bindings = {
         "imports": sorted(facts.imports),
+        "alias_member_reads": [list(read) for read in sorted(facts.alias_member_reads)],
         "private_import_alias": any(
             name.startswith("__") and not name.endswith("__") for name in import_infos
         ),
@@ -878,6 +881,14 @@ def _scan_uses(
         infos = _candidates(analysis, ident, import_infos)
         if not infos:
             continue
+        # Even a member used only in a condition or as a callee can hand out
+        # its module via AttributeError.obj. Preserve the syntactic read for
+        # the stronger proof needed to introduce a target outside C0.
+        members, _, _ = _walk(ident, analysis.source)
+        if members:
+            for info in infos:
+                base, _, *chain = _record(info, "read", members)
+                facts.alias_member_reads.add((base, *chain))
         position = _use_position(analysis, ident)
         if position is None:
             continue
@@ -2849,7 +2860,37 @@ def _production(
     return frozenset(production)
 
 
-def _alias_substitution_safe(builder: _Builder) -> bool:
+def _known_module_reads(
+    builder: _Builder, run: PyModuleRun, writer: str, read: Sequence[str]
+) -> bool:
+    """Every possible in-run module receiver must have the attribute.
+
+    A failed read exposes the receiver through AttributeError, regardless
+    of how a handler later accesses the exception or where it resides.
+    """
+    ref, *chain = read
+    current = builder.module_values(ref, writer)
+    for name in chain:
+        following: set[str] = set()
+        for node in current:
+            path = builder.modules.get(node)
+            if path is None:
+                return False
+            entry = builder.files[path].exports.get(name) or {}
+            if (
+                entry.get("outcome") not in {"local", "import"}
+                or path in run.whole_taints
+                or path in run.test_whole_taints
+                or name in run.name_taints.get(path, ())
+                or name in run.test_name_taints.get(path, ())
+            ):
+                return False
+            following.update(builder.attr_values(node, name, set()))
+        current = following
+    return True
+
+
+def _alias_substitution_safe(builder: _Builder, run: PyModuleRun) -> bool:
     """Guard the call, re-exports and potential writers under any entry script.
 
     The ordinary resolver models the importing file's script directory. A
@@ -2865,7 +2906,10 @@ def _alias_substitution_safe(builder: _Builder) -> bool:
     alternate_roots.update(
         path.rsplit("/", 1)[1] for path in builder.directories if "/" in path
     )
-    for facts in builder.bindings.values():
+    dependencies: TopologicalSorter[str] = TopologicalSorter()
+    for path, facts in builder.bindings.items():
+        if "__getattr__" in builder.files[path].exports:
+            return False
         if facts.get("private_import_alias") is not False:
             return False
         for ref in facts["imports"]:
@@ -2874,6 +2918,23 @@ def _alias_substitution_safe(builder: _Builder) -> bool:
                 for part in ref.split(".")
             ):
                 return False
+            # Even a later unconditional export may be missing during a
+            # circular import. Include package initializers along the path.
+            absolute = builder.absolute(ref, path) or ""
+            parts = absolute.split(".")
+            for index in range(len(parts)):
+                target = builder.modules.get(".".join(parts[: index + 1]))
+                if target is not None:
+                    dependencies.add(path, target)
+        if any(
+            not _known_module_reads(builder, run, path, read)
+            for read in facts["alias_member_reads"]
+        ):
+            return False
+    try:
+        dependencies.prepare()
+    except CycleError:
+        return False
     return True
 
 
@@ -2984,9 +3045,8 @@ def build_py_module_run(
                 path,
                 "production" if in_production else "test-scoped",
             )
-    return PyModuleRun(
+    run = PyModuleRun(
         files=builder.files,
-        alias_substitution_safe=_alias_substitution_safe(builder),
         modules=builder.modules,
         directories=builder.directories,
         nodes=builder.nodes,
@@ -2998,6 +3058,7 @@ def build_py_module_run(
         test_shutoff=dict(shutoff[False]),
         test_scope=frozenset(builder.files) - production,
     )
+    return replace(run, alias_substitution_safe=_alias_substitution_safe(builder, run))
 
 
 # ---------------------------------------------------------------------------

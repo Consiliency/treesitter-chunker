@@ -313,7 +313,7 @@ logger = logging.getLogger(__name__)
 # constant word or a ``__class__`` write. Only ``imports``-mode facts change;
 # the fixtures' digests change only by the version. R-724-7 limits freshness
 # to types.ModuleType because a loader may return an existing module.
-# python "44": record private local import aliases at every scope (#684).
+# python "44": record private import aliases and member reads at every scope (#684).
 CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "23", "python": "44"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
@@ -762,6 +762,7 @@ _PY_MODULE_BINDING_KEYS = frozenset(
         "module_imports",
         "own_submodules",
         "private_import_alias",
+        "alias_member_reads",
     }
 )
 _PY_USE_POSITIONS = frozenset({"write", "call", "value"})
@@ -816,6 +817,10 @@ def valid_py_module_bindings(value: object) -> bool:
         and all(
             _is_span_key(key) and _strings(items) and bool(items)
             for key, items in chains.items()
+        )
+        and isinstance(value["alias_member_reads"], list)
+        and all(
+            _strings(read) and len(read) >= 2 for read in value["alias_member_reads"]
         )
         and type(value["private_import_alias"]) is bool
         and _strings(value["own_submodules"])
