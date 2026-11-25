@@ -692,3 +692,14 @@ def test_modified_commonjs_emit_intrinsic(tmp_path: Path) -> None:
         },
     )
     _assert_alias_withheld(tmp_path)
+
+
+def test_single_file_self_import_lacks_sibling_inventory(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        {
+            "svc.js": JS_USE + "\n" + JS_SVC,
+            "svc.ts": "export function exp(){return 'other'}",
+        },
+    )
+    _assert_alias_withheld(tmp_path / "svc.js")

@@ -92,7 +92,8 @@ def module_layout(path: str | Path) -> tuple[bool, tuple[str, ...] | None]:
 
     root = Path(path)
     if not root.is_dir():
-        return False, ()
+        # Single-file extraction supplies no inventory of sibling modules.
+        return False, None
     linked = False
     variants: list[str] = []
 
