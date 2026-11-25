@@ -6,6 +6,7 @@ a collection/import error, interruption, or passing mutant is not a kill.
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 from pathlib import Path
@@ -396,9 +397,18 @@ elif sys.platform == "win32":
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--local-ugt",
+        action="store_true",
+        help="Run only the Linux UserGrammarTools mutations for local verification.",
+    )
+    local_ugt = parser.parse_args().local_ugt
+    if local_ugt and not sys.platform.startswith("linux"):
+        parser.error("--local-ugt requires Linux")
     if sys.version_info[:2] != (3, 14):
         raise SystemExit("Mutation evidence requires Python 3.14")
-    if not os.environ.get("CI"):
+    if not local_ugt and not os.environ.get("CI"):
         raise SystemExit("Mutation evidence must run on hosted CI (I6)")
     baseline_diff = subprocess.run(
         ["git", "diff", "--binary"], cwd=ROOT, capture_output=True, check=True
@@ -406,6 +416,8 @@ def main() -> int:
     records = []
     scenarios = []
     for name, filename, old, new, test in MUTATIONS:
+        if local_ugt and not name.startswith("ugt_"):
+            continue
         count = (ROOT / filename).read_text(encoding="utf-8").count(old)
         if count == 0:
             raise RuntimeError(f"Mutation anchor missing: {name}")

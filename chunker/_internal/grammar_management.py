@@ -317,7 +317,7 @@ class SmartGrammarManager:
             plan["recovery_steps"] = [
                 f"Clone grammar repository: git clone <repo_url> grammars/tree-sitter-{language}",
                 f"Navigate to grammar directory: cd grammars/tree-sitter-{language}",
-                "Install dependencies: npm install (if package.json exists)",
+                "Install dependencies: npm install --ignore-scripts (if package.json exists)",
                 "Generate grammar: tree-sitter generate",
                 f"Copy the compiled {language}{self.library_suffix} library to {library}",
             ]

@@ -3,11 +3,14 @@
 import logging
 import os
 import shutil
+import stat
 import subprocess
 from chunker.grammar_management import _build_tools
 import sys
 import tempfile
-from collections.abc import Mapping
+from contextlib import ExitStack
+from filelock import FileLock, Timeout
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 from .grammar_management import SmartGrammarManager, _require_language_component
@@ -26,6 +29,10 @@ logger = logging.getLogger(__name__)
 #: ``*.so``/``*.dylib``/``*.dll`` scans never list or load a staged file.
 STAGED_SUFFIX = ".staged"
 
+# Only the presence of this per-worktree ref matters. Git needs an object to
+# create a ref, so point it at HEAD when marking generation incomplete.
+_PENDING_UPDATE_REF = "refs/worktree/treesitter-chunker/pending-update"
+
 _ADMISSION_EXPLANATIONS = {
     "untrusted": "the library is not trusted by an approved SHA-256 pin",
     "integrity_mismatch": "the library does not match its approved SHA-256 pin",
@@ -39,6 +46,66 @@ _ADMISSION_EXPLANATIONS = {
     "ack_missing": "the probe process returned no result",
     "ack_invalid": "the probe process returned an invalid result",
 }
+
+
+def _run_git(git: str, checkout: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [git, *args], cwd=checkout, check=True, capture_output=True, text=True
+    )
+
+
+def _lock_checkout(stack: ExitStack, git: str, checkout: Path) -> None:
+    # Linked worktrees keep .git in a separate per-checkout directory.
+    directory = Path(
+        _run_git(git, checkout, "rev-parse", "--absolute-git-dir").stdout.strip()
+    )
+    if not directory.is_absolute() or not directory.is_dir():
+        raise ValueError(f"Invalid Git directory for {checkout}")
+    try:
+        stack.enter_context(FileLock(directory / "treesitter-chunker.lock", timeout=0))
+    except Timeout as error:
+        raise RuntimeError(
+            f"Grammar checkout is busy: {checkout}. Retry after the current operation."
+        ) from error
+
+
+def _retry_readonly_removal(
+    remove: Callable[..., Any], path: str, error: BaseException
+) -> None:
+    if (
+        os.name != "nt"
+        or not isinstance(error, PermissionError)
+        or remove not in (os.unlink, os.rmdir)
+    ):
+        raise error
+    Path(path).chmod(stat.S_IWRITE, follow_symlinks=False)
+    remove(path)
+
+
+def _install_npm_dependencies(
+    npm: str, source_dir: Path, warnings: list[str], *, allow_npm_scripts: bool
+) -> None:
+    scripts_option = "--ignore-scripts"
+    if allow_npm_scripts:
+        # Resolve the checkout, leaving the final entry itself available to unlink.
+        modules = source_dir.resolve() / "node_modules"
+        if modules.is_symlink():
+            modules.unlink()
+        elif modules.is_junction():
+            modules.rmdir()
+        elif modules.is_dir():
+            shutil.rmtree(modules, onexc=_retry_readonly_removal)
+        scripts_option = "--ignore-scripts=false"
+    completed = subprocess.run(
+        [npm, "install", scripts_option, "--json=false", "--loglevel=warn"],
+        cwd=source_dir,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    diagnostic = completed.stderr.strip()
+    if diagnostic and diagnostic not in warnings:
+        warnings.append(diagnostic)
 
 
 def publish_native_grammar(
@@ -233,6 +300,8 @@ class UserGrammarTools:
         language: str,
         repo_url: str,
         branch: str = "main",
+        *,
+        allow_npm_scripts: bool = False,
     ) -> dict[str, Any]:
         """Install a grammar from a repository.
 
@@ -240,19 +309,22 @@ class UserGrammarTools:
             language: Language name
             repo_url: Git repository URL
             branch: Branch to checkout
+            allow_npm_scripts: Run npm lifecycle scripts for this trusted grammar.
 
         Returns:
             Installation result with status and details
         """
         selected_tools = _build_tools.ToolSelection()
+        warnings: list[str] = []
         result = {
             "language": language,
             "status": "unknown",
             "steps_completed": [],
             "errors": [],
-            "warnings": [],
+            "warnings": warnings,
         }
 
+        locks = ExitStack()
         try:
             _require_language_component(language)
             if self._refuse_shipped_target(language, result):
@@ -262,40 +334,22 @@ class UserGrammarTools:
                 raise ValueError("Grammar branch must not start with '-'")
             # Step 1: Clone repository
             target_dir = self.grammars_dir / f"tree-sitter-{language}"
+            git = selected_tools.require("git")
             if target_dir.exists():
-                result["warnings"].append(f"Directory {target_dir} already exists")
-                # Try to update instead
+                warnings.append(f"Directory {target_dir} already exists")
                 try:
-                    # Re-pin origin to the validated URL before fetching so the
-                    # update never trusts a tampered stored remote (SUPPLY hardening).
+                    _lock_checkout(locks, git, target_dir)
+                    # Re-pin origin to the validated URL before fetching.
                     subprocess.run(
-                        [
-                            selected_tools.require("git"),
-                            "remote",
-                            "set-url",
-                            "origin",
-                            "--",
-                            repo_url,
-                        ],
+                        [git, "remote", "set-url", "origin", "--", repo_url],
                         cwd=target_dir,
                         check=False,
                         capture_output=True,
                         text=True,
                     )
-                    subprocess.run(
-                        [selected_tools.require("git"), "fetch", "origin"],
-                        cwd=target_dir,
-                        check=True,
-                        capture_output=True,
-                        text=True,
-                    )
-                    subprocess.run(
-                        [selected_tools.require("git"), "checkout", "--detach", branch],
-                        cwd=target_dir,
-                        check=True,
-                        capture_output=True,
-                        text=True,
-                    )
+                    _run_git(git, target_dir, "fetch", "origin")
+                    _run_git(git, target_dir, "update-ref", _PENDING_UPDATE_REF, "HEAD")
+                    _run_git(git, target_dir, "checkout", "--detach", branch)
                     result["steps_completed"].append("Updated existing repository")
                 except subprocess.CalledProcessError as e:
                     result["errors"].append(f"Failed to update repository: {e}")
@@ -303,20 +357,42 @@ class UserGrammarTools:
                     return result
             else:
                 try:
-                    subprocess.run(
-                        [
-                            selected_tools.require("git"),
-                            "clone",
-                            "--branch",
-                            branch,
-                            "--",
-                            repo_url,
-                            str(target_dir),
-                        ],
-                        check=True,
-                        capture_output=True,
-                        text=True,
-                    )
+                    # Publish the clone with its marker already set. An interrupted
+                    # clone must never appear to update as a completed generation.
+                    self.grammars_dir.mkdir(parents=True, exist_ok=True)
+                    with tempfile.TemporaryDirectory(dir=self.grammars_dir) as staging:
+                        clone = Path(staging) / "clone"
+                        subprocess.run(
+                            [
+                                git,
+                                "clone",
+                                "--no-checkout",
+                                "--branch",
+                                branch,
+                                "--",
+                                repo_url,
+                                str(clone),
+                            ],
+                            check=True,
+                            capture_output=True,
+                            text=True,
+                        )
+                        _run_git(git, clone, "update-ref", _PENDING_UPDATE_REF, "HEAD")
+                        _run_git(git, clone, "reset", "--hard", "HEAD")
+                        initial = _run_git(
+                            git, clone, "rev-parse", "HEAD"
+                        ).stdout.strip()
+                        clone.rename(target_dir)
+                    _lock_checkout(locks, git, target_dir)
+                    # Another caller could have run between rename and lock.
+                    if (
+                        _run_git(git, target_dir, "rev-parse", "HEAD").stdout.strip()
+                        != initial
+                    ):
+                        raise RuntimeError(
+                            "Grammar checkout changed during install. Retry the install."
+                        )
+                    _run_git(git, target_dir, "update-ref", _PENDING_UPDATE_REF, "HEAD")
                     result["steps_completed"].append("Cloned repository")
                 except subprocess.CalledProcessError as e:
                     result["errors"].append(f"Failed to clone repository: {e}")
@@ -327,18 +403,19 @@ class UserGrammarTools:
             package_json = target_dir / "package.json"
             if package_json.exists():
                 try:
-                    subprocess.run(
-                        [selected_tools.require("npm"), "install"],
-                        cwd=target_dir,
-                        check=True,
-                        capture_output=True,
-                        text=True,
+                    _install_npm_dependencies(
+                        selected_tools.require("npm"),
+                        target_dir,
+                        warnings,
+                        allow_npm_scripts=allow_npm_scripts,
                     )
                     result["steps_completed"].append("Installed npm dependencies")
                 except subprocess.CalledProcessError as e:
-                    result["warnings"].append(
+                    warnings.append(
                         f"Failed to install npm dependencies: {e}",
                     )
+                    if e.stderr:
+                        warnings.append(e.stderr.strip())
 
             # Step 3: Generate grammar
             try:
@@ -375,16 +452,19 @@ class UserGrammarTools:
             health = self.manager.diagnose_grammar_issues(language)
             if health.status == "healthy":
                 result["status"] = "success"
+                _run_git(git, target_dir, "update-ref", "-d", _PENDING_UPDATE_REF)
                 result["steps_completed"].append("Validated grammar installation")
             else:
                 result["status"] = "warning"
-                result["warnings"].append(
+                warnings.append(
                     f"Grammar installed but native admission failed: {health.validation_reason}",
                 )
 
         except Exception as e:
             result["status"] = "error"
             result["errors"].append(f"Unexpected error: {e}")
+        finally:
+            locks.close()
 
         return result
 
@@ -438,24 +518,29 @@ class UserGrammarTools:
 
         return result
 
-    def update_grammar(self, language: str) -> dict[str, Any]:
+    def update_grammar(
+        self, language: str, *, allow_npm_scripts: bool = False
+    ) -> dict[str, Any]:
         """Update a grammar to the latest version.
 
         Args:
             language: Language name to update
+            allow_npm_scripts: Run npm lifecycle scripts for this trusted grammar.
 
         Returns:
             Update result with status and details
         """
         selected_tools = _build_tools.ToolSelection()
+        warnings: list[str] = []
         result = {
             "language": language,
             "status": "unknown",
             "steps_completed": [],
             "errors": [],
-            "warnings": [],
+            "warnings": warnings,
         }
 
+        locks = ExitStack()
         try:
             _require_language_component(language)
             if self._refuse_shipped_target(language, result):
@@ -470,66 +555,43 @@ class UserGrammarTools:
                 # Re-validate the stored origin before fetching so an existing
                 # checkout with a tampered remote cannot pull attacker code
                 # (SUPPLY hardening — codex finding on the update path).
-                stored_origin = subprocess.run(
-                    [selected_tools.require("git"), "remote", "get-url", "origin"],
-                    cwd=source_dir,
-                    capture_output=True,
-                    text=True,
-                    check=True,
+                git = selected_tools.require("git")
+                _lock_checkout(locks, git, source_dir)
+                stored_origin = _run_git(
+                    git, source_dir, "remote", "get-url", "origin"
                 ).stdout.strip()
                 validate_grammar_source(stored_origin)
-                subprocess.run(
-                    [selected_tools.require("git"), "fetch", "origin"],
-                    cwd=source_dir,
-                    check=True,
-                    capture_output=True,
-                    text=True,
-                )
+                _run_git(git, source_dir, "fetch", "origin")
                 result["steps_completed"].append("Fetched latest changes")
 
-                # Get current and latest commit
-                current = subprocess.run(
-                    [selected_tools.require("git"), "rev-parse", "HEAD"],
-                    cwd=source_dir,
-                    capture_output=True,
-                    text=True,
-                    check=True,
+                current = _run_git(git, source_dir, "rev-parse", "HEAD").stdout.strip()
+                latest = _run_git(
+                    git, source_dir, "rev-parse", "origin/main"
                 ).stdout.strip()
 
-                latest = subprocess.run(
-                    [selected_tools.require("git"), "rev-parse", "origin/main"],
-                    cwd=source_dir,
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                ).stdout.strip()
-
-                if current == latest:
-                    result["warnings"].append("Grammar is already up to date")
+                if current != latest:
+                    # Record work before moving HEAD so even an interrupted build
+                    # can be retried by a fresh process.
+                    _run_git(git, source_dir, "update-ref", _PENDING_UPDATE_REF, "HEAD")
+                    _run_git(git, source_dir, "checkout", "--detach", latest)
+                    result["steps_completed"].append("Updated to latest version")
+                elif not _run_git(
+                    git,
+                    source_dir,
+                    "for-each-ref",
+                    "--format=%(refname)",
+                    _PENDING_UPDATE_REF,
+                ).stdout.strip():
+                    warnings.append("Grammar is already up to date")
                     health = self.manager.diagnose_grammar_issues(language)
                     if health.status == "healthy":
                         result["status"] = "success"
                     else:
                         result["status"] = "warning"
-                        result["warnings"].append(
+                        warnings.append(
                             f"Existing grammar failed native admission: {health.validation_reason}",
                         )
                     return result
-
-                # Checkout latest
-                subprocess.run(
-                    [
-                        selected_tools.require("git"),
-                        "checkout",
-                        "--detach",
-                        "origin/main",
-                    ],
-                    cwd=source_dir,
-                    check=True,
-                    capture_output=True,
-                    text=True,
-                )
-                result["steps_completed"].append("Updated to latest version")
 
             except subprocess.CalledProcessError as e:
                 result["errors"].append(f"Failed to update repository: {e}")
@@ -540,16 +602,17 @@ class UserGrammarTools:
             package_json = source_dir / "package.json"
             if package_json.exists():
                 try:
-                    subprocess.run(
-                        [selected_tools.require("npm"), "install"],
-                        cwd=source_dir,
-                        check=True,
-                        capture_output=True,
-                        text=True,
+                    _install_npm_dependencies(
+                        selected_tools.require("npm"),
+                        source_dir,
+                        warnings,
+                        allow_npm_scripts=allow_npm_scripts,
                     )
                     result["steps_completed"].append("Updated dependencies")
                 except subprocess.CalledProcessError as e:
-                    result["warnings"].append(f"Failed to update dependencies: {e}")
+                    warnings.append(f"Failed to update dependencies: {e}")
+                    if e.stderr:
+                        warnings.append(e.stderr.strip())
 
             # Regenerate grammar
             try:
@@ -562,6 +625,7 @@ class UserGrammarTools:
                 )
                 result["steps_completed"].append("Regenerated grammar")
             except subprocess.CalledProcessError as e:
+                result["status"] = "error"
                 result["errors"].append(f"Failed to regenerate grammar: {e}")
                 return result
 
@@ -575,21 +639,25 @@ class UserGrammarTools:
                         return result
                     result["steps_completed"].append("Updated compiled grammar library")
             else:
+                result["status"] = "error"
                 result["errors"].append("No .so files found after regeneration")
                 return result
 
             health = self.manager.diagnose_grammar_issues(language)
             if health.status == "healthy":
+                _run_git(git, source_dir, "update-ref", "-d", _PENDING_UPDATE_REF)
                 result["status"] = "success"
             else:
                 result["status"] = "warning"
-                result["warnings"].append(
+                warnings.append(
                     f"Updated grammar failed native admission: {health.validation_reason}",
                 )
 
         except Exception as e:
             result["status"] = "error"
             result["errors"].append(f"Unexpected error during update: {e}")
+        finally:
+            locks.close()
 
         return result
 
