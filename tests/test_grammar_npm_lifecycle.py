@@ -124,23 +124,39 @@ def test_npm_postinstall(
 def test_failed_update_retries_current_revision(tmp_path, monkeypatch):
     build = tmp_path / "build"
     sources = tmp_path / "sources"
-    checkout = sources / "tree-sitter-fixture"
-    checkout.mkdir(parents=True)
-    (checkout / "package.json").write_text("{}", encoding="utf-8")
-    head = "old"
+    language = "x" * 230 if os.name == "posix" else "fixture"
+    checkout = sources / f"tree-sitter-{language}"
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    real_run = subprocess.run
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(tmp_path / "gitconfig"))
+
+    def git(*args, cwd=repository):
+        return real_run(
+            ["git", *args], cwd=cwd, check=True, capture_output=True, text=True
+        ).stdout.strip()
+
+    git("init", "-b", "main")
+    git("config", "user.name", "Fixture")
+    git("config", "user.email", "fixture@example.invalid")
+    git("commit", "--allow-empty", "-m", "old")
+    (repository / "package.json").write_text("{}", encoding="utf-8")
+    git("add", "package.json")
+    git("commit", "-m", "new")
+    latest = git("rev-parse", "HEAD")
+    git("remote", "add", "origin", "https://github.com/example/tree-sitter-fixture")
+    git("update-ref", "refs/remotes/origin/main", latest)
+    git("worktree", "add", "--detach", str(checkout), "HEAD~1")
     builds = []
     marker = checkout / "postinstall.marker"
 
     def run(argv, **kwargs):
-        nonlocal head
-        stdout = ""
-        if argv[1:3] == ["remote", "get-url"]:
-            stdout = "https://github.com/example/tree-sitter-fixture"
-        elif argv[1] == "rev-parse":
-            stdout = head if argv[2] == "HEAD" else "new"
-        elif argv[1] == "checkout":
-            head = "new"
-        elif argv[0] == "npm":
+        if argv[:2] == ["git", "fetch"]:
+            return subprocess.CompletedProcess(argv, 0, "", "")
+        if argv[0] == "git":
+            return real_run(argv, **kwargs)
+        if argv[0] == "npm":
             builds.append(argv[2])
             if argv[2] == "--ignore-scripts=false":
                 marker.touch()
@@ -149,7 +165,7 @@ def test_failed_update_retries_current_revision(tmp_path, monkeypatch):
             if not marker.exists():
                 raise subprocess.CalledProcessError(1, argv)
             (checkout / "fixture.so").touch()
-        return subprocess.CompletedProcess(argv, 0, stdout, "")
+        return subprocess.CompletedProcess(argv, 0, "", "")
 
     monkeypatch.setattr(_build_tools, "resolve_tool", lambda name: name)
     monkeypatch.setattr(subprocess, "run", run)
@@ -163,19 +179,27 @@ def test_failed_update_retries_current_revision(tmp_path, monkeypatch):
             "diagnose_grammar_issues",
             lambda language: SimpleNamespace(status="healthy"),
         )
-        return tools.update_grammar("fixture", **kwargs)
+        return tools.update_grammar(language, **kwargs)
 
-    first = update()
-    assert any("Failed to regenerate grammar" in error for error in first["errors"])
-    assert head == "new"
-    retry = update(allow_npm_scripts=True)
-    assert retry["status"] == "success", retry
-    assert builds == [
-        "--ignore-scripts",
-        "generate",
-        "--ignore-scripts=false",
-        "generate",
-    ]
-    completed = update(allow_npm_scripts=True)
-    assert "Grammar is already up to date" in completed["warnings"]
-    assert len(builds) == 4
+    # A writable linked checkout need not have a writable parent directory.
+    source_mode = sources.stat().st_mode
+    if os.name == "posix":
+        sources.chmod(0o555)
+    try:
+        first = update()
+        assert any("Failed to regenerate grammar" in error for error in first["errors"])
+        assert git("rev-parse", "HEAD", cwd=checkout) == latest
+        retry = update(allow_npm_scripts=True)
+        assert retry["status"] == "success", retry
+        assert builds == [
+            "--ignore-scripts",
+            "generate",
+            "--ignore-scripts=false",
+            "generate",
+        ]
+        completed = update(allow_npm_scripts=True)
+        assert "Grammar is already up to date" in completed["warnings"]
+        assert len(builds) == 4
+    finally:
+        if os.name == "posix":
+            sources.chmod(source_mode)

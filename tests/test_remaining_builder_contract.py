@@ -329,6 +329,8 @@ def test_user_tools_parent_resolution(
         )
         if argv[1:] == ["rev-parse", "origin/main"] and operation != "current":
             stdout = "new"
+        if argv[1] == "for-each-ref":
+            stdout = ""
         if argv[1] == "clone":
             root.mkdir(parents=True)
             if package:
@@ -379,7 +381,24 @@ def test_user_tools_parent_resolution(
             ["rev-parse", "origin/main"],
         ]
         if operation == "update":
-            expected_git.append(["checkout", "--detach", "origin/main"])
+            expected_git.extend(
+                [
+                    [
+                        "update-ref",
+                        "refs/worktree/treesitter-chunker/pending-update",
+                        "new",
+                    ],
+                    ["checkout", "--detach", "new"],
+                ]
+            )
+        else:
+            expected_git.append(
+                [
+                    "for-each-ref",
+                    "--format=%(objectname)",
+                    "refs/worktree/treesitter-chunker/pending-update",
+                ]
+            )
     else:
         tool.get_grammar_info("repro")
         expected_git = [["log", "--oneline", "-1"], ["remote", "get-url", "origin"]]

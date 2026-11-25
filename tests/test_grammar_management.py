@@ -492,7 +492,8 @@ class TestUserGrammarTools:
             Mock(returncode=0),  # git fetch
             Mock(returncode=0, stdout=b"old_commit\n"),  # git rev-parse HEAD
             Mock(returncode=0, stdout=b"new_commit\n"),  # git rev-parse origin/main
-            Mock(returncode=0),  # git checkout --detach origin/main
+            Mock(returncode=0),  # git update-ref (pending revision)
+            Mock(returncode=0),  # git checkout --detach new_commit
             Mock(returncode=0),  # tree-sitter generate
         ]
 
@@ -534,6 +535,7 @@ class TestUserGrammarTools:
             Mock(returncode=0),  # git fetch
             Mock(returncode=0, stdout=b"same_commit\n"),  # git rev-parse HEAD
             Mock(returncode=0, stdout=b"same_commit\n"),  # git rev-parse origin/main
+            Mock(returncode=0, stdout=""),  # no pending update ref
         ]
 
         result = tools.update_grammar("test_lang")
