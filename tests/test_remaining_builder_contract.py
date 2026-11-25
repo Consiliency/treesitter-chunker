@@ -290,7 +290,10 @@ def test_downloader_scanner_priority_and_missing_explicit_cc(tmp_path, monkeypat
     "operation", ["install-existing", "install-new", "update", "current", "info"]
 )
 @pytest.mark.parametrize("package", [True, False])
-def test_user_tools_parent_resolution(tmp_path, monkeypatch, operation, package):
+@pytest.mark.parametrize("script_options", [{}, {"allow_npm_scripts": True}])
+def test_user_tools_parent_resolution(
+    tmp_path, monkeypatch, operation, package, script_options
+):
     from chunker._internal.user_grammar_tools import UserGrammarTools
     from chunker.grammar_management import _build_tools
 
@@ -339,7 +342,9 @@ def test_user_tools_parent_resolution(tmp_path, monkeypatch, operation, package)
 
         shutil.rmtree(root)
     if operation.startswith("install"):
-        result = tool.install_grammar("repro", "https://github.com/example/repro")
+        result = tool.install_grammar(
+            "repro", "https://github.com/example/repro", **script_options
+        )
         expected_git = (
             [
                 [
@@ -366,7 +371,7 @@ def test_user_tools_parent_resolution(tmp_path, monkeypatch, operation, package)
         )
         assert result["errors"] == ["No .so files found after generation"]
     elif operation in {"update", "current"}:
-        tool.update_grammar("repro")
+        tool.update_grammar("repro", **script_options)
         expected_git = [
             ["remote", "get-url", "origin"],
             ["fetch", "origin"],
@@ -392,8 +397,9 @@ def test_user_tools_parent_resolution(tmp_path, monkeypatch, operation, package)
         assert argv[0] == str(Path(f"parent-bin/{Path(argv[0]).name}").absolute())
         if argv[1] != "clone":
             assert kwargs["cwd"] == root
+    script_flag = "--ignore-scripts=false" if script_options else "--ignore-scripts"
     assert [argv[1:] for argv, _ in calls if Path(argv[0]).name == "npm"] == (
-        [["install"]] if "npm" in expected_tools else []
+        [["install", script_flag]] if "npm" in expected_tools else []
     )
     assert [argv[1:] for argv, _ in calls if Path(argv[0]).name == "tree-sitter"] == (
         [["generate"]] if "tree-sitter" in expected_tools else []

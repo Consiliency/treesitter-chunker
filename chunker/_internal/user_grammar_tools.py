@@ -41,6 +41,21 @@ _ADMISSION_EXPLANATIONS = {
 }
 
 
+def _install_npm_dependencies(
+    npm: str, source_dir: Path, *, allow_npm_scripts: bool
+) -> None:
+    scripts_option = (
+        "--ignore-scripts=false" if allow_npm_scripts else "--ignore-scripts"
+    )
+    subprocess.run(
+        [npm, "install", scripts_option],
+        cwd=source_dir,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
 def publish_native_grammar(
     source: Path,
     destination: Path,
@@ -233,6 +248,8 @@ class UserGrammarTools:
         language: str,
         repo_url: str,
         branch: str = "main",
+        *,
+        allow_npm_scripts: bool = False,
     ) -> dict[str, Any]:
         """Install a grammar from a repository.
 
@@ -240,6 +257,7 @@ class UserGrammarTools:
             language: Language name
             repo_url: Git repository URL
             branch: Branch to checkout
+            allow_npm_scripts: Run npm lifecycle scripts for this trusted grammar.
 
         Returns:
             Installation result with status and details
@@ -327,12 +345,10 @@ class UserGrammarTools:
             package_json = target_dir / "package.json"
             if package_json.exists():
                 try:
-                    subprocess.run(
-                        [selected_tools.require("npm"), "install"],
-                        cwd=target_dir,
-                        check=True,
-                        capture_output=True,
-                        text=True,
+                    _install_npm_dependencies(
+                        selected_tools.require("npm"),
+                        target_dir,
+                        allow_npm_scripts=allow_npm_scripts,
                     )
                     result["steps_completed"].append("Installed npm dependencies")
                 except subprocess.CalledProcessError as e:
@@ -438,11 +454,14 @@ class UserGrammarTools:
 
         return result
 
-    def update_grammar(self, language: str) -> dict[str, Any]:
+    def update_grammar(
+        self, language: str, *, allow_npm_scripts: bool = False
+    ) -> dict[str, Any]:
         """Update a grammar to the latest version.
 
         Args:
             language: Language name to update
+            allow_npm_scripts: Run npm lifecycle scripts for this trusted grammar.
 
         Returns:
             Update result with status and details
@@ -540,12 +559,10 @@ class UserGrammarTools:
             package_json = source_dir / "package.json"
             if package_json.exists():
                 try:
-                    subprocess.run(
-                        [selected_tools.require("npm"), "install"],
-                        cwd=source_dir,
-                        check=True,
-                        capture_output=True,
-                        text=True,
+                    _install_npm_dependencies(
+                        selected_tools.require("npm"),
+                        source_dir,
+                        allow_npm_scripts=allow_npm_scripts,
                     )
                     result["steps_completed"].append("Updated dependencies")
                 except subprocess.CalledProcessError as e:
