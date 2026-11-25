@@ -200,7 +200,7 @@ canonical source path in both top-level `file` and `metadata.file`. These fields
 are required only for syntax call edges; non-call syntax edges and semantic call
 edges keep their existing shapes. Default resolution remains heuristic and does
 not establish language-level binding; the experimental opt-in call resolution
-below can narrow ambiguous calls and substitute a proven renamed import. Parser forms that an
+below can narrow ambiguous calls and substitute a proven renamed JS/TS import. Parser forms that an
 extractor does not recognize are not manufactured as facts.
 
 Call-target lookup accepts only complete `[A-Za-z_][A-Za-z0-9_]*` identifier/member
@@ -423,7 +423,7 @@ JavaScript causes (test files: `test_*.py`, `*_test.py`, `conftest.py`, or a
 treesitter-chunker#682, Python Tier 2 resolved no additional calls: every tree
 had such production code.
 
-In imports mode, a bare named import alias with a single proven export can
+In imports mode, a bare JS/TS named import alias with a single proven export can
 resolve outside its original candidate set (`t2.import_alias`). The
 replacement updates previously unresolved, ambiguous or wrongly resolved
 calls. See [Call resolution](call-resolution.md) for examples and proof limits.

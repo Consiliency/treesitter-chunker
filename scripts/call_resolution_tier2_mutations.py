@@ -33,6 +33,7 @@ JSS = CR + "js_scope.py"
 STR = CR + "js_strings.py"
 FACTS = CR + "facts.py"
 TESTS = (
+    "tests/test_call_resolution_import_alias.py",
     "tests/test_call_resolution_tier2_js.py",
     "tests/test_call_resolution_engine.py::test_expected_imports_tables_hold_at_this_head",
     # treesitter-chunker#694 pins for the property-writer mutations below.
@@ -43,6 +44,24 @@ TESTS = (
 
 # (id, file, old text, new text). The old text must occur in the file.
 MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "alias-pick-first",
+        ENG,
+        "if len(proven) == 1 and proven.isdisjoint(before):\n        return tuple(proven), rules",
+        "if proven and proven.isdisjoint(before):\n        return (min(proven),), rules",
+    ),
+    (
+        "alias-substitution",
+        ENG,
+        "if alias and RULE_IMPORT in binding_rules:",
+        "if False:",
+    ),
+    (
+        "alias-enable-python",
+        ENG,
+        'and family == "js"\n        and binding.get("form") == "named"',
+        'and binding.get("form") in ("from", "named")',
+    ),
     # Node builtin loads and process tokens (treesitter-chunker#702).
     (
         "702-evaluator-specifier",

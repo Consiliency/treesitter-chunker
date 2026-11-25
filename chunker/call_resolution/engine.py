@@ -25,7 +25,7 @@ filesystem access. The engine narrows call relationships in place:
    A filter alone therefore never resolves an edge.
 
 For ordinary narrowing every step only removes candidates, and a step that
-would empty the set is skipped. In imports mode a bare named alias may instead
+would empty the set is skipped. In imports mode a bare JS/TS named import alias may instead
 substitute exactly one proven export outside C0 at any initial cardinality.
 An edge newly resolves only when its one remaining candidate is in ``P``.
 """
@@ -518,7 +518,10 @@ def narrow(
 def _substitute(
     before: tuple[str, ...], proven: frozenset[str], rules: tuple[str, ...]
 ) -> tuple[tuple[str, ...], tuple[str, ...]]:
-    """Apply a binding's checked singleton proof outside the name candidates."""
+    """Substitute outside the name candidates only after a binding proof.
+
+    The caller checks eligibility and supplies its binding rule and group rules.
+    """
     if len(proven) == 1 and proven.isdisjoint(before):
         return tuple(proven), rules
     return before, ()
@@ -555,15 +558,8 @@ def decide(context: RunContext, relationship: Mapping[str, Any]) -> Decision:
         and is_bare_identifier(reference)
         and bool(binding.get("name"))
         and binding["name"] != reference
-        and (
-            (family == "js" and binding.get("form") == "named")
-            or (
-                family == "python"
-                and binding.get("form") == "from"
-                and context.py_modules is not None
-                and context.py_modules.alias_substitution_safe
-            )
-        )
+        and family == "js"
+        and binding.get("form") == "named"
     )
     if not ambiguous and not alias:
         return not_eligible

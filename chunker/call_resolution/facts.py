@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"23"`` for the ``js`` family and ``"44"`` for
+Schema (fact version ``"23"`` for the ``js`` family and ``"43"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -313,8 +313,7 @@ logger = logging.getLogger(__name__)
 # constant word or a ``__class__`` write. Only ``imports``-mode facts change;
 # the fixtures' digests change only by the version. R-724-7 limits freshness
 # to types.ModuleType because a loader may return an existing module.
-# python "44": record private import aliases and member reads at every scope (#684).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "23", "python": "44"}
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "23", "python": "43"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.
@@ -761,8 +760,6 @@ _PY_MODULE_BINDING_KEYS = frozenset(
         "chains",
         "module_imports",
         "own_submodules",
-        "private_import_alias",
-        "alias_member_reads",
     }
 )
 _PY_USE_POSITIONS = frozenset({"write", "call", "value"})
@@ -818,11 +815,6 @@ def valid_py_module_bindings(value: object) -> bool:
             _is_span_key(key) and _strings(items) and bool(items)
             for key, items in chains.items()
         )
-        and isinstance(value["alias_member_reads"], list)
-        and all(
-            _strings(read) and len(read) >= 2 for read in value["alias_member_reads"]
-        )
-        and type(value["private_import_alias"]) is bool
         and _strings(value["own_submodules"])
         and isinstance(value["module_imports"], dict)
         and all(
