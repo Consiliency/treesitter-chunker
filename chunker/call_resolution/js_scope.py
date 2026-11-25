@@ -390,11 +390,18 @@ def write_targets(node: Any) -> list[Any]:
     return names
 
 
+def operand_children(node: Any) -> list[Any]:
+    """Named children in operand order, excluding JS and Annex B comments."""
+    if node is None:
+        return []
+    return [c for c in node.named_children if c.type not in ("comment", "html_comment")]
+
+
 def unwrap(node: Any) -> Any:
     """``node`` without transparent wrappers (``(eval)`` and ``eval!`` -> ``eval``)."""
     current = node
     while current is not None and current.type in _TRANSPARENT_WRAPPERS:
-        named = current.named_children
+        named = operand_children(current)
         if not named:
             return current
         # ``<T>x``: the expression follows the type arguments.
@@ -408,18 +415,9 @@ def _callee(node: Any) -> Any:
     expression evaluates to its last operand (treesitter-chunker#694)."""
     current = unwrap(node)
     while current is not None and current.type == "sequence_expression":
-        operands = [
-            child for child in current.named_children if child.type != "comment"
-        ]
+        operands = operand_children(current)
         current = unwrap(operands[-1]) if operands else None
     return current
-
-
-def _arguments(node: Any) -> list[Any]:
-    """The argument expressions of an ``arguments`` node, without comments."""
-    if node is None:
-        return []
-    return [child for child in node.named_children if child.type != "comment"]
 
 
 def _array_items(node: Any) -> list[Any] | None:
@@ -428,7 +426,7 @@ def _array_items(node: Any) -> list[Any] | None:
     node = _callee(node)
     if node is None or node.type != "array":
         return None
-    return [child for child in node.named_children if child.type != "comment"]
+    return operand_children(node)
 
 
 class _Analysis:
@@ -873,7 +871,7 @@ class _Analysis:
         head = name
         while head is not None and head.type == "nested_identifier":
             head = head.child_by_field_name("object") or (
-                head.named_children[0] if head.named_children else None
+                next(iter(operand_children(head)), None)
             )
         head_name = ""
         if head is not None and head.type == "identifier":
@@ -1153,7 +1151,7 @@ class _Analysis:
         if key.type in ("property_identifier", "identifier"):
             return _text(key, self.source)
         if key.type == "computed_property_name":
-            named = key.named_children
+            named = operand_children(key)
             return self._static_key(named[0]) if named else None
         return self._static_key(key)
 
@@ -1216,7 +1214,7 @@ class _Analysis:
             return
         targets = self._writer_targets(
             node.child_by_field_name("function"),
-            _arguments(node.child_by_field_name("arguments")),
+            operand_children(node.child_by_field_name("arguments")),
         )
         if any(
             target is _ANY_TARGET
@@ -1284,7 +1282,7 @@ class _Analysis:
                 return []
             if self._member_key(bound) != "bind":
                 return []
-            preset = _arguments(function.child_by_field_name("arguments"))
+            preset = operand_children(function.child_by_field_name("arguments"))
             return self._writer_targets(
                 bound.child_by_field_name("object"), preset[1:] + arguments
             )
@@ -1428,7 +1426,7 @@ class _Analysis:
             self.global_wildcard = True
             return
         arguments = parent.child_by_field_name("arguments")
-        named = arguments.named_children if arguments is not None else []
+        named = operand_children(arguments)
         first = unwrap(named[0]) if named else None
         if first is None or first.type in _FUNCTION_ARGUMENTS:
             return
@@ -1706,7 +1704,7 @@ class _Analysis:
             declaration = statement.child_by_field_name("declaration")
             if declaration is not None:
                 if declaration.type == "ambient_declaration":
-                    declaration = next(iter(declaration.named_children), None)
+                    declaration = next(iter(operand_children(declaration)), None)
                 if declaration is not None and declaration.type == "import_alias":
                     # ``export import Q = N``: fail closed on both names.
                     stack = list(declaration.named_children)
@@ -1718,7 +1716,7 @@ class _Analysis:
                 elif declaration is not None and declaration.type in _NAMESPACES:
                     name = declaration.child_by_field_name("name")
                     while name is not None and name.type == "nested_identifier":
-                        name = next(iter(name.named_children), None)
+                        name = next(iter(operand_children(name)), None)
                     if name is not None and name.type == "identifier":
                         names.add(_text(name, self.source))
                 continue

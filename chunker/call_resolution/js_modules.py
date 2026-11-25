@@ -73,6 +73,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any
 
+from .js_scope import operand_children, unwrap
 from .js_strings import (
     cook_template,
     decode_js_string_sloppy,
@@ -373,12 +374,7 @@ class _ModuleFacts:
             return
         value = statement.child_by_field_name("value")
         if value is not None:
-            inner = value
-            while inner is not None and inner.type in _WRAPPERS:
-                named = inner.named_children
-                if not named:
-                    break
-                inner = named[-1] if inner.type == "type_assertion" else named[0]
+            inner = unwrap(value)
             if inner is not None and inner.type == "identifier":
                 self._add("default", ("local", _text(inner, self.source)))
             else:
@@ -422,7 +418,7 @@ class _ModuleFacts:
     def _declaration(self, declaration: Any, default: bool) -> None:
         node = declaration
         if node.type == "ambient_declaration":
-            node = next(iter(node.named_children), None)
+            node = next(iter(operand_children(node)), None)
             if node is None:
                 self.opaque = True
                 return
@@ -455,7 +451,7 @@ class _ModuleFacts:
                 name = node.child_by_field_name("name")
             while name is not None and name.type == "nested_identifier":
                 # ``export namespace A.B {}`` exports ``A``.
-                name = next(iter(name.named_children), None)
+                name = next(iter(operand_children(name)), None)
             if name is None or name.type not in ("identifier", "type_identifier"):
                 self.opaque = True
                 return
@@ -728,8 +724,6 @@ class _ModuleFacts:
         )
 
     def _global_builtin(self, node: Any, name: str) -> bool:
-        from .js_scope import unwrap
-
         node = unwrap(node)
         if node is None:
             return False
@@ -771,8 +765,6 @@ class _ModuleFacts:
         return scope is None or scope is self.analysis.program
 
     def _loader_call(self, node: Any, handled: set[int]) -> None:
-        from .js_scope import unwrap
-
         function = unwrap(node.child_by_field_name("function"))
         if function is None:
             return
@@ -789,11 +781,7 @@ class _ModuleFacts:
         if is_require:
             handled.add(function.id)
         arguments = node.child_by_field_name("arguments")
-        named = (
-            [child for child in arguments.named_children if child.type != "comment"]
-            if arguments is not None
-            else []
-        )
+        named = operand_children(arguments)
         literal = named[0] if len(named) == 1 else None
         specifier = _literal_value(literal, self.source)
         if specifier is None:
@@ -821,8 +809,6 @@ class _ModuleFacts:
         specifier names a package outside the run."""
         if function.type != "member_expression":
             return False
-        from .js_scope import unwrap
-
         obj = unwrap(function.child_by_field_name("object"))
         prop = function.child_by_field_name("property")
         if obj is None or obj.type != "identifier" or prop is None:
@@ -831,11 +817,7 @@ class _ModuleFacts:
         if framework is None or _text(prop, self.source) not in MODULE_MOCKS[framework]:
             return False
         arguments = call.child_by_field_name("arguments")
-        named = (
-            [child for child in arguments.named_children if child.type != "comment"]
-            if arguments is not None
-            else []
-        )
+        named = operand_children(arguments)
         specifier = _literal_value(named[0], self.source) if named else None
         if specifier is None:
             self.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
@@ -1056,8 +1038,6 @@ class _ModuleFacts:
         """Whether the other operand of ``comparison`` is ``null``, where
         IsLooselyEqual returns before ToPrimitive. ``undefined`` is not
         taken: it is an identifier a parameter may rebind."""
-        from .js_scope import unwrap
-
         left = comparison.child_by_field_name("left")
         other = unwrap(
             comparison.child_by_field_name("right") if _same(left, operand) else left
@@ -1099,8 +1079,6 @@ class _ModuleFacts:
         """R-699-4 item 1: ``process.on(event, () => …);`` as a statement.
         The call returns ``process`` (discarded here) and calls each listener
         with ``this === process`` (an arrow keeps its lexical ``this``)."""
-        from .js_scope import unwrap
-
         call = member.parent
         if call is None or call.type != "call_expression":
             return False
@@ -1109,7 +1087,7 @@ class _ModuleFacts:
             return False
         arguments = call.child_by_field_name("arguments")
         named = (
-            [child for child in arguments.named_children if child.type != "comment"]
+            operand_children(arguments)
             if arguments is not None and arguments.type == "arguments"
             else []
         )
@@ -1303,15 +1281,9 @@ class _ModuleFacts:
         requires that no run file can write a global ``__filename`` unless
         the file is CommonJS)."""
         arguments = call.child_by_field_name("arguments")
-        named = (
-            [child for child in arguments.named_children if child.type != "comment"]
-            if arguments is not None
-            else []
-        )
+        named = operand_children(arguments)
         if len(named) != 1:
             return False
-        from .js_scope import unwrap
-
         base = unwrap(named[0])
         if base is None:
             return False
@@ -1374,11 +1346,7 @@ class _ModuleFacts:
 
     def _single_literal(self, call: Any) -> str | None:
         arguments = call.child_by_field_name("arguments")
-        named = (
-            [child for child in arguments.named_children if child.type != "comment"]
-            if arguments is not None
-            else []
-        )
+        named = operand_children(arguments)
         return _literal_value(named[0], self.source) if len(named) == 1 else None
 
     def _inert_operand(self, node: Any) -> bool:

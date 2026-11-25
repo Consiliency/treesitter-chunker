@@ -70,6 +70,30 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "return node is not None",
     ),
     (
+        "nested-python-redirected-write",
+        CR + "py_scope.py",
+        "if name in owner.redirected_writes:",
+        "if False:",
+    ),
+    (
+        "nested-python-except-expression",
+        CR + "py_scope.py",
+        'if name == "value" and seen_value and child.type == "identifier":',
+        'if name == "value" and seen_value:',
+    ),
+    (
+        "nested-python-source-hazard",
+        CR + "py_scope.py",
+        '        module_bindings["unparsed"]\n',
+        "        False\n",
+    ),
+    (
+        "nested-js-wrapper-comment",
+        JSS,
+        "named = operand_children(current)",
+        "named = current.named_children",
+    ),
+    (
         "nested-arbitrary-local",
         ENG,
         'and (raw or {}).get("nested_name") == reference',
@@ -1494,8 +1518,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "694-comment-arguments",
         JSS,
-        '    return [child for child in node.named_children if child.type != "comment"]\n\n\ndef _array_items',
-        "    return list(node.named_children)\n\n\ndef _array_items",
+        'return [c for c in node.named_children if c.type not in ("comment", "html_comment")]',
+        "return list(node.named_children)",
     ),
     (
         "694-target-comma",

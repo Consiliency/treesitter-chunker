@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import runpy
 from pathlib import Path
 
 import pytest
@@ -120,17 +121,7 @@ def test_withhold(tmp_path: Path, ext: str, body: str) -> None:
         else "function helper(){}\nfunction outer(){" + body + "}"
     )
     (tmp_path / f"use.{ext}").write_text(source, encoding="utf-8")
-    before, after = [
-        next(
-            e
-            for e in extract_symbol_graph(tmp_path, call_resolution=mode)[
-                "relationships"
-            ]
-            if e.get("reference") == "helper" and e["type"] == "calls"
-        )
-        for mode in ("name", "imports")
-    ]
-    assert after == before
+    _assert_helper_fallback(tmp_path)
 
 
 def test_two_nested_bindings_of_same_name(tmp_path: Path) -> None:
@@ -154,3 +145,94 @@ def test_two_nested_bindings_of_same_name(tmp_path: Path) -> None:
     assert harness.failed_checks(
         harness.symbol_graph_violations(off, graph, "imports")
     ) == {3}
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        b'def helper(): return "global"\n'
+        b"def outer():\n"
+        b'    def helper(): return "first"\n'
+        b"    def middle():\n"
+        b"        try: pass\n"
+        b"        except ValueError, helper: pass\n"
+        b"        def update():\n"
+        b"            nonlocal helper\n"
+        b'            def helper(): return "second"\n'
+        b"        update()\n"
+        b"    middle()\n"
+        b"    return helper()\n",
+        b'def helper(*args): return "global"\n'
+        b"def outer():\n"
+        b'    def helper(*args): return "first"\n'
+        b"    def update():\n"
+        b"        nonlocal helper\n"
+        b"        try: raise ValueError\n"
+        b"        except ValueError, (helper := LookupError): pass\n"
+        b"    update()\n"
+        b'    return str(helper("second"))\n',
+        b"# coding: unicode_escape\n"
+        b'def helper(): return "global"\n'
+        b"def outer():\n"
+        b'    def helper(): return "first"\n'
+        rb'    # next declaration\n    def helper(): return "second"'
+        b"\n"
+        b"    return helper()\n",
+    ],
+    ids=[
+        "nonlocal-across-exception-list",
+        "walrus-in-exception-list",
+        "escaped-newline-in-comment",
+    ],
+)
+def test_python_uncertain_owner(tmp_path: Path, source: bytes) -> None:
+    path = tmp_path / "use.py"
+    path.write_bytes(source)
+    namespace = runpy.run_path(str(path))
+    assert namespace["outer"]() == "second"
+    _assert_helper_fallback(tmp_path)
+
+
+def _helper_edge(path: Path, mode: str) -> dict:
+    graph = extract_symbol_graph(path, call_resolution=mode)
+    (edge,) = [
+        e
+        for e in graph["relationships"]
+        if e["type"] == "calls" and e.get("reference") == "helper"
+    ]
+    return edge
+
+
+def _assert_helper_fallback(path: Path) -> None:
+    assert _helper_edge(path, "imports") == _helper_edge(path, "name")
+
+
+@pytest.mark.parametrize(
+    "callee",
+    [
+        "(/* direct */ eval)",
+        "(eval /* direct */)",
+        "((/* a */ (eval /* b */)))",
+        "(<!-- direct in a script\neval)",
+        "(0, eval)",
+    ],
+)
+def test_eval_operand(tmp_path: Path, callee: str) -> None:
+    (tmp_path / "use.js").write_text(
+        'function helper() { return "global" }\n'
+        'function other() { return "second" }\n'
+        "function outer() {\n"
+        '  function helper() { return "first" }\n'
+        f'  {callee}("helper = other")\n'
+        "  return helper()\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    if callee == "(0, eval)":
+        # A comma expression discards the Reference: indirect eval runs in
+        # the global environment and cannot assign the function's local helper.
+        assert _helper_edge(tmp_path, "imports")["provenance"]["call_rules"] == [
+            "t2.nested_local"
+        ]
+    else:
+        _assert_helper_fallback(tmp_path)

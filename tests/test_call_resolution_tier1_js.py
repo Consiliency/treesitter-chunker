@@ -228,6 +228,7 @@ def test_reassignment_in_a_nested_function_unless_shadowed() -> None:
         "function f(s) { eval!(s); }",
         "function f(s) { (eval as any)(s); }",
         "function f(s) { (<any>eval)(s); }",
+        "function f(s) { ((/* before */ eval as any) /* after */)(s); }",
     ],
 )
 def test_direct_eval_makes_every_enclosing_scope_dynamic(site: str) -> None:

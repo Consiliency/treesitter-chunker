@@ -77,7 +77,10 @@ declaration is hoisted. A const initializer must finish before the call.
 Python supports a direct, unconditional, undecorated nested function or class
 in a function body. A nested function can call that helper when its definition
 follows the helper. Competing assignments, deletion and ambiguous bindings
-withhold substitution. A failed proof retains the previous resolution, including
+withhold substitution. A redirected write can veto an enclosing Python helper
+even when an intervening scope has a possible binding. Python source-decoding
+and parse hazards withhold substitution throughout the file. In JS, parentheses
+and comments preserve direct eval and its dynamic-scope veto. A failed proof retains the previous resolution, including
 a possible unrelated singleton.
 
 Greenfield and Code-Index-MCP should refresh stored

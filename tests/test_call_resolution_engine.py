@@ -704,7 +704,7 @@ def test_rule_and_reason_vocabularies() -> None:
     assert not {"stub", "script-goal-deferred", "namespace-deferred"} & (
         KNOWN_NONE_REASONS
     )
-    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "27", "python": "44"}
+    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "28", "python": "45"}
     assert [engine.language_family(name) for name in ("tsx", "javascript", "go")] == [
         "js",
         "js",
