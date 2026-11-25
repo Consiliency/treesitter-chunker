@@ -852,3 +852,16 @@ def test_external_or_implicit_project_lookup(
         {"use.ts": JS_USE, "svc.js": JS_SVC, "tsconfig.json": json.dumps(config)},
     )
     _assert_alias_withheld(tmp_path)
+
+
+def test_repeated_compiler_options_keep_the_first_suffix_active(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        {
+            "use.ts": JS_USE,
+            "svc.ts": JS_SVC,
+            "svc.test.ts": "export function exp(){ return 2; }",
+            "tsconfig.json": '{"compilerOptions":{"moduleSuffixes":[".test",""]},"compilerOptions":{"module":"commonjs","moduleResolution":"node","noEmit":true}}',
+        },
+    )
+    _assert_alias_withheld(tmp_path)

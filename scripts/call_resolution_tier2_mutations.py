@@ -125,8 +125,14 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "alias-compiler-config",
         "chunker/symbol_graph.py",
-        "        config = json.loads(path.read_text",
-        "        return False\n        config = json.loads(path.read_text",
+        "        if not path.is_file():\n            return True",
+        "        return False",
+    ),
+    (
+        "alias-repeated-config-key",
+        "chunker/symbol_graph.py",
+        "if folded in values:",
+        "if False:",
     ),
     (
         "alias-ambient-module",

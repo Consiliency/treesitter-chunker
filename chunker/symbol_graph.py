@@ -99,6 +99,18 @@ _RESOLUTION_OPTIONS = {
 }
 
 
+def _unique_config_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    # tsc can combine repeated compilerOptions objects. Last-key-wins JSON
+    # decoding would silently discard settings participating in resolution.
+    values: dict[str, Any] = {}
+    for key, value in pairs:
+        folded = key.lower()
+        if folded in values:
+            raise ValueError("duplicate compiler configuration key")
+        values[folded] = value
+    return values
+
+
 def _unmodeled_config(path: Path) -> bool:
     """An inherited, unreadable or unmodeled configuration cannot prove uniqueness."""
     try:
@@ -106,7 +118,9 @@ def _unmodeled_config(path: Path) -> bool:
         # conservatively withholds aliases too.
         if not path.is_file():
             return True
-        config = json.loads(path.read_text(encoding="utf-8-sig"))
+        config = json.loads(
+            path.read_text(encoding="utf-8-sig"), object_pairs_hook=_unique_config_keys
+        )
         if (
             not isinstance(config, dict)
             or "extends" in config
@@ -125,10 +139,9 @@ def _unmodeled_config(path: Path) -> bool:
                 for entry in entries
             ):
                 return True
-        options = {
-            key.lower(): value
-            for key, value in config.get("compilerOptions", {}).items()
-        }
+        options = config.get("compileroptions", {})
+        if not isinstance(options, dict):
+            return True
         if "moduleresolution" not in options and str(
             options.get("module", "")
         ).lower() in {
