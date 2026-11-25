@@ -64,6 +64,13 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "if False:",
     ),
     (
+        # tests/test_call_resolution_nested.py::test_decorator_in_body_withholds
+        "nested-js-decorator",
+        JSS,
+        "if scope.decorated:",
+        "if False:",
+    ),
+    (
         "nested-python-order",
         CR + "py_scope.py",
         "return node is not None and decl.end_byte <= child.start_byte",

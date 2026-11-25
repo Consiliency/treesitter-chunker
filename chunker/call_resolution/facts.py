@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"30"`` for the ``js`` family and ``"45"`` for
+Schema (fact version ``"31"`` for the ``js`` family and ``"45"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -321,7 +321,8 @@ logger = logging.getLogger(__name__)
 # JS 28 / Python 45: comment-aware operands and conservative nested scope proofs.
 # JS 29: TS instantiation expressions preserve the underlying operand.
 # JS 30 combines both branches. Python facts are unchanged from version 45.
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "30", "python": "45"}
+# JS 31 omits nested_name when the owning function body contains a decorator.
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "31", "python": "45"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.
