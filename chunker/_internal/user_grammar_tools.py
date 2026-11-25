@@ -43,17 +43,18 @@ _ADMISSION_EXPLANATIONS = {
 
 def _install_npm_dependencies(
     npm: str, source_dir: Path, *, allow_npm_scripts: bool
-) -> None:
+) -> str:
     scripts_option = (
         "--ignore-scripts=false" if allow_npm_scripts else "--ignore-scripts"
     )
-    subprocess.run(
+    completed = subprocess.run(
         [npm, "install", scripts_option],
         cwd=source_dir,
         check=True,
         capture_output=True,
         text=True,
     )
+    return completed.stderr.strip()
 
 
 def publish_native_grammar(
@@ -147,6 +148,10 @@ class UserGrammarTools:
             grammars_dir,
             trusted_artifacts=trusted_artifacts,
         )
+
+    def _pending_update(self, language: str) -> Path:
+        # Keep retry state outside the files supplied by the grammar repository.
+        return self.grammars_dir / f".tree-sitter-{language}.update-pending"
 
     def _publish_library(
         self, language: str, library: Path, result: dict[str, Any]
@@ -345,16 +350,20 @@ class UserGrammarTools:
             package_json = target_dir / "package.json"
             if package_json.exists():
                 try:
-                    _install_npm_dependencies(
+                    diagnostic = _install_npm_dependencies(
                         selected_tools.require("npm"),
                         target_dir,
                         allow_npm_scripts=allow_npm_scripts,
                     )
+                    if diagnostic:
+                        result["warnings"].append(diagnostic)
                     result["steps_completed"].append("Installed npm dependencies")
                 except subprocess.CalledProcessError as e:
                     result["warnings"].append(
                         f"Failed to install npm dependencies: {e}",
                     )
+                    if e.stderr:
+                        result["warnings"].append(e.stderr.strip())
 
             # Step 3: Generate grammar
             try:
@@ -391,6 +400,7 @@ class UserGrammarTools:
             health = self.manager.diagnose_grammar_issues(language)
             if health.status == "healthy":
                 result["status"] = "success"
+                self._pending_update(language).unlink(missing_ok=True)
                 result["steps_completed"].append("Validated grammar installation")
             else:
                 result["status"] = "warning"
@@ -442,6 +452,7 @@ class UserGrammarTools:
             source_dir = self.grammars_dir / f"tree-sitter-{language}"
             if source_dir.exists():
                 shutil.rmtree(source_dir)
+                self._pending_update(language).unlink(missing_ok=True)
                 result["steps_completed"].append("Removed grammar source directory")
             else:
                 result["warnings"].append("No grammar source directory found")
@@ -523,7 +534,8 @@ class UserGrammarTools:
                     check=True,
                 ).stdout.strip()
 
-                if current == latest:
+                pending = self._pending_update(language)
+                if current == latest and not pending.exists():
                     result["warnings"].append("Grammar is already up to date")
                     health = self.manager.diagnose_grammar_issues(language)
                     if health.status == "healthy":
@@ -535,20 +547,23 @@ class UserGrammarTools:
                         )
                     return result
 
-                # Checkout latest
-                subprocess.run(
-                    [
-                        selected_tools.require("git"),
-                        "checkout",
-                        "--detach",
-                        "origin/main",
-                    ],
-                    cwd=source_dir,
-                    check=True,
-                    capture_output=True,
-                    text=True,
-                )
-                result["steps_completed"].append("Updated to latest version")
+                if current != latest:
+                    # Record work before moving HEAD so even an interrupted build
+                    # can be retried by a fresh process.
+                    pending.touch()
+                    subprocess.run(
+                        [
+                            selected_tools.require("git"),
+                            "checkout",
+                            "--detach",
+                            "origin/main",
+                        ],
+                        cwd=source_dir,
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                    )
+                    result["steps_completed"].append("Updated to latest version")
 
             except subprocess.CalledProcessError as e:
                 result["errors"].append(f"Failed to update repository: {e}")
@@ -559,14 +574,18 @@ class UserGrammarTools:
             package_json = source_dir / "package.json"
             if package_json.exists():
                 try:
-                    _install_npm_dependencies(
+                    diagnostic = _install_npm_dependencies(
                         selected_tools.require("npm"),
                         source_dir,
                         allow_npm_scripts=allow_npm_scripts,
                     )
+                    if diagnostic:
+                        result["warnings"].append(diagnostic)
                     result["steps_completed"].append("Updated dependencies")
                 except subprocess.CalledProcessError as e:
                     result["warnings"].append(f"Failed to update dependencies: {e}")
+                    if e.stderr:
+                        result["warnings"].append(e.stderr.strip())
 
             # Regenerate grammar
             try:
@@ -579,6 +598,7 @@ class UserGrammarTools:
                 )
                 result["steps_completed"].append("Regenerated grammar")
             except subprocess.CalledProcessError as e:
+                result["status"] = "error"
                 result["errors"].append(f"Failed to regenerate grammar: {e}")
                 return result
 
@@ -592,11 +612,13 @@ class UserGrammarTools:
                         return result
                     result["steps_completed"].append("Updated compiled grammar library")
             else:
+                result["status"] = "error"
                 result["errors"].append("No .so files found after regeneration")
                 return result
 
             health = self.manager.diagnose_grammar_issues(language)
             if health.status == "healthy":
+                pending.unlink(missing_ok=True)
                 result["status"] = "success"
             else:
                 result["status"] = "warning"

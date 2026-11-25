@@ -1,10 +1,13 @@
 """Exercise the grammar CLI's npm policy with a local postinstall fixture."""
 
+import json
 import os
 import shutil
 import subprocess
 import sys
+import tarfile
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -15,8 +18,12 @@ from chunker.grammar_management import _build_tools
 
 
 @pytest.mark.parametrize("operation", ["install", "update"])
-@pytest.mark.parametrize("allow_scripts", [False, True])
-def test_npm_postinstall(tmp_path, monkeypatch, capsys, operation, allow_scripts):
+@pytest.mark.parametrize(
+    ("allow_scripts", "approved"), [(False, True), (True, False), (True, True)]
+)
+def test_npm_postinstall(
+    tmp_path, monkeypatch, capsys, operation, allow_scripts, approved
+):
     npm = shutil.which("npm")
     if not npm or not shutil.which("node"):
         pytest.skip("npm and Node are required for the lifecycle fixture")
@@ -39,8 +46,23 @@ def test_npm_postinstall(tmp_path, monkeypatch, capsys, operation, allow_scripts
     fixture = Path(__file__).parent / "fixtures" / "npm_lifecycle"
     tools = UserGrammarTools(tmp_path / "build", tmp_path / "sources")
     checkout = tools.grammars_dir / "tree-sitter-fixture"
-    if operation == "update":
+
+    def clone_fixture():
         shutil.copytree(fixture, checkout)
+        with tarfile.open(checkout / "fixture-dependency.tgz", "w:gz") as archive:
+            archive.add(fixture / "dependency/package.json", "package/package.json")
+            archive.add(fixture / "postinstall.cjs", "package/postinstall.cjs")
+        if approved:
+            manifest = checkout / "package.json"
+            package = json.loads(manifest.read_text(encoding="utf-8"))
+            package["allowScripts"] = {"file:fixture-dependency.tgz": True}
+            manifest.write_text(json.dumps(package), encoding="utf-8")
+
+    npm_major = int(
+        subprocess.check_output([npm, "--version"], text=True).split(".")[0]
+    )
+    if operation == "update":
+        clone_fixture()
     monkeypatch.setattr(grammar_commands, "get_grammar_tools", lambda pins: tools)
     monkeypatch.setattr(grammar_commands, "resolve_command_pins", lambda path: None)
     real_run = subprocess.run
@@ -51,7 +73,7 @@ def test_npm_postinstall(tmp_path, monkeypatch, capsys, operation, allow_scripts
         stdout = ""
         if argv[0] == "git":
             if argv[1] == "clone":
-                shutil.copytree(fixture, checkout)
+                clone_fixture()
             elif argv[1:3] == ["remote", "get-url"]:
                 stdout = url
             elif argv[1] == "rev-parse":
@@ -87,3 +109,73 @@ def test_npm_postinstall(tmp_path, monkeypatch, capsys, operation, allow_scripts
         assert marker.read_text(encoding="utf-8") == "ran"
     else:
         assert not marker.exists()
+
+    dependency = checkout / "node_modules" / "fixture-dependency"
+    assert (dependency / "package.json").is_file()
+    dep_marker = dependency / "postinstall.marker"
+    if allow_scripts and (approved or npm_major < 12):
+        assert dep_marker.read_text(encoding="utf-8") == "ran"
+    else:
+        assert not dep_marker.exists()
+    if allow_scripts and not approved and npm_major >= 12:
+        assert "allowScripts" in output and "fixture-dependency" in output, output
+
+
+def test_failed_update_retries_current_revision(tmp_path, monkeypatch):
+    build = tmp_path / "build"
+    sources = tmp_path / "sources"
+    checkout = sources / "tree-sitter-fixture"
+    checkout.mkdir(parents=True)
+    (checkout / "package.json").write_text("{}", encoding="utf-8")
+    head = "old"
+    builds = []
+    marker = checkout / "postinstall.marker"
+
+    def run(argv, **kwargs):
+        nonlocal head
+        stdout = ""
+        if argv[1:3] == ["remote", "get-url"]:
+            stdout = "https://github.com/example/tree-sitter-fixture"
+        elif argv[1] == "rev-parse":
+            stdout = head if argv[2] == "HEAD" else "new"
+        elif argv[1] == "checkout":
+            head = "new"
+        elif argv[0] == "npm":
+            builds.append(argv[2])
+            if argv[2] == "--ignore-scripts=false":
+                marker.touch()
+        elif argv[1] == "generate":
+            builds.append("generate")
+            if not marker.exists():
+                raise subprocess.CalledProcessError(1, argv)
+            (checkout / "fixture.so").touch()
+        return subprocess.CompletedProcess(argv, 0, stdout, "")
+
+    monkeypatch.setattr(_build_tools, "resolve_tool", lambda name: name)
+    monkeypatch.setattr(subprocess, "run", run)
+    monkeypatch.setattr(UserGrammarTools, "_publish_library", lambda *args: True)
+
+    def update(**kwargs):
+        # CLI retries construct a new tools object.
+        tools = UserGrammarTools(build, sources)
+        monkeypatch.setattr(
+            tools.manager,
+            "diagnose_grammar_issues",
+            lambda language: SimpleNamespace(status="healthy"),
+        )
+        return tools.update_grammar("fixture", **kwargs)
+
+    first = update()
+    assert any("Failed to regenerate grammar" in error for error in first["errors"])
+    assert head == "new"
+    retry = update(allow_npm_scripts=True)
+    assert retry["status"] == "success", retry
+    assert builds == [
+        "--ignore-scripts",
+        "generate",
+        "--ignore-scripts=false",
+        "generate",
+    ]
+    completed = update(allow_npm_scripts=True)
+    assert "Grammar is already up to date" in completed["warnings"]
+    assert len(builds) == 4

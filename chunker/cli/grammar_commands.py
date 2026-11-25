@@ -106,7 +106,11 @@ def setup_grammar_parser(subparsers: argparse._SubParsersAction) -> None:
         parser.add_argument(
             "--allow-npm-scripts",
             action="store_true",
-            help="Allow npm lifecycle scripts for this trusted grammar and its dependencies",
+            help=(
+                "Allow npm lifecycle scripts for this trusted grammar. "
+                "npm 12 still requires approval for individual dependencies "
+                "(npm install-scripts approve <package> in the grammar checkout)."
+            ),
         )
 
     # Remove command

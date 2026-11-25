@@ -560,6 +560,14 @@ grammar or its dependencies during dependency installation.
 If a grammar requires those hooks, review the revision and its dependencies
 before passing `--allow-npm-scripts`. The hooks run with your user permissions.
 This switch overrides npm's `ignore-scripts` setting for this invocation only.
+With npm 12, dependency hooks also need approval under npm's `allowScripts`
+policy. The command reports npm's warnings, including which packages need review.
+In the grammar checkout, run `npm install-scripts ls` to inspect pending hooks.
+If you trust a specific dependency, run `npm install-scripts approve <package>`
+there. To run its previously skipped hook for an already installed dependency,
+use `npm rebuild <package> --ignore-scripts=false` after approval, then retry
+the grammar command with `--allow-npm-scripts`.
+
 Python callers can pass `allow_npm_scripts=True` to
 `UserGrammarTools.install_grammar` or `UserGrammarTools.update_grammar`.
 
@@ -590,8 +598,9 @@ python -m chunker.cli grammar install typescript https://github.com/tree-sitter/
 ### `grammar update <language> [--allow-npm-scripts]`
 Updates an existing grammar to the latest version. To enable required hooks for
 a trusted new revision, pass the option on that update, for example
-`python -m chunker.cli grammar update rust --allow-npm-scripts`. An already-current
-update skips npm.
+`python -m chunker.cli grammar update rust --allow-npm-scripts`. If generation fails, you can retry
+the same revision with the option. A completed update skips npm and generation
+until a new revision is available.
 
 **Example:**
 ```bash
