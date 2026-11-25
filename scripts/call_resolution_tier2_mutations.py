@@ -88,6 +88,18 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "        False\n",
     ),
     (
+        "nested-python-evaluator-hazard",
+        CR + "py_scope.py",
+        '        or py_modules.CAUSE_EVALUATOR in module_bindings["shutoff"]\n',
+        "",
+    ),
+    (
+        "nested-ts-instantiation-eval",
+        JSS,
+        '        "instantiation_expression",\n',
+        "",
+    ),
+    (
         "nested-js-wrapper-comment",
         JSS,
         "named = operand_children(current)",
@@ -322,13 +334,13 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "r699-4-write-pattern-steps",
         JSM,
-        "            if kind in _WRAPPERS or kind in _WRITE_PATTERN_STEPS:\n",
-        "            if kind in _WRAPPERS:\n",
+        "            if kind in TRANSPARENT_WRAPPERS or kind in _WRITE_PATTERN_STEPS:\n",
+        "            if kind in TRANSPARENT_WRAPPERS:\n",
     ),
     (
         "r699-4-write-wrapper-steps",
         JSM,
-        "            if kind in _WRAPPERS or kind in _WRITE_PATTERN_STEPS:\n",
+        "            if kind in TRANSPARENT_WRAPPERS or kind in _WRITE_PATTERN_STEPS:\n",
         "            if kind in _WRITE_PATTERN_STEPS:\n",
     ),
     (

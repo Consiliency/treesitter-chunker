@@ -339,12 +339,13 @@ def pattern_names(node: Any) -> list[Any]:
 
 # Expressions that wrap a callee or an assignment target without changing
 # what it refers to: ``(t)``, ``t!``, ``t as T``, ``t satisfies T``, ``<T>t``.
-_TRANSPARENT_WRAPPERS = frozenset(
+TRANSPARENT_WRAPPERS = frozenset(
     {
         "parenthesized_expression",
         "non_null_expression",
         "as_expression",
         "satisfies_expression",
+        "instantiation_expression",
         "type_assertion",
     }
 )
@@ -400,7 +401,7 @@ def operand_children(node: Any) -> list[Any]:
 def unwrap(node: Any) -> Any:
     """``node`` without transparent wrappers (``(eval)`` and ``eval!`` -> ``eval``)."""
     current = node
-    while current is not None and current.type in _TRANSPARENT_WRAPPERS:
+    while current is not None and current.type in TRANSPARENT_WRAPPERS:
         named = operand_children(current)
         if not named:
             return current
@@ -1339,7 +1340,7 @@ class _Analysis:
         and the node that uses it."""
         current = node
         while current.parent is not None and current.parent.type in (
-            _TRANSPARENT_WRAPPERS
+            TRANSPARENT_WRAPPERS
         ):
             current = current.parent
         return current, current.parent
@@ -1489,7 +1490,7 @@ class _Analysis:
                 self.global_wildcard = True
                 return
             kind = parent.type
-            if kind in _TRANSPARENT_WRAPPERS:
+            if kind in TRANSPARENT_WRAPPERS:
                 current = parent
                 continue
             if _same(parent.child_by_field_name("object"), current):

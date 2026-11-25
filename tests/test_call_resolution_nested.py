@@ -101,6 +101,11 @@ def test_nested_target(tmp_path: Path, ext: str, source: str, decoys: int) -> No
         ("js", "function helper(){} function helper(){} helper();"),
         ("js", "function helper(){} helper=other; helper();"),
         ("js", "function helper(){} {const helper=other; helper()}"),
+        (
+            "py",
+            "def helper(): pass\n def eval(value): return value\n"
+            " def annotated(x: eval('1')): return x\n return helper()",
+        ),
         ("py", "helper()\n def helper(): pass"),
         ("py", "if flag:\n  def helper(): pass\n helper()"),
         ("py", "def helper(): pass\n del helper\n helper()"),
@@ -208,18 +213,23 @@ def _assert_helper_fallback(path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    "callee",
+    ("ext", "callee"),
     [
-        "(/* direct */ eval)",
-        "(eval /* direct */)",
-        "((/* a */ (eval /* b */)))",
-        "(<!-- direct in a script\neval)",
-        "(0, eval)",
+        ("js", "(/* direct */ eval)"),
+        ("js", "(eval /* direct */)"),
+        ("js", "((/* a */ (eval /* b */)))"),
+        ("js", "(<!-- direct in a script\neval)"),
+        ("js", "(0, eval)"),
+        ("ts", "(eval<string>)"),
+        ("tsx", "((/* direct */ eval<string>))"),
     ],
 )
-def test_eval_operand(tmp_path: Path, callee: str) -> None:
-    (tmp_path / "use.js").write_text(
-        'function helper() { return "global" }\n'
+def test_eval_operand(tmp_path: Path, ext: str, callee: str) -> None:
+    declarations = (
+        "" if ext == "js" else "declare function eval<T>(source: string): unknown;\n"
+    )
+    (tmp_path / f"use.{ext}").write_text(
+        f'{declarations}function helper() {{ return "global" }}\n'
         'function other() { return "second" }\n'
         "function outer() {\n"
         '  function helper() { return "first" }\n'

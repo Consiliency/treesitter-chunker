@@ -73,7 +73,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any
 
-from .js_scope import operand_children, unwrap
+from .js_scope import TRANSPARENT_WRAPPERS, operand_children, unwrap
 from .js_strings import (
     cook_template,
     decode_js_string_sloppy,
@@ -101,15 +101,6 @@ _LOCAL_DECLARATIONS = frozenset(
 )
 _VARIABLE_DECLARATIONS = frozenset({"lexical_declaration", "variable_declaration"})
 _TYPE_DECLARATIONS = frozenset({"interface_declaration", "type_alias_declaration"})
-_WRAPPERS = frozenset(
-    {
-        "parenthesized_expression",
-        "non_null_expression",
-        "as_expression",
-        "satisfies_expression",
-        "type_assertion",
-    }
-)
 _NON_ARROW_FUNCTIONS = frozenset(
     {
         "function_declaration",
@@ -306,7 +297,7 @@ def _field_of(parent: Any, child: Any) -> str | None:
 def _climb_wrappers(node: Any) -> Any:
     """``node`` and the parentheses or TS wrappers around it, outermost."""
     current = node
-    while current.parent is not None and current.parent.type in _WRAPPERS:
+    while current.parent is not None and current.parent.type in TRANSPARENT_WRAPPERS:
         current = current.parent
     return current
 
@@ -1054,7 +1045,7 @@ class _ModuleFacts:
             if parent is None:
                 return False
             kind = parent.type
-            if kind in _WRAPPERS or kind in _WRITE_PATTERN_STEPS:
+            if kind in TRANSPARENT_WRAPPERS or kind in _WRITE_PATTERN_STEPS:
                 current = parent
                 continue
             field = _WRITE_FIELD_STEPS.get(kind)
