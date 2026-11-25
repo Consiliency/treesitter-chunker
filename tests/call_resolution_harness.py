@@ -13,7 +13,7 @@ violation, tagged with the plan's check number:
    not ambiguous off is identical on; an ambiguous edge keeps two or more
    candidates and ``to == reference``; a resolved edge has
    ``candidates == [to]``, ``to`` in the off set, ``is_internal`` true and a
-   binding rule in ``call_rules``. A proven imports-mode alias can replace
+   binding rule in ``call_rules``. A proven JS/TS imports-mode alias can replace
    the entire off set with its single target, marked ``t2.import_alias``.
 4. ``metadata`` is equal except ``call_resolution``.
 5. Boundary ``nodes``, ``files``, ``diagnostics``, ``source`` and
@@ -51,6 +51,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any
 
+from chunker.call_resolution.modules import JS_EXTENSION_LANGUAGES
 from chunker.call_resolution.engine import (
     BINDING_RULE_IDS,
     GROUP_RULE_IDS,
@@ -265,6 +266,7 @@ def _alias_violations(
     rules = on["provenance"]["call_rules"]
     if (
         mode != "imports"
+        or Path(off["file"]).suffix.lower() not in JS_EXTENSION_LANGUAGES
         or rules[0] != RULE_IMPORT_ALIAS
         or not set(rules[1:]) <= GROUP_RULE_IDS
         or on["resolution"] != "resolved"

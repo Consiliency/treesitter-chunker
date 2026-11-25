@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -82,16 +83,18 @@ JS_SVC = "export function exp(){ return 1; }"
 
 
 @pytest.mark.parametrize("mode", ["name", "structural", "imports"])
+@pytest.mark.parametrize("decoys", [0, 1, 2])
 @pytest.mark.parametrize(
     "escaped", [False, True], ids=["plain", "builtin-delattr-exception"]
 )
 def test_python_renamed_import_preserves_name_edge(
-    tmp_path: Path, escaped: bool, mode: str
+    tmp_path: Path, escaped: bool, mode: str, decoys: int
 ) -> None:
     files = {
         "m.py": "def x(): return 'intended'\n",
         "use.py": "from m import x as y\ndef run(): return y()\n",
     }
+    files.update({f"decoy{i}.py": "def y(): pass\n" for i in range(decoys)})
     if escaped:
         files.update(
             {
@@ -109,7 +112,8 @@ def test_python_renamed_import_preserves_name_edge(
         (extract_boundary_ir, "edges"),
     ):
         before = _site(extract(tmp_path)[field], "y")
-        assert before["resolution"] == "unresolved" and before["candidates"] == []
+        assert len(before["candidates"]) == decoys
+        assert before["resolution"] == ("unresolved", "resolved", "ambiguous")[decoys]
         assert _site(extract(tmp_path, call_resolution=mode)[field], "y") == before
 
 
@@ -212,3 +216,73 @@ def test_multiple_proven_declarations_cannot_substitute() -> None:
     assert engine._substitute(
         before, frozenset({"first", "second"}), ("t2.import_alias",)
     ) == (before, ())
+
+
+@pytest.mark.parametrize("reexport", [False, True])
+def test_url_trimmed_specifier_cannot_substitute(
+    tmp_path: Path, reexport: bool
+) -> None:
+    # Node trims the space and loads svc.js. A literal path lookup may find
+    # svc.js .js. Both filenames are portable and both are in the graph.
+    files = {"svc.js": JS_SVC, "svc.js .js": JS_SVC.replace("return 1", "return 2")}
+    if reexport:
+        files["use.js"] = JS_USE.replace("svc.js", "bridge.js")
+        files["bridge.js"] = "export {exp} from './svc.js ';"
+    else:
+        files["use.js"] = JS_USE.replace("svc.js", "svc.js ")
+    _write(tmp_path, files)
+    graph = extract_symbol_graph(tmp_path, call_resolution="imports")
+    assert _site(graph["relationships"])["resolution"] == "unresolved"
+
+
+@pytest.mark.parametrize(
+    "specifier", ["./sv\tc.js", "./sv\nc.js", "./sv\rc.js", "./svc.js\x01", " ./svc.js"]
+)
+def test_noisy_writer_path_vetoes_alias(tmp_path: Path, specifier: str) -> None:
+    _write(
+        tmp_path,
+        {
+            "svc.js": JS_SVC,
+            "use.js": JS_USE,
+            "writer.js": f"import {json.dumps(specifier)};",
+        },
+    )
+    graph = extract_symbol_graph(tmp_path, call_resolution="imports")
+    assert _site(graph["relationships"])["resolution"] == "unresolved"
+
+
+@pytest.mark.parametrize("boundary", [False, True])
+def test_identity_checks_reject_python_substitution(
+    tmp_path: Path, boundary: bool
+) -> None:
+    _write(
+        tmp_path,
+        {
+            "m.py": "def x(): pass",
+            "use.py": "from m import x as y\ndef run(): return y()",
+        },
+    )
+    extract = extract_boundary_ir if boundary else extract_symbol_graph
+    off = extract(tmp_path)
+    on = extract(tmp_path, call_resolution="imports")
+    if boundary:
+        edge = _site(on["edges"], "y")
+        (target,) = [node["id"] for node in on["nodes"] if node["symbol"] == "x"]
+        edge["target"] = target
+        edge["metadata"]["is_internal"] = True
+        on["metrics"]["unresolved_edges"] -= 1
+        on["metrics"]["resolved_edges"] += 1
+    else:
+        edge = _site(on["relationships"], "y")
+        (target,) = [
+            k for k, symbol in on["symbol_lookup"].items() if symbol["name"] == "x"
+        ]
+        edge.update(to=target, is_internal=True)
+    edge.update(resolution="resolved", candidates=[target])
+    edge["provenance"].update(call_resolution="imports", call_rules=["t2.import_alias"])
+    compare = (
+        harness.boundary_violations if boundary else harness.symbol_graph_violations
+    )
+    assert harness.failed_checks(compare(off, on, "imports")) == (
+        {7} if boundary else {3}
+    )

@@ -464,6 +464,10 @@ class ModuleRun:
     # Test-classified files no production file reaches.
     test_scope: frozenset[str] = frozenset()
 
+    # Alias substitution requires literal paths to agree with URL parsing,
+    # including paths that may reach a writer through another module.
+    alias_specifiers_stable: bool = False
+
     @property
     def taint_all(self) -> bool:
         return bool(self.shutoff)
@@ -607,6 +611,11 @@ def build_module_run(
         frozenset(tainted[False]),
         dict(shutoff[False]),
         frozenset(files) - production,
+        alias_specifiers_stable=all(
+            source == source.strip(_C0_AND_SPACE) and not _URL_NOISE.search(source)
+            for sources in edges.values()
+            for source in sources
+        ),
     )
 
 

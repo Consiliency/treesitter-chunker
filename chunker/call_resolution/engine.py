@@ -560,6 +560,8 @@ def decide(context: RunContext, relationship: Mapping[str, Any]) -> Decision:
         and binding["name"] != reference
         and family == "js"
         and binding.get("form") == "named"
+        and context.modules is not None
+        and context.modules.alias_specifiers_stable
     )
     if not ambiguous and not alias:
         return not_eligible

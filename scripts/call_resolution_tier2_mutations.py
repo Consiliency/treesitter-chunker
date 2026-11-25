@@ -59,8 +59,22 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "alias-enable-python",
         ENG,
-        'and family == "js"\n        and binding.get("form") == "named"',
+        'and family == "js"\n        and binding.get("form") == "named"\n'
+        "        and context.modules is not None\n        and context.modules.alias_specifiers_stable",
         'and binding.get("form") in ("from", "named")',
+    ),
+    (
+        "alias-enable-python-with-candidates",
+        ENG,
+        'and family == "js"\n        and binding.get("form") == "named"\n'
+        "        and context.modules is not None\n        and context.modules.alias_specifiers_stable",
+        'and (binding.get("form") == "named" or (family == "python" and before and binding.get("form") == "from"))',
+    ),
+    (
+        "alias-url-path",
+        ENG,
+        "        and context.modules.alias_specifiers_stable",
+        "",
     ),
     # Node builtin loads and process tokens (treesitter-chunker#702).
     (

@@ -28,6 +28,11 @@ stable. Consumers persisting imports-mode targets or counts should refresh
 them and compare calls by site ID. Without this proof the existing lookup
 result still applies, including a possible singleton name match.
 
+JS/TS substitution is withheld when a recorded loader path changes under URL
+parsing (an embedded tab, LF or CR, or leading or trailing control characters
+or spaces). Different loaders can then select different files, including on
+a re-export or a path to a writer.
+
 Python is intentionally excluded from renamed-import substitution. A failed
 `delattr` can expose the exporting module through `AttributeError.obj`, so
 a handler can replace the function before the importer binds the alias.
@@ -153,7 +158,7 @@ outside those rules.
 | Python loading and rebinding | Importing `pkg.X` from another file can replace a binding on `pkg`. A sibling module can inject a builtin, a loader can choose a different module name, and a configured plugin can supply a module at runtime. Pytest path and import settings can also change what a test loads. |
 | JS/TS aliases into the run | A bare specifier can refer back into the project through a package self-reference, a workspace symlink or tsconfig `paths`. |
 | External resolution settings | A `package.json` `browser` or `exports` map, a bundler alias or extension list, or tsconfig `rootDirs` or `moduleSuffixes` can redirect a source import. A test runner can also supply a mock through its own module mappings. |
-| Files missing from the run | A writer in an uncollected `.mjs`, `.cjs`, `.mts` or `.cts` file, or a file omitted by a language filter, can change a module the tool analyzed. |
+| Files missing from the run | A writer in an uncollected `.mjs`, `.cjs`, `.mts` or `.cts` file, or a file omitted by a language filter, can change a module the tool analyzed. For an extensionless import, Node can also select an uncollected extensionless file ahead of its collected JS sibling. |
 
 For the edge format, binding rules and exact list of recognized triggers,
 see the [Boundary IR specification](interface-boundary-spec.md#call-resolution-extension-experimental).
