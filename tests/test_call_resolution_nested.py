@@ -212,6 +212,24 @@ def _assert_helper_fallback(path: Path) -> None:
     assert _helper_edge(path, "imports") == _helper_edge(path, "name")
 
 
+def test_shorthand_arguments_write_withholds(tmp_path: Path) -> None:
+    """Sloppy ``{ arguments }`` exposes the mapped parameter that the nested
+    declaration shares, so a write through it can replace ``helper``."""
+    (tmp_path / "use.js").write_text(
+        'function helper() { return "global" }\n'
+        'function other() { return "second" }\n'
+        "function outer(helper) {\n"
+        '  function helper() { return "first" }\n'
+        "  const box = { arguments }\n"
+        "  box.arguments[0] = other\n"
+        "  return helper()\n"
+        "}\n"
+        "console.log(outer(null))\n",
+        encoding="utf-8",
+    )
+    _assert_helper_fallback(tmp_path)
+
+
 @pytest.mark.parametrize(
     ("ext", "callee"),
     [

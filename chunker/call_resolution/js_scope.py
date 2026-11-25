@@ -1940,13 +1940,20 @@ def _inside_class(node: Any) -> bool:
     return False
 
 
+_READ_IDENTIFIERS = frozenset({"identifier", "shorthand_property_identifier"})
+
+
 def _mentions(node: Any, name: str, source: bytes) -> bool:
-    """Whether an identifier ``name`` occurs anywhere below ``node``."""
+    """Whether a read of ``name`` occurs anywhere below ``node``.
+
+    An object shorthand (``{ arguments }``) reads the binding too, so it
+    counts as well as a plain identifier.
+    """
     encoded = name.encode()
     stack = [node]
     while stack:
         current = stack.pop()
-        if current.type == "identifier" and (
+        if current.type in _READ_IDENTIFIERS and (
             source[current.start_byte : current.end_byte] == encoded
         ):
             return True

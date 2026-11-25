@@ -780,7 +780,12 @@ def test_arguments_alias_reassigns_shared_parameter_names() -> None:
     """Sloppy ``arguments[0] = x`` writes a parameter binding, which a body
     function of the same name shares: fail closed when ``arguments`` occurs."""
     base = "export function g(d) { function d() {} %s return d(); }"
-    for extra in ("arguments[0] = 1;", "h(arguments);", "(() => arguments)();"):
+    for extra in (
+        "arguments[0] = 1;",
+        "h(arguments);",
+        "(() => arguments)();",
+        "const box = { arguments }; box.arguments[0] = 1;",
+    ):
         assert reason(base % extra, "d", language="javascript") == "reassigned", extra
     assert outcome(base % "", "d", language="javascript")["outcome"] == "local"
     other = "export function g(x) { function d() {} arguments[0] = 1; return d(); }"
