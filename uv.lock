@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.14"
 
 [[package]]
@@ -1588,6 +1588,7 @@ version = "7.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "chardet" },
+    { name = "filelock" },
     { name = "gitpython" },
     { name = "igraph" },
     { name = "leidenalg" },
@@ -1620,7 +1621,6 @@ all = [
     { name = "black" },
     { name = "build" },
     { name = "fastapi" },
-    { name = "filelock" },
     { name = "graphviz" },
     { name = "httpx" },
     { name = "isort" },
@@ -1659,7 +1659,6 @@ dev = [
     { name = "bandit" },
     { name = "black" },
     { name = "build" },
-    { name = "filelock" },
     { name = "httpx" },
     { name = "isort" },
     { name = "jsonschema" },
@@ -1703,7 +1702,7 @@ requires-dist = [
     { name = "build", marker = "extra == 'dev'" },
     { name = "chardet", specifier = ">=5.0.0" },
     { name = "fastapi", marker = "extra == 'api'", specifier = ">=0.100.0" },
-    { name = "filelock", marker = "extra == 'dev'", specifier = ">=3.12.0" },
+    { name = "filelock", specifier = ">=3.12.0" },
     { name = "gitpython", specifier = ">=3.1.40" },
     { name = "graphviz", marker = "extra == 'viz'" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27.0" },

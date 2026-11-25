@@ -368,9 +368,12 @@ class TestUserGrammarTools:
         def mock_run_side_effect(*args, **kwargs):
             if "git" in args[0] and "clone" in args[0]:
                 # Create the directory that git clone would create
-                target_dir = tools.grammars_dir / "tree-sitter-test_lang"
-                target_dir.mkdir()
+                Path(args[0][-1]).mkdir()
                 return Mock(returncode=0)
+            if args[0][1:] == ["rev-parse", "--absolute-git-dir"]:
+                return Mock(stdout=str(kwargs["cwd"]))
+            if args[0][1:] == ["rev-parse", "HEAD"]:
+                return Mock(stdout="same")
             if "tree-sitter" in args[0] and "generate" in args[0]:
                 # Create the .so file that tree-sitter generate would create
                 target_dir = tools.grammars_dir / "tree-sitter-test_lang"
@@ -423,9 +426,12 @@ class TestUserGrammarTools:
         def mock_run_side_effect(*args, **kwargs):
             if "git" in args[0] and "clone" in args[0]:
                 # Create the directory that git clone would create
-                target_dir = tools.grammars_dir / "tree-sitter-test_lang"
-                target_dir.mkdir()
+                Path(args[0][-1]).mkdir()
                 return Mock(returncode=0)
+            if args[0][1:] == ["rev-parse", "--absolute-git-dir"]:
+                return Mock(stdout=str(kwargs["cwd"]))
+            if args[0][1:] == ["rev-parse", "HEAD"]:
+                return Mock(stdout="same")
             if "tree-sitter" in args[0] and "generate" in args[0]:
                 # Fail tree-sitter generate
                 raise subprocess.CalledProcessError(1, "tree-sitter")
@@ -485,6 +491,7 @@ class TestUserGrammarTools:
         # (git remote get-url origin → validate_grammar_source) before fetching,
         # so the first call now reads an allowlisted (github.com) remote URL.
         mock_run.side_effect = [
+            Mock(stdout=str(source_dir / ".git")),
             Mock(
                 returncode=0,
                 stdout="https://github.com/tree-sitter/tree-sitter-test_lang\n",
@@ -492,7 +499,8 @@ class TestUserGrammarTools:
             Mock(returncode=0),  # git fetch
             Mock(returncode=0, stdout=b"old_commit\n"),  # git rev-parse HEAD
             Mock(returncode=0, stdout=b"new_commit\n"),  # git rev-parse origin/main
-            Mock(returncode=0),  # git checkout --detach origin/main
+            Mock(returncode=0),  # git update-ref (pending revision)
+            Mock(returncode=0),  # git checkout --detach new_commit
             Mock(returncode=0),  # tree-sitter generate
         ]
 
@@ -527,6 +535,7 @@ class TestUserGrammarTools:
         # Mock git commands - same commit. SUPPLY hardening prepends a
         # get-url + validate step before fetching.
         mock_run.side_effect = [
+            Mock(stdout=str(source_dir / ".git")),
             Mock(
                 returncode=0,
                 stdout="https://github.com/tree-sitter/tree-sitter-test_lang\n",
@@ -534,6 +543,7 @@ class TestUserGrammarTools:
             Mock(returncode=0),  # git fetch
             Mock(returncode=0, stdout=b"same_commit\n"),  # git rev-parse HEAD
             Mock(returncode=0, stdout=b"same_commit\n"),  # git rev-parse origin/main
+            Mock(returncode=0, stdout=""),  # no pending update ref
         ]
 
         result = tools.update_grammar("test_lang")

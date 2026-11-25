@@ -102,6 +102,17 @@ def setup_grammar_parser(subparsers: argparse._SubParsersAction) -> None:
     update_parser.add_argument("language", help="Language name to update")
     update_parser.set_defaults(func=_with_pins(cmd_update_grammar))
 
+    for parser in (install_parser, update_parser):
+        parser.add_argument(
+            "--allow-npm-scripts",
+            action="store_true",
+            help=(
+                "Allow npm lifecycle scripts for this trusted grammar. "
+                "npm 12 still requires approval for individual dependencies "
+                "(npm install-scripts approve <package> in the grammar checkout)."
+            ),
+        )
+
     # Remove command
     remove_parser = grammar_subparsers.add_parser(
         "remove",
@@ -292,7 +303,12 @@ def cmd_install_grammar(args: argparse.Namespace) -> int:
         print(f"   Branch: {args.branch}")
 
         tools = get_grammar_tools(getattr(args, "pins", None))
-        result = tools.install_grammar(args.language, args.repo_url, args.branch)
+        result = tools.install_grammar(
+            args.language,
+            args.repo_url,
+            args.branch,
+            allow_npm_scripts=getattr(args, "allow_npm_scripts", False),
+        )
 
         print("\n📋 Installation Result:")
         print(f"   Status: {result['status']}")
@@ -338,7 +354,9 @@ def cmd_update_grammar(args: argparse.Namespace) -> int:
         print(f"🔄 Updating grammar for {args.language}...")
 
         tools = get_grammar_tools(getattr(args, "pins", None))
-        result = tools.update_grammar(args.language)
+        result = tools.update_grammar(
+            args.language, allow_npm_scripts=getattr(args, "allow_npm_scripts", False)
+        )
 
         print("\n📋 Update Result:")
         print(f"   Status: {result['status']}")
