@@ -113,14 +113,27 @@ def _unique_config_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 def _unmodeled_config(path: Path) -> bool:
     """An inherited, unreadable or unmodeled configuration cannot prove uniqueness."""
+    name = path.name.lower()
     try:
         # TS option names are case-insensitive. Unsupported JSONC syntax
         # conservatively withholds aliases too.
         if not path.is_file():
             return True
+        # An arbitrary JSON asset might be a project selected with tsc -p.
+        # Bound the amount decoded to classify it; withhold if it is too large.
+        if path.stat().st_size > 4 * 1024 * 1024:
+            return True
         config = json.loads(
             path.read_text(encoding="utf-8-sig"), object_pairs_hook=_unique_config_keys
         )
+        named_project = name.startswith(("tsconfig", "jsconfig"))
+        # Withholding on extends also covers extensionless, package and nested
+        # base configs without guessing which inherited settings are effective.
+        if not named_project and not (
+            isinstance(config, dict)
+            and ("compileroptions" in config or "extends" in config)
+        ):
+            return False
         if (
             not isinstance(config, dict)
             or "extends" in config
@@ -189,11 +202,18 @@ def _unsafe_excluded_project(directory: Path) -> bool:
         for folder, directories, files in directory.walk(on_error=scan_error):
             if any((folder / name).is_junction() for name in directories):
                 return True
+            inspect_configs = (
+                "node_modules" not in folder.relative_to(directory.parent).parts
+            )
             for file in files:
                 name = file.lower()
                 if name.endswith(TYPESCRIPT_SUFFIXES) or (folder / file).is_symlink():
                     return True
-                if name in _CONFIG_FILES and _unmodeled_config(folder / file):
+                if (
+                    inspect_configs
+                    and name.endswith(".json")
+                    and _unmodeled_config(folder / file)
+                ):
                     return True
         return False
     except OSError:
@@ -213,10 +233,14 @@ def module_layout(path: str | Path) -> tuple[bool, tuple[str, ...] | None]:
     linked = False
     variants: list[str] = []
 
-    def scan_error(error: OSError) -> None:
-        raise error
-
     unsafe = _unsafe_ancestor_config(root)
+
+    def scan_error(error: OSError) -> None:
+        # Main's directory-link walk skips unreadable subtrees and continues
+        # looking for actual links. Only the JS alias inventory is incomplete.
+        nonlocal unsafe
+        unsafe = True
+
     try:
         for current, directories, filenames in os.walk(
             root, followlinks=False, onerror=scan_error
@@ -225,7 +249,7 @@ def module_layout(path: str | Path) -> tuple[bool, tuple[str, ...] | None]:
                 unsafe = any(
                     _unmodeled_config(Path(current) / name)
                     for name in filenames
-                    if name.lower() in _CONFIG_FILES
+                    if name.lower().endswith(".json")
                 )
             kept = []
             for name in directories:

@@ -12,6 +12,10 @@ refers to under the language's binding and module-resolution rules. This is
 what existing edges have always represented in every mode. The default
 `name` mode uses a heuristic to identify that declaration.
 
+For JS/TS, the target is the implementation file and export that module resolution
+loads, and ambient or type-only overlays such as `declare module` and `.d.ts`
+shims are outside the set of call targets.
+
 The edge does not guarantee what runs. A decorator can return a different
 callable, or code can replace one by monkeypatching, writing to a closure
 cell or frame, or modifying an object recovered from an exception. Compiler
@@ -66,7 +70,11 @@ extensionless files, alternate source and declaration extensions, and directory
 indexes. An opaque directory package or compiler configuration can also
 prevent a unique lookup. This includes `moduleSuffixes`, `paths`, `baseUrl`,
 `rootDirs`, `customConditions`, `allowArbitraryExtensions`, inherited configs,
-and explicit resolution modes other than `node` or `node10`. TypeScript can
+and explicit resolution modes other than `node` or `node10`. The guard checks
+JSON files throughout the extraction root, including build-specific projects
+and custom filenames, except under `node_modules`. An unreadable directory
+or JSON file that cannot be classified (including one over 4 MiB) withholds
+alias substitution. TypeScript can
 bind an export to a wildcard declaration such as `declare module "*.js"`
 even when its resolver finds a physical JS file. A string-named module
 declaration, or a TypeScript input without complete facts, therefore

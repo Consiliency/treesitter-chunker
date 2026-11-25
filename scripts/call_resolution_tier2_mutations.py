@@ -129,6 +129,42 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "        return False",
     ),
     (
+        "alias-named-project-config",
+        "chunker/symbol_graph.py",
+        'name.startswith(("tsconfig", "jsconfig"))',
+        "name in _CONFIG_FILES",
+    ),
+    (
+        "alias-custom-project-extends",
+        "chunker/symbol_graph.py",
+        '("compileroptions" in config or "extends" in config)',
+        '("compileroptions" in config)',
+    ),
+    (
+        "alias-discover-custom-json",
+        "chunker/symbol_graph.py",
+        '("compileroptions" in config or "extends" in config)',
+        '("extends" in config)',
+    ),
+    (
+        "alias-excluded-project-config",
+        "chunker/symbol_graph.py",
+        "                    inspect_configs\n",
+        "                    False\n",
+    ),
+    (
+        "alias-walk-error-python",
+        "chunker/symbol_graph.py",
+        "nonlocal unsafe\n        unsafe = True",
+        "nonlocal unsafe, linked\n        linked = unsafe = True",
+    ),
+    (
+        "alias-walk-error-inventory",
+        "chunker/symbol_graph.py",
+        "nonlocal unsafe\n        unsafe = True",
+        "pass",
+    ),
+    (
         "alias-repeated-config-key",
         "chunker/symbol_graph.py",
         "if folded in values:",

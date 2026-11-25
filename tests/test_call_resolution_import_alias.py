@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -862,6 +863,139 @@ def test_repeated_compiler_options_keep_the_first_suffix_active(tmp_path: Path) 
             "svc.ts": JS_SVC,
             "svc.test.ts": "export function exp(){ return 2; }",
             "tsconfig.json": '{"compilerOptions":{"moduleSuffixes":[".test",""]},"compilerOptions":{"module":"commonjs","moduleResolution":"node","noEmit":true}}',
+        },
+    )
+    _assert_alias_withheld(tmp_path)
+
+
+@pytest.mark.skipif(
+    os.name != "posix" or getattr(os, "geteuid", lambda: 0)() == 0,
+    reason="mode 000 requires an unprivileged POSIX user",
+)
+@pytest.mark.parametrize("mode", ["strict", "permissive"])
+def test_unreadable_directory_only_invalidates_js_inventory(
+    tmp_path: Path, mode: str
+) -> None:
+    _write(
+        tmp_path,
+        {
+            "svc.py": "def t(): return 1",
+            "other.py": "def t(): return 2",
+            "use.py": "from svc import t\ndef run(): return t()",
+            "tests/conftest.py": "exec('x')",
+            "use.ts": JS_USE,
+            "svc.ts": JS_SVC,
+        },
+    )
+    private = tmp_path / "private"
+    private.mkdir()
+    private.chmod(0)
+    try:
+        graph = extract_symbol_graph(
+            tmp_path, resolution_mode=mode, call_resolution="imports"
+        )
+        boundary = extract_boundary_ir(
+            tmp_path, resolution_mode=mode, call_resolution="imports"
+        )
+        for edges, target_key in (
+            (graph["relationships"], "to"),
+            (boundary["edges"], "target"),
+        ):
+            edge = _site(edges, "t")
+            assert edge["provenance"]["call_rules"] == ["t2.import"]
+            target = graph["symbol_lookup"][edge[target_key]]
+            assert (target["file"], target["line"]) == ("svc.py", 1)
+            assert _site(edges)["resolution"] == "unresolved"
+    finally:
+        private.chmod(0o700)
+
+
+@pytest.mark.parametrize(
+    "location", ["tsconfig.build.json", "projects/custom.json", "build/custom.json"]
+)
+def test_build_config_selects_suffixed_file(tmp_path: Path, location: str) -> None:
+    prefix = "../" if "/" in location else ""
+    _write(
+        tmp_path,
+        {
+            "package.json": json.dumps({"scripts": {"build": f"tsc -p {location}"}}),
+            location: json.dumps(
+                {
+                    "compilerOptions": {
+                        "module": "commonjs",
+                        "moduleResolution": "node",
+                        "moduleSuffixes": [".test", ""],
+                        "noEmit": True,
+                    },
+                    "files": [prefix + "use.ts"],
+                }
+            ),
+            "use.ts": JS_USE,
+            "svc.ts": JS_SVC,
+            "svc.test.ts": "export function exp(){ return 2; }",
+        },
+    )
+    _assert_alias_withheld(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "project", ["tsconfig.build.json", "jsconfig.test.json", "settings.json"]
+)
+def test_build_config_inherits_extensionless_base(tmp_path: Path, project: str) -> None:
+    _write(
+        tmp_path,
+        {
+            project: '{"extends":"./options.base"}',
+            "options.base": '{"compilerOptions":{"moduleSuffixes":[".test",""]}}',
+            "use.ts": JS_USE,
+            "svc.ts": JS_SVC,
+            "svc.test.ts": "export function exp(){ return 2; }",
+        },
+    )
+    _assert_alias_withheld(tmp_path)
+
+
+def test_unrelated_json_and_dependency_config_allow_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        {
+            "use.ts": JS_USE,
+            "svc.ts": JS_SVC,
+            "data.json": '{"metadata":{"compilerOptions":{"moduleSuffixes":[".test",""]}}}',
+            "node_modules/dep/tsconfig.build.json": '{"compilerOptions":{"moduleResolution":"bundler"}}',
+        },
+    )
+    edge = _site(
+        extract_symbol_graph(tmp_path, call_resolution="imports")["relationships"]
+    )
+    assert edge["provenance"]["call_rules"] == ["t2.import_alias"]
+
+
+def test_walk_error_keeps_link_scan_independent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Exercise the walk callback even on hosts that can read mode-000 directories.
+    private = tmp_path / "private"
+    private.mkdir()
+    scandir = os.scandir
+
+    def scan(path):
+        if path == str(private):
+            raise PermissionError(path)
+        return scandir(path)
+
+    monkeypatch.setattr(os, "scandir", scan)
+    assert module_layout(tmp_path) == (False, None)
+
+
+@pytest.mark.parametrize("name", ["tsconfig.build.json", "jsconfig.test.json"])
+def test_named_projects_without_compiler_options(tmp_path: Path, name: str) -> None:
+    _write(
+        tmp_path,
+        {
+            name: '{"references":[{"path":"../external"}]}',
+            "use.ts": JS_USE,
+            "svc.ts": JS_SVC,
         },
     )
     _assert_alias_withheld(tmp_path)
