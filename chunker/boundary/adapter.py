@@ -22,7 +22,7 @@ from chunker.symbol_graph import (
     collect_source_files,
     extract_symbol_facts_for_file,
     extract_symbol_graph,
-    has_directory_symlink,
+    module_layout,
     validate_call_resolution,
 )
 from chunker.types import (
@@ -310,7 +310,7 @@ def _edge_record(
     if resolution_mode == "strict":
         provenance["enforcement_grade"] = "strict"
     # Opt-in call resolution (treesitter-chunker#682): a narrowed call edge
-    # carries the mode and the rule IDs that removed candidates. Unchanged
+    # carries the mode and the rule IDs that changed its candidates. Unchanged
     # edges never carry them.
     relationship_provenance = relationship.get("provenance")
     if isinstance(relationship_provenance, dict):
@@ -923,6 +923,9 @@ def _assemble_boundary_ir(
     call_resolution: CallResolution = "name",
 ) -> dict[str, Any]:
     started_at = time.perf_counter()
+    links, variants = (
+        module_layout(root) if call_resolution == "imports" else (None, ())
+    )
     graph = assemble_symbol_graph(
         symbol_facts,
         total_files=len(file_records),
@@ -932,9 +935,8 @@ def _assemble_boundary_ir(
         resolution_mode=resolution_mode,
         call_resolution=call_resolution,
         language_filter=language,
-        directory_symlinks=(
-            has_directory_symlink(root) if call_resolution == "imports" else None
-        ),
+        directory_symlinks=links,
+        variant_paths=variants,
     )
     _add_duration(timing_spans, "graph_assembly_ms", started_at)
     diagnostics.extend(

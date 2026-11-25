@@ -24,9 +24,10 @@ filesystem access. The engine narrows call relationships in place:
    or more candidates remain, or when the single survivor is proven by ``P``.
    A filter alone therefore never resolves an edge.
 
-Every step only removes candidates and a step that would empty the set is
-skipped. An edge is ``resolved`` only when its one remaining candidate is in
-``P``. If a result ever broke these invariants the edge is left unchanged.
+For ordinary narrowing every step only removes candidates, and a step that
+would empty the set is skipped. In imports mode a bare JS/TS named import alias may instead
+substitute exactly one proven export outside C0 at any initial cardinality.
+An edge newly resolves only when its one remaining candidate is in ``P``.
 """
 
 from __future__ import annotations
@@ -38,7 +39,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from . import py_modules
-from .modules import ModuleRun, build_module_run, resolve_import
+from .modules import ModuleRun, alias_module_run, build_module_run, resolve_import
 
 RULE_LEXICAL = "t1.lexical"
 RULE_KIND = "t1.kind"
@@ -46,6 +47,7 @@ RULE_FAMILY = "t1.family"
 RULE_TS_OVERLOAD = "t1.ts_overload"
 RULE_JS_HOIST = "t1.js_hoist"
 RULE_IMPORT = "t2.import"
+RULE_IMPORT_ALIAS = "t2.import_alias"
 RULE_NAMESPACE = "t2.namespace"
 KNOWN_RULE_IDS = (
     RULE_LEXICAL,
@@ -54,10 +56,13 @@ KNOWN_RULE_IDS = (
     RULE_TS_OVERLOAD,
     RULE_JS_HOIST,
     RULE_IMPORT,
+    RULE_IMPORT_ALIAS,
     RULE_NAMESPACE,
 )
 # Rules that prove a binding; every resolved edge names one of them.
-BINDING_RULE_IDS = frozenset({RULE_LEXICAL, RULE_IMPORT, RULE_NAMESPACE})
+BINDING_RULE_IDS = frozenset(
+    {RULE_LEXICAL, RULE_IMPORT, RULE_NAMESPACE, RULE_IMPORT_ALIAS}
+)
 # A ``script_globals`` entry for a file that may write a global of any name.
 GLOBAL_WILDCARD = "*"
 # Collected languages whose files can carry inline scripts (``<script>``,
@@ -139,6 +144,7 @@ class RunContext:
     modules: ModuleRun | None = None
     # Tier 2 Python (9.4-9.6, PR 6), in ``imports`` mode only.
     py_modules: py_modules.PyModuleRun | None = None
+    alias_modules: ModuleRun | None = None
 
 
 @dataclass(frozen=True)
@@ -171,6 +177,7 @@ def build_run_context(
     *,
     language_filter: str | None = None,
     directory_symlinks: bool | None = None,
+    variant_paths: Sequence[str] | None = None,
 ) -> RunContext:
     """Index every file's scope facts by its display path."""
     facts = list(facts)
@@ -205,18 +212,24 @@ def build_run_context(
             unknown.add(path)
         for name in file_context.script_globals:
             declarers[name].add(path)
+    modules = (
+        build_module_run(facts, language_filter, directory_symlinks)
+        if mode == MODE_IMPORTS
+        else None
+    )
     return RunContext(
         mode=mode,
         files=files,
         symbol_lookup=symbol_lookup,
         language_filter=language_filter,
-        global_declarers={name: frozenset(paths) for name, paths in declarers.items()},
-        unknown_globals=frozenset(unknown),
-        modules=(
-            build_module_run(facts, language_filter, directory_symlinks)
-            if mode == MODE_IMPORTS
+        alias_modules=(
+            alias_module_run(modules, variant_paths)
+            if modules and variant_paths is not None
             else None
         ),
+        global_declarers={name: frozenset(paths) for name, paths in declarers.items()},
+        unknown_globals=frozenset(unknown),
+        modules=modules,
         py_modules=(
             py_modules.build_py_module_run(facts, directory_symlinks)
             if mode == MODE_IMPORTS
@@ -310,6 +323,7 @@ def proof(
     member: str | None = None,
     span_key: str | None = None,
     head: str | None = None,
+    alias: bool = False,
 ) -> tuple[frozenset[str], Mapping[str, Any], tuple[str, ...]]:
     """``(P, final outcome, binding rule IDs)`` for one call (6.3).
 
@@ -369,8 +383,11 @@ def proof(
     if member is not None and binding.get("member") != member:
         # The reference and the tree must agree on the member (fail closed).
         return frozenset(), _none("export-not-found"), ()
+    modules = context.alias_modules if alias else context.modules
+    if modules is None:
+        return frozenset(), _none("export-not-found"), ()
     resolved = resolve_import(
-        context.modules,
+        modules,
         file_context.path,
         file_context.language,
         binding,
@@ -510,6 +527,18 @@ def narrow(
     return current, tuple(rules)
 
 
+def _substitute(
+    before: tuple[str, ...], proven: frozenset[str], rules: tuple[str, ...]
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Substitute outside the name candidates only after a binding proof.
+
+    The caller checks eligibility and supplies its binding rule and group rules.
+    """
+    if len(proven) == 1 and proven.isdisjoint(before):
+        return tuple(proven), rules
+    return before, ()
+
+
 def decide(context: RunContext, relationship: Mapping[str, Any]) -> Decision:
     """The decision for one ``calls`` relationship in its off-mode form."""
     call_site_id = str(relationship.get("call_site_id") or "")
@@ -524,23 +553,35 @@ def decide(context: RunContext, relationship: Mapping[str, Any]) -> Decision:
         or not file_context.supported
     ):
         return not_eligible
-    if relationship.get("resolution") != "ambiguous" or len(before) < 2:
+    ambiguous = relationship.get("resolution") == "ambiguous" and len(before) >= 2
+    if not ambiguous and context.mode != MODE_IMPORTS:
         return not_eligible
     reference = str(relationship.get("reference") or "")
-    raw = file_context.bindings.get(
+    key = (
         f"{relationship.get('callee_byte_start')}:{relationship.get('callee_byte_end')}"
     )
+    raw = file_context.bindings.get(key)
     member: str | None = None
     family = language_family(file_context.language)
+    binding = (raw or {}).get("binding") or {}
+    alias = (
+        context.mode == MODE_IMPORTS
+        and (raw or {}).get("outcome") == "import"
+        and is_bare_identifier(reference)
+        and bool(binding.get("name"))
+        and binding["name"] != reference
+        and family == "js"
+        and binding.get("form") == "named"
+        and context.modules is not None
+        and context.modules.alias_loads_stable
+    )
+    if not ambiguous and not alias:
+        return not_eligible
     if family == "python" and not is_bare_identifier(reference):
         # Tier 2 Python: a member chain whose head the lookup binds to an
         # import (or a group of imports), with the chain read from the tree
         # matching the reference exactly (9.4). Every other member call is
         # untouched.
-        key = (
-            f"{relationship.get('callee_byte_start')}:"
-            f"{relationship.get('callee_byte_end')}"
-        )
         run = context.py_modules
         py_file = run.files.get(file_context.path) if run is not None else None
         chain = py_file.chains.get(key) if py_file is not None else None
@@ -557,7 +598,6 @@ def decide(context: RunContext, relationship: Mapping[str, Any]) -> Decision:
         # Tier 2: a two-segment member call whose head the lookup binds to a
         # namespace import (9.1). Every other member call is untouched.
         member = namespace_member(reference)
-        binding = (raw or {}).get("binding") or {}
         if (
             context.mode != MODE_IMPORTS
             or member is None
@@ -567,6 +607,25 @@ def decide(context: RunContext, relationship: Mapping[str, Any]) -> Decision:
         ):
             return not_eligible
     raw = script_global_outcome(context, file_context, raw)
+    if alias:
+        proven, outcome, binding_rules = proof(
+            raw,
+            context.mode,
+            file_context,
+            context.symbol_lookup,
+            context=context,
+            alias=True,
+        )
+        if RULE_IMPORT in binding_rules:
+            after, rules = _substitute(
+                before, proven, (RULE_IMPORT_ALIAS, *binding_rules[1:])
+            )
+            if rules:
+                return Decision(
+                    call_site_id, True, outcome, before, after, proven, rules
+                )
+    if not ambiguous:
+        return not_eligible
     proven, outcome, binding_rules = proof(
         raw,
         context.mode,
@@ -574,10 +633,7 @@ def decide(context: RunContext, relationship: Mapping[str, Any]) -> Decision:
         context.symbol_lookup,
         context=context,
         member=member,
-        span_key=(
-            f"{relationship.get('callee_byte_start')}:"
-            f"{relationship.get('callee_byte_end')}"
-        ),
+        span_key=key,
         head=reference.partition(".")[0] or None,
     )
     after, rules = narrow(

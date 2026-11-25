@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import re
+import stat
 from bisect import bisect_left
 from collections import defaultdict
 from collections.abc import Sequence
@@ -82,12 +84,61 @@ def _should_skip_path(path: Path) -> bool:
     return any(part in SKIP_PARTS for part in path.parts)
 
 
+_ALIAS_SCAN_LIMIT = 4 * 1024 * 1024
+
+
+def _unsafe_alias_file(path: Path) -> bool:
+    info = path.lstat()
+    if stat.S_ISLNK(info.st_mode) or path.is_junction():
+        return True
+    if not stat.S_ISREG(info.st_mode):
+        return False
+    if info.st_size > _ALIAS_SCAN_LIMIT:
+        return True
+    with path.open("rb") as stream:
+        data = stream.read(_ALIAS_SCAN_LIMIT + 1).lower()
+    return (
+        len(data) > _ALIAS_SCAN_LIMIT
+        or b"rootdirs" in data
+        or b"modulesuffixes" in data
+    )
+
+
+def module_layout(path: str | Path) -> tuple[bool, tuple[str, ...] | None]:
+    """Return the ordinary link flag and a fresh inventory for JS alias lookup."""
+    root = Path(path)
+    linked = has_directory_symlink(root)
+    if linked or not root.is_dir():
+        return linked, None
+
+    def scan_error(error: OSError) -> None:
+        raise error
+
+    variants: list[str] = []
+    try:
+        for folder, directories, files in root.walk(on_error=scan_error):
+            directories[:] = [
+                d for d in directories if d not in {".git", "node_modules"}
+            ]
+            if (folder / "node_modules" / "@types").is_dir():
+                return linked, None
+            if any((folder / name).is_junction() for name in directories):
+                return linked, None
+            for name in files:
+                entry = folder / name
+                if _unsafe_alias_file(entry):
+                    return linked, None
+                variants.append(entry.relative_to(root).as_posix())
+    except OSError:
+        # A partial inventory invalidates only the JS alias proof.
+        return linked, None
+    return linked, tuple(variants)
+
+
 def has_directory_symlink(path: str | Path) -> bool:
     """Whether a directory symlink lies under ``path`` outside the skipped
     directories (P5-2). Collection never follows one, so Tier 2's O-2
     promotion cannot see what it reaches."""
-    import os
-
     root = Path(path)
     if not root.is_dir():
         return False
@@ -693,6 +744,7 @@ def assemble_symbol_graph(
     call_resolution: CallResolution = "name",
     language_filter: str | None = None,
     directory_symlinks: bool | None = None,
+    variant_paths: Sequence[str] | None = None,
 ) -> dict[str, Any]:
     """Assemble public symbol graph output from per-file facts.
 
@@ -701,9 +753,12 @@ def assemble_symbol_graph(
     is not ``False``, Tier 2 treats every test file as production (P5-2).
 
     ``call_resolution`` (experimental) narrows ambiguous call edges with the
-    per-file ``scope_facts``, which every fact must then carry.
+    per-file ``scope_facts``, which every fact must then carry. Imports mode
+    can also substitute a proven target for a renamed JS/TS import.
     ``language_filter`` is the run's ``language`` argument; the run's file
-    set comes from the facts, so assembly does no filesystem access.
+    set comes from the facts. Supply the complete filename snapshot from module_layout in
+    ``variant_paths``, or None if the inventory is incomplete. Assembly does
+    no filesystem access.
     """
     if resolution_mode not in RESOLUTION_MODES:
         msg = f"Unsupported resolution_mode: {resolution_mode}"
@@ -858,6 +913,7 @@ def assemble_symbol_graph(
                 call_resolution,
                 language_filter=language_filter,
                 directory_symlinks=directory_symlinks,
+                variant_paths=variant_paths,
             ),
         )
 
@@ -959,15 +1015,17 @@ def extract_symbol_graph(
         )
         for file_path in files
     ]
+    links, variants = (
+        module_layout(root) if call_resolution == "imports" else (None, ())
+    )
     return assemble_symbol_graph(
         facts,
         total_files=len(files),
         resolution_mode=resolution_mode,
         call_resolution=call_resolution,
         language_filter=language,
-        directory_symlinks=(
-            has_directory_symlink(root) if call_resolution == "imports" else None
-        ),
+        directory_symlinks=links,
+        variant_paths=variants,
     )
 
 

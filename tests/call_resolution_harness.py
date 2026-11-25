@@ -13,7 +13,8 @@ violation, tagged with the plan's check number:
    not ambiguous off is identical on; an ambiguous edge keeps two or more
    candidates and ``to == reference``; a resolved edge has
    ``candidates == [to]``, ``to`` in the off set, ``is_internal`` true and a
-   binding rule in ``call_rules``.
+   binding rule in ``call_rules``. A proven JS/TS imports-mode alias can replace
+   the entire off set with its single target, marked ``t2.import_alias``.
 4. ``metadata`` is equal except ``call_resolution``.
 5. Boundary ``nodes``, ``files``, ``diagnostics``, ``source`` and
    ``schema_version`` are byte-identical.
@@ -23,8 +24,7 @@ violation, tagged with the plan's check number:
    id``.
 7. Boundary narrowing invariants (B2), including the provenance keys of
    changed edges.
-8. ``metrics`` are equal except ``resolved_edges`` and ``ambiguous_edges``,
-   whose sum is unchanged; ``run.options`` is equal except
+8. Resolution counters match the emitted edges; other metrics stay equal; ``run.options`` is equal except
    ``call_resolution``.
 9. ``call_resolution="name"`` is byte-identical to omitting the argument.
 10. Off-mode output equals the PR 0 baseline: see
@@ -44,13 +44,21 @@ import importlib.util
 import json
 import sys
 import tempfile
+from collections import Counter
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
 from typing import Any
 
-from chunker.call_resolution.engine import BINDING_RULE_IDS, KNOWN_RULE_IDS
+from chunker.call_resolution.modules import JS_EXTENSION_LANGUAGES
+from chunker.call_resolution.engine import (
+    BINDING_RULE_IDS,
+    GROUP_RULE_IDS,
+    KNOWN_RULE_IDS,
+    RULE_IMPORT_ALIAS,
+    language_family,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "tests" / "fixtures" / "call_resolution"
@@ -234,8 +242,43 @@ def symbol_graph_violations(
                 keys_check=2,
             )
         )
-        found.extend(_narrowing_violations(off_edge, on_edge, label))
+        rules = (on_edge.get("provenance") or {}).get("call_rules")
+        if isinstance(rules, list) and RULE_IMPORT_ALIAS in rules:
+            found.extend(
+                _alias_violations(
+                    off_edge, on_edge, mode, on["symbol_lookup"], 3, label
+                )
+            )
+        else:
+            found.extend(_narrowing_violations(off_edge, on_edge, label))
     return found
+
+
+def _alias_violations(
+    off: dict[str, Any],
+    on: dict[str, Any],
+    mode: str,
+    symbols: dict[str, dict[str, Any]],
+    check: int,
+    label: str,
+) -> list[Violation]:
+    """The sole exception to the remove-only contract, on both graph surfaces."""
+    target = on["to"] if "to" in on else on["target"]
+    internal = on.get("is_internal", on.get("metadata", {}).get("is_internal"))
+    rules = on["provenance"]["call_rules"]
+    if (
+        mode != "imports"
+        or Path(off["file"]).suffix.lower() not in JS_EXTENSION_LANGUAGES
+        or rules[0] != RULE_IMPORT_ALIAS
+        or not set(rules[1:]) <= GROUP_RULE_IDS
+        or on["resolution"] != "resolved"
+        or on["candidates"] != [target]
+        or target in off["candidates"]
+        or language_family(symbols.get(target, {}).get("language")) != "js"
+        or internal is not True
+    ):
+        return [Violation(check, f"{label}: invalid alias substitution")]
+    return []
 
 
 def _narrowing_violations(
@@ -298,10 +341,13 @@ def boundary_violations(
             found.append(Violation(5, f"{key} differs"))
     # Check 8.
     off_metrics, on_metrics = dict(off["metrics"]), dict(on["metrics"])
-    off_sum = off_metrics.pop("resolved_edges") + off_metrics.pop("ambiguous_edges")
-    on_sum = on_metrics.pop("resolved_edges") + on_metrics.pop("ambiguous_edges")
-    if off_metrics != on_metrics or off_sum != on_sum:
-        found.append(Violation(8, "metrics differ beyond the resolved/ambiguous split"))
+    for document, metrics in ((off, off_metrics), (on, on_metrics)):
+        counts = Counter(edge["resolution"] for edge in document["edges"])
+        for status in ("unresolved", "ambiguous", "resolved"):
+            if metrics.pop(f"{status}_edges") != counts[status]:
+                found.append(Violation(8, f"wrong {status} edge count"))
+    if off_metrics != on_metrics:
+        found.append(Violation(8, "metrics differ beyond the resolution counts"))
     off_options = dict(off["run"]["options"])
     on_options = dict(on["run"]["options"])
     if "call_resolution" in off_options:
@@ -318,13 +364,14 @@ def boundary_violations(
     off_edges, on_edges = _edges_by_id(off), _edges_by_id(on)
     if set(off_edges) != set(on_edges) or len(off["edges"]) != len(on["edges"]):
         found.append(Violation(6, "edge id sets differ"))
+    nodes = {node["id"]: node for node in on["nodes"]}
     for edge_id in sorted(set(off_edges) & set(on_edges)):
         off_edge, on_edge = off_edges[edge_id], on_edges[edge_id]
         if not _is_syntax_call(off_edge):
             if canonical(off_edge) != canonical(on_edge):
                 found.append(Violation(6, f"{edge_id}: non-call edge differs"))
             continue
-        found.extend(_call_edge_violations(off_edge, on_edge, mode, edge_id))
+        found.extend(_call_edge_violations(off_edge, on_edge, mode, edge_id, nodes))
     for document in (off, on):
         for edge in document["edges"]:
             if not _is_syntax_call(edge):
@@ -342,7 +389,11 @@ def boundary_violations(
 
 
 def _call_edge_violations(
-    off: dict[str, Any], on: dict[str, Any], mode: str, label: str
+    off: dict[str, Any],
+    on: dict[str, Any],
+    mode: str,
+    label: str,
+    nodes: dict[str, dict[str, Any]],
 ) -> list[Violation]:
     found: list[Violation] = []
     if _without(off, EDGE_MUTABLE_FIELDS) != _without(on, EDGE_MUTABLE_FIELDS):
@@ -359,6 +410,9 @@ def _call_edge_violations(
             off, on, mode, changed, label, beyond_check=6, keys_check=7
         )
     )
+    rules = (on.get("provenance") or {}).get("call_rules")
+    if isinstance(rules, list) and RULE_IMPORT_ALIAS in rules:
+        return found + _alias_violations(off, on, mode, nodes, 7, label)
     off_candidates = list(off.get("candidates") or [])
     on_candidates = list(on.get("candidates") or [])
     if not set(on_candidates) <= set(off_candidates):

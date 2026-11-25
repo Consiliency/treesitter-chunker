@@ -313,7 +313,9 @@ logger = logging.getLogger(__name__)
 # constant word or a ``__class__`` write. Only ``imports``-mode facts change;
 # the fixtures' digests change only by the version. R-724-7 limits freshness
 # to types.ModuleType because a loader may return an existing module.
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "23", "python": "43"}
+# js "26": record module decorators and hazards in compiler-generated calls.
+# js "27": record string-named ambient modules for renamed-import proofs.
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "27", "python": "43"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.
@@ -671,6 +673,9 @@ def valid_outcome(value: object) -> bool:
 _MODULE_BINDING_KEYS = frozenset(
     {
         "stars",
+        "has_decorator",
+        "has_ambient_module",
+        "unsafe_alias_emit",
         "commonjs",
         "opaque",
         "symlink",
@@ -730,6 +735,9 @@ def valid_module_bindings(value: object) -> bool:
             and all(isinstance(item, str) for item in value[key])
             for key in ("stars", "taints", "imports", "filename_taints", "shutoff")
         )
+        and isinstance(value["has_decorator"], bool)
+        and isinstance(value["has_ambient_module"], bool)
+        and isinstance(value["unsafe_alias_emit"], bool)
         and set(value["shutoff"]) <= set(SHUTOFF_CAUSES)
         and isinstance(value["ns_uses"], list)
         and all(

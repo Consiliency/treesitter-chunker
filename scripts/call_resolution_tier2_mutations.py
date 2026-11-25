@@ -33,6 +33,7 @@ JSS = CR + "js_scope.py"
 STR = CR + "js_strings.py"
 FACTS = CR + "facts.py"
 TESTS = (
+    "tests/test_call_resolution_import_alias.py",
     "tests/test_call_resolution_tier2_js.py",
     "tests/test_call_resolution_engine.py::test_expected_imports_tables_hold_at_this_head",
     # treesitter-chunker#694 pins for the property-writer mutations below.
@@ -43,6 +44,170 @@ TESTS = (
 
 # (id, file, old text, new text). The old text must occur in the file.
 MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "alias-pick-first",
+        ENG,
+        "if len(proven) == 1 and proven.isdisjoint(before):\n        return tuple(proven), rules",
+        "if proven and proven.isdisjoint(before):\n        return (min(proven),), rules",
+    ),
+    (
+        "alias-substitution",
+        ENG,
+        "if RULE_IMPORT in binding_rules:",
+        "if False:",
+    ),
+    (
+        "alias-module-decorator",
+        MOD,
+        "if module.has_decorator}",
+        "if False}",
+    ),
+    (
+        "alias-namespace-receiver",
+        MOD,
+        "    blocked.update(run.namespace_call_receivers)\n",
+        "",
+    ),
+    (
+        "alias-assume-complete-inventory",
+        ENG,
+        "alias_module_run(modules, variant_paths)\n            if modules and variant_paths is not None",
+        "alias_module_run(modules, variant_paths if variant_paths is not None else tuple(modules.index.paths))\n            if modules",
+    ),
+    (
+        "alias-emit-collision",
+        MOD,
+        "not unsafe_alias_emit",
+        "True",
+    ),
+    (
+        "alias-competing-variants",
+        MOD,
+        "or not _unique_alias_target(index, requested, target)",
+        "",
+    ),
+    (
+        "alias-literal-disk-file",
+        MOD,
+        "paths = {base}",
+        "paths = set()",
+    ),
+    (
+        "alias-appended-extension",
+        MOD,
+        "    paths.update(base + ext for ext in extensions)",
+        "",
+    ),
+    (
+        "alias-replaced-extension",
+        MOD,
+        "if base.endswith(suffix):",
+        "if False:",
+    ),
+    (
+        "alias-arbitrary-declaration",
+        MOD,
+        "    if dot:\n        paths.add",
+        "    if False:\n        paths.add",
+    ),
+    (
+        "alias-substituted-index",
+        MOD,
+        "for path in paths for ext in extensions}",
+        "for path in (base,) for ext in extensions}",
+    ),
+    (
+        "alias-package-target",
+        MOD,
+        'if any(f"{path}/package.json" in index.alias_disk_paths for path in paths):',
+        "if False:",
+    ),
+    (
+        "alias-relative-specifier",
+        MOD,
+        'if not is_relative(specifier):\n        return (), "external-module"',
+        'if False:\n        return (), "external-module"',
+    ),
+    (
+        "alias-prefix-sibling",
+        MOD,
+        "name != selected and name.startswith(prefix)",
+        "False",
+    ),
+    (
+        "alias-rootdirs-token",
+        "chunker/symbol_graph.py",
+        ' or b"rootdirs" in data',
+        "",
+    ),
+    (
+        "alias-modulesuffixes-token",
+        "chunker/symbol_graph.py",
+        ' or b"modulesuffixes" in data',
+        "",
+    ),
+    (
+        "alias-scan-excluded-build",
+        "chunker/symbol_graph.py",
+        'if d not in {".git", "node_modules"}',
+        "if d not in SKIP_PARTS",
+    ),
+    (
+        "alias-oversized-file",
+        "chunker/symbol_graph.py",
+        "if info.st_size > _ALIAS_SCAN_LIMIT:\n        return True",
+        "if info.st_size > _ALIAS_SCAN_LIMIT:\n        return False",
+    ),
+    (
+        "alias-walk-error-python",
+        "chunker/symbol_graph.py",
+        "return linked, None\n    return linked, tuple(variants)",
+        "return True, None\n    return linked, tuple(variants)",
+    ),
+    (
+        "alias-read-error-inventory",
+        "chunker/symbol_graph.py",
+        "return linked, None\n    return linked, tuple(variants)",
+        "pass\n    return linked, tuple(variants)",
+    ),
+    (
+        "alias-walk-error-inventory",
+        "chunker/symbol_graph.py",
+        "root.walk(on_error=scan_error)",
+        "root.walk()",
+    ),
+    (
+        "alias-ambient-module",
+        MOD,
+        "if any(module.has_ambient_module for module in run.files.values()):",
+        "if False:",
+    ),
+    (
+        "alias-unparsed-typescript",
+        MOD,
+        "if module is None or not module.supported:",
+        "if False:",
+    ),
+    (
+        "alias-enable-python",
+        ENG,
+        'and family == "js"\n        and binding.get("form") == "named"\n'
+        "        and context.modules is not None\n        and context.modules.alias_loads_stable",
+        'and binding.get("form") in ("from", "named")',
+    ),
+    (
+        "alias-enable-python-with-candidates",
+        ENG,
+        'and family == "js"\n        and binding.get("form") == "named"\n'
+        "        and context.modules is not None\n        and context.modules.alias_loads_stable",
+        'and (binding.get("form") == "named" or (family == "python" and before and binding.get("form") == "from"))',
+    ),
+    (
+        "alias-url-path",
+        ENG,
+        "        and context.modules.alias_loads_stable",
+        "",
+    ),
     # Node builtin loads and process tokens (treesitter-chunker#702).
     (
         "702-evaluator-specifier",
