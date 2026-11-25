@@ -55,7 +55,7 @@ import posixpath
 import re
 import unicodedata
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 from urllib.parse import unquote
 
@@ -152,6 +152,9 @@ class ModuleIndex:
     names: Mapping[str, frozenset[str]] = field(default_factory=dict)
     # JS/TS files collected through a symlink (E5-5).
     symlinks: frozenset[str] = frozenset()
+
+    # Present only for the stricter renamed-import proof.
+    alias_blocked: frozenset[str] | None = None
 
     @classmethod
     def build(
@@ -394,12 +397,15 @@ def resolve_specifier(
         # Node resolves a symlinked file's imports from its real path, tsc
         # from the link (E5-5, A4): toolchains disagree.
         return None, "unknown-variant"
-    candidates, reason = candidate_list(specifier, importer, language)
-    if reason is not None:
-        return None, reason
     requested = posixpath.normpath(
         posixpath.join(posixpath.dirname(importer), specifier)
     )
+    if index.alias_blocked is not None and requested not in index.paths:
+        # In a JS entry point tsc can select the lone TypeScript source.
+        language = "typescript"
+    candidates, reason = candidate_list(specifier, importer, language)
+    if reason is not None:
+        return None, reason
     if requested in index.run_paths and requested not in candidates:
         # ``./svc.vue`` beside ``svc.vue.ts``: a loader would read the exact
         # file (E5-5).
@@ -418,6 +424,8 @@ def resolve_specifier(
     if not existing:
         return None, "module-not-found"
     target = existing[0]
+    if index.alias_blocked is not None and target in index.alias_blocked:
+        return None, "unknown-variant"
     if target in index.symlinks:
         return None, "unknown-variant"
     directory = target.rpartition("/")[0]
@@ -445,6 +453,7 @@ class ModuleFile:
     stars: tuple[str, ...] = ()
     commonjs: bool = False
     opaque: bool = False
+    has_decorator: bool = False
 
 
 @dataclass(frozen=True)
@@ -467,6 +476,7 @@ class ModuleRun:
     # Alias substitution requires literal paths to agree with URL parsing,
     # including paths that may reach a writer through another module.
     alias_specifiers_stable: bool = False
+    namespace_call_receivers: frozenset[str] = frozenset()
 
     @property
     def taint_all(self) -> bool:
@@ -477,6 +487,35 @@ class ModuleRun:
         if importer in self.test_scope:
             return self.tainted | self.test_tainted
         return self.tainted
+
+
+def alias_module_run(run: ModuleRun, variant_paths: Sequence[str]) -> ModuleRun:
+    """Reject unsafe modules at every hop, leaving ordinary Tier 2 untouched."""
+    stems: set[str] = set()
+    competing: set[str] = set()
+    for path in run.index.paths.union(variant_paths):
+        for stem in _variant_stems(path):
+            if stem in stems:
+                competing.add(stem)
+            stems.add(stem)
+    blocked = {
+        path
+        for path, module in run.files.items()
+        if module.has_decorator or not competing.isdisjoint(_variant_stems(path))
+    }
+    # CommonJS namespace calls receive the exports object. The emitted body
+    # can write it even without an explicit ``this`` in the source (e.g. a
+    # class field downleveled to ES5). Only alias substitution uses this veto.
+    blocked.update(run.namespace_call_receivers)
+    return replace(run, index=replace(run.index, alias_blocked=frozenset(blocked)))
+
+
+def _variant_stems(path: str) -> tuple[str, ...]:
+    stem, _ = posixpath.splitext(_fold(path))
+    if path.lower().endswith((".d.ts", ".d.mts", ".d.cts")):
+        # svc.d.ts can stand for svc.js or match literal substitution for svc.d.js.
+        return stem, stem.removesuffix(".d")
+    return (stem,)
 
 
 def build_module_run(
@@ -547,6 +586,7 @@ def build_module_run(
             stars=tuple(str(spec) for spec in bindings.get("stars", ())),
             commonjs=bool(bindings.get("commonjs")),
             opaque=bool(bindings.get("opaque")) or not supported,
+            has_decorator=bool(bindings.get("has_decorator")),
         )
     for path, specifier in filename_taints:
         if filename_writers:
@@ -576,11 +616,15 @@ def build_module_run(
 
     for path, specifier in taints:
         taint(path, specifier)
+    namespace_call_receivers: set[str] = set()
     structural = ModuleRun(index, files)
     for path, language, specifier, member, kind in ns_uses:
         # E5-1 (A2/B-5): ``ns.name`` must be a verified export, and
         # ``ns.f()`` must reach a declaration that never mentions ``this``.
         target, _ = resolve_specifier(index, specifier, path, language)
+        if kind == "call":
+            receivers = lenient_targets(index, specifier, path)
+            namespace_call_receivers.update(files if receivers is None else receivers)
         verified = False
         if target is not None:
             found = _lookup(structural, target, member, 0, (), None)
@@ -611,6 +655,7 @@ def build_module_run(
         frozenset(tainted[False]),
         dict(shutoff[False]),
         frozenset(files) - production,
+        namespace_call_receivers=frozenset(namespace_call_receivers),
         alias_specifiers_stable=all(
             source == source.strip(_C0_AND_SPACE) and not _URL_NOISE.search(source)
             for sources in edges.values()

@@ -24,9 +24,8 @@ interface and a function of one name merge.
 
 ``module_bindings`` holds:
 
-``decorated_classes``
-    Declaration triples for classes whose decorators can replace the binding.
-    Alias substitution checks the final declaration after following re-exports.
+``has_decorator``
+    A decorator anywhere in this module can run code or replace a binding.
 ``stars``
     The specifiers of ``export * from`` (step 4), in source order.
 ``commonjs``
@@ -315,7 +314,7 @@ class _ModuleFacts:
     def __init__(self, analysis: _Analysis, symlink: bool = False) -> None:
         self.analysis = analysis
         self.source = analysis.source
-        self.decorated_classes: set[tuple[str, int, int]] = set()
+        self.has_decorator = False
         self.entries: dict[str, list[tuple[Any, ...]]] = {}
         self.stars: list[str] = []
         self.commonjs = False
@@ -568,39 +567,13 @@ class _ModuleFacts:
         elif specifier in _PROCESS_SPECIFIERS:
             self.shutoff.add(CAUSE_MODULE_SYSTEM)
 
-    def _class_decorator(self, decorator: Any) -> None:
-        """Record the declaration whose constructor a decorator can replace."""
-        owner = decorator.parent
-        if owner.type == "export_statement":
-            # A decorator before the export keyword belongs to the wrapper.
-            owner = owner.child_by_field_name("declaration")
-        elif owner.type in ("required_parameter", "optional_parameter"):
-            # Legacy TS emits Service = __decorate([...], Service) for a
-            # decorated constructor parameter, even without a class decorator.
-            # The result can come from a user-supplied Reflect.decorate.
-            method = owner.parent.parent
-            if (
-                method.type != "method_definition"
-                or method.parent.type != "class_body"
-                or _has_token(method, "static")
-                or module_export_name(method.child_by_field_name("name"), self.source)
-                != "constructor"
-            ):
-                return
-            owner = method.parent.parent
-        if owner is not None and owner.type in (
-            "class_declaration",
-            "abstract_class_declaration",
-        ):
-            self.decorated_classes.add((owner.type, owner.start_byte, owner.end_byte))
-
     def module_system(self) -> None:
         analysis = self.analysis
         handled: set[int] = set()
         for node in _walk(analysis.root):
             kind = node.type
             if kind == "decorator":
-                self._class_decorator(node)
+                self.has_decorator = True
             elif kind in _MODULE_SYSTEM_NAME_TOKENS:
                 self._name(node, handled)
             elif kind == "call_expression":
@@ -1544,9 +1517,7 @@ class _ModuleFacts:
         # writer check always decides.
         return {
             "stars": list(self.stars),
-            "decorated_classes": [
-                list(decl) for decl in sorted(self.decorated_classes)
-            ],
+            "has_decorator": self.has_decorator,
             "commonjs": self.commonjs or self.analysis.goal == "script",
             "opaque": self.opaque,
             "symlink": self.symlink,

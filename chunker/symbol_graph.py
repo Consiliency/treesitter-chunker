@@ -82,30 +82,51 @@ def _should_skip_path(path: Path) -> bool:
     return any(part in SKIP_PARTS for part in path.parts)
 
 
-def has_directory_symlink(path: str | Path) -> bool:
-    """Whether a directory symlink lies under ``path`` outside the skipped
-    directories (P5-2). Collection never follows one, so Tier 2's O-2
-    promotion cannot see what it reaches."""
+def module_layout(path: str | Path) -> tuple[bool, tuple[str, ...] | None]:
+    """Directory links and JS/TS filenames, including unparsed variants.
+
+    Read filenames again for incremental assembly: a sibling can change
+    import resolution without changing any cached source file.
+    """
     import os
 
     root = Path(path)
     if not root.is_dir():
-        return False
+        return False, ()
+    linked = False
+    variants: list[str] = []
+
+    def scan_error(error: OSError) -> None:
+        raise error
+
     try:
-        for current, directories, _ in os.walk(root, followlinks=False):
+        for current, directories, filenames in os.walk(
+            root, followlinks=False, onerror=scan_error
+        ):
             kept = []
             for name in directories:
                 if name in SKIP_PARTS:
                     continue
                 entry = Path(current) / name
-                # P5-16: a Windows directory junction behaves like a link.
                 if entry.is_symlink() or entry.is_junction():
-                    return True
-                kept.append(name)
+                    linked = True
+                else:
+                    kept.append(name)
             directories[:] = kept
+            for name in filenames:
+                if name.lower().endswith(
+                    (".js", ".jsx", ".ts", ".tsx", ".mjs", ".mts", ".cjs", ".cts")
+                ):
+                    variants.append((Path(current) / name).relative_to(root).as_posix())
     except OSError:
-        return True
-    return False
+        # An incomplete directory inventory cannot support an alias proof.
+        return True, None
+    return linked, tuple(variants)
+
+
+def has_directory_symlink(path: str | Path) -> bool:
+    """Whether the imports-mode directory scan found a symlink or junction."""
+    return module_layout(path)[0]
 
 
 def collect_source_files(path: str | Path, language: str | None = None) -> list[Path]:
@@ -693,6 +714,7 @@ def assemble_symbol_graph(
     call_resolution: CallResolution = "name",
     language_filter: str | None = None,
     directory_symlinks: bool | None = None,
+    variant_paths: Sequence[str] | None = (),
 ) -> dict[str, Any]:
     """Assemble public symbol graph output from per-file facts.
 
@@ -704,7 +726,9 @@ def assemble_symbol_graph(
     per-file ``scope_facts``, which every fact must then carry. Imports mode
     can also substitute a proven target for a renamed JS/TS import.
     ``language_filter`` is the run's ``language`` argument; the run's file
-    set comes from the facts, so assembly does no filesystem access.
+    set comes from the facts. Supply any additional JS/TS variant filenames in
+    ``variant_paths``, or None if the inventory is incomplete. Assembly does
+    no filesystem access.
     """
     if resolution_mode not in RESOLUTION_MODES:
         msg = f"Unsupported resolution_mode: {resolution_mode}"
@@ -859,6 +883,7 @@ def assemble_symbol_graph(
                 call_resolution,
                 language_filter=language_filter,
                 directory_symlinks=directory_symlinks,
+                variant_paths=variant_paths,
             ),
         )
 
@@ -960,15 +985,17 @@ def extract_symbol_graph(
         )
         for file_path in files
     ]
+    links, variants = (
+        module_layout(root) if call_resolution == "imports" else (None, ())
+    )
     return assemble_symbol_graph(
         facts,
         total_files=len(files),
         resolution_mode=resolution_mode,
         call_resolution=call_resolution,
         language_filter=language,
-        directory_symlinks=(
-            has_directory_symlink(root) if call_resolution == "imports" else None
-        ),
+        directory_symlinks=links,
+        variant_paths=variants,
     )
 
 

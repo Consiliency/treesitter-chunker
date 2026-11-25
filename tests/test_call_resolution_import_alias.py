@@ -364,12 +364,12 @@ def test_legacy_constructor_parameter_can_replace_alias_target(tmp_path: Path) -
     ("declaration", "exported", "decorated"),
     [
         ("export class Service {}", "Service", False),
-        ("export class Service { @d m(){} }", "Service", False),
-        ("export class Service { method(@d x: number){} }", "Service", False),
+        ("export class Service { @d m(){} }", "Service", True),
+        ("export class Service { method(@d x: number){} }", "Service", True),
         ("export class Service { constructor(@d x: number){} }", "Service", True),
         ('export class Service { "constructor"(@d x: number){} }', "Service", True),
-        ("export class Service { @d field = 1 }", "Service", False),
-        ("export class Service { @d accessor value = 1 }", "Service", False),
+        ("export class Service { @d field = 1 }", "Service", True),
+        ("export class Service { @d accessor value = 1 }", "Service", True),
         ("@d export class Service {}", "Service", True),
         ("export @d class Service {}", "Service", True),
         ("@d class Service {} export {Service}", "Service", True),
@@ -433,3 +433,159 @@ def test_incremental_class_decorator_invalidates_target(
             extract_boundary_ir(root, call_resolution="imports")["edges"]
         )
         assert edge["resolution"] == ("unresolved" if prefix else "resolved")
+
+
+@pytest.mark.parametrize("forwarded", [False, True])
+def test_decorated_namespace_call_replaces_other_export(
+    tmp_path: Path, forwarded: bool
+) -> None:
+    _write(
+        tmp_path,
+        {
+            "svc.ts": (
+                "function other() { return 'replacement' }\n"
+                "function swap(cls: typeof Install) {\n"
+                "  return function(this: any) { this.exp = other } as unknown as typeof Install\n"
+                "}\n@swap export class Install {}\n"
+                "export function exp() { return 'original' }"
+            ),
+            "use.ts": (
+                "import * as svc from './svc.js';\n"
+                "import {exp as alias} from './svc.js';\n"
+                "export function run() { (svc.Install as unknown as () => void)(); return alias(); }\n"
+                "console.log(run());"
+            ),
+        },
+    )
+    if forwarded:
+        installer, export = (
+            (tmp_path / "svc.ts").read_text().split("export function exp")
+        )
+        _write(
+            tmp_path,
+            {
+                "install.ts": installer,
+                "svc.ts": "export {Install} from './install.js';\nexport function exp"
+                + export,
+            },
+        )
+    _assert_alias_withheld(tmp_path)
+
+
+def _assert_alias_withheld(root: Path) -> None:
+    for extract, field in (
+        (extract_symbol_graph, "relationships"),
+        (extract_boundary_ir, "edges"),
+    ):
+        before = _site(extract(root)[field])
+        assert before["resolution"] == "unresolved"
+        assert _site(extract(root, call_resolution="imports")[field]) == before
+
+
+@pytest.mark.parametrize(
+    "bridge",
+    [
+        "export {exp} from './svc.js';",
+        "export * from './svc.js';",
+        "import {exp} from './svc.js'; export {exp};",
+    ],
+)
+def test_decorator_in_intermediate_module(tmp_path: Path, bridge: str) -> None:
+    _write(
+        tmp_path,
+        {
+            "use.ts": JS_USE.replace("./svc.js", "./bridge.js"),
+            "bridge.ts": "function d(...args: any[]) {}\nclass Unrelated { @d field = 1 }\n"
+            + bridge,
+            "svc.ts": JS_SVC,
+        },
+    )
+    _assert_alias_withheld(tmp_path)
+
+
+@pytest.mark.parametrize("importer", ["js", "ts"])
+@pytest.mark.parametrize("sibling", ["ts", "tsx", "mts", "cts", "d.ts"])
+@pytest.mark.parametrize("through_bridge", [False, True])
+def test_literal_and_typescript_siblings(
+    tmp_path: Path, importer: str, sibling: str, through_bridge: bool
+) -> None:
+    files = {
+        f"use.{importer}": JS_USE + "\nconsole.log(run());",
+        "svc.js": "export function exp(){return 'javascript'}",
+        f"svc.{sibling}": (
+            "export declare function exp(): string;"
+            if sibling == "d.ts"
+            else "export function exp(){return 'typescript'}"
+        ),
+    }
+    if through_bridge:
+        files[f"use.{importer}"] = files[f"use.{importer}"].replace(
+            "./svc.js", "./bridge.js"
+        )
+        files["bridge.js"] = "export {exp} from './svc.js';"
+    _write(tmp_path, files)
+    _assert_alias_withheld(tmp_path)
+
+
+@pytest.mark.parametrize("suffix", ["js", "ts"])
+def test_explicit_js_specifier_lone_source(tmp_path: Path, suffix: str) -> None:
+    _write(tmp_path, {"use.js": JS_USE, f"svc.{suffix}": JS_SVC})
+    graph = extract_symbol_graph(tmp_path, call_resolution="imports")
+    edge = _site(graph["relationships"])
+    assert edge["provenance"]["call_rules"] == ["t2.import_alias"]
+    assert graph["symbol_lookup"][edge["to"]]["file"] == f"svc.{suffix}"
+
+
+@pytest.mark.parametrize(("runtime", "source"), [("mjs", "mts"), ("cjs", "cts")])
+def test_uncollected_module_variants(tmp_path: Path, runtime: str, source: str) -> None:
+    _write(
+        tmp_path,
+        {
+            "use.js": JS_USE.replace("./svc.js", f"./svc.{runtime}"),
+            f"svc.{runtime}": JS_SVC,
+            f"svc.{source}": JS_SVC,
+        },
+    )
+    _assert_alias_withheld(tmp_path)
+
+
+def test_cached_alias_rechecks_unparsed_sibling(tmp_path: Path) -> None:
+    root = tmp_path / "src"
+    _write(root, {"use.js": JS_USE, "svc.js": JS_SVC})
+
+    def cached_edge() -> dict[str, Any]:
+        return _site(
+            extract_boundary_ir(
+                root,
+                language="javascript",
+                call_resolution="imports",
+                incremental=True,
+                cache_dir=tmp_path / "cache",
+            )["edges"]
+        )
+
+    assert cached_edge()["resolution"] == "resolved"
+    _write(root, {"svc.mts": JS_SVC})
+    assert cached_edge()["resolution"] == "unresolved"
+    (root / "svc.mts").unlink()
+    assert cached_edge()["resolution"] == "resolved"
+
+
+def test_downlevel_class_field_writes_namespace_receiver(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        {
+            "svc.ts": (
+                "function other(){return 'replacement'}\n"
+                "export class Install {exp = other}\n"
+                "export function exp(){return 'original'}"
+            ),
+            "use.ts": (
+                "import * as svc from './svc.js';\n"
+                "import {exp as alias} from './svc.js';\n"
+                "export function run(){ (svc.Install as unknown as () => void)(); return alias(); }\n"
+                "console.log(run());"
+            ),
+        },
+    )
+    _assert_alias_withheld(tmp_path)

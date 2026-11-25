@@ -39,7 +39,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from . import py_modules
-from .modules import ModuleRun, build_module_run, resolve_import
+from .modules import ModuleRun, alias_module_run, build_module_run, resolve_import
 
 RULE_LEXICAL = "t1.lexical"
 RULE_KIND = "t1.kind"
@@ -144,7 +144,7 @@ class RunContext:
     modules: ModuleRun | None = None
     # Tier 2 Python (9.4-9.6, PR 6), in ``imports`` mode only.
     py_modules: py_modules.PyModuleRun | None = None
-    decorated_classes: frozenset[str] = frozenset()
+    alias_modules: ModuleRun | None = None
 
 
 @dataclass(frozen=True)
@@ -177,11 +177,11 @@ def build_run_context(
     *,
     language_filter: str | None = None,
     directory_symlinks: bool | None = None,
+    variant_paths: Sequence[str] | None = (),
 ) -> RunContext:
     """Index every file's scope facts by its display path."""
     facts = list(facts)
     files: dict[str, FileContext] = {}
-    decorated_classes: set[str] = set()
     for file_facts in facts:
         scope_facts = file_facts["scope_facts"]
         declarations: defaultdict[Declaration, list[str]] = defaultdict(list)
@@ -189,11 +189,6 @@ def build_run_context(
             declarations[(str(node_type), int(byte_start), int(byte_end))].append(
                 str(symbol_id)
             )
-        if mode == MODE_IMPORTS:
-            for kind, start, end in scope_facts.get("module_bindings", {}).get(
-                "decorated_classes", ()
-            ):
-                decorated_classes.update(declarations.get((kind, start, end), ()))
         path = str(file_facts.get("path") or "")
         files[path] = FileContext(
             path=path,
@@ -217,19 +212,24 @@ def build_run_context(
             unknown.add(path)
         for name in file_context.script_globals:
             declarers[name].add(path)
+    modules = (
+        build_module_run(facts, language_filter, directory_symlinks)
+        if mode == MODE_IMPORTS
+        else None
+    )
     return RunContext(
         mode=mode,
         files=files,
         symbol_lookup=symbol_lookup,
         language_filter=language_filter,
-        decorated_classes=frozenset(decorated_classes),
-        global_declarers={name: frozenset(paths) for name, paths in declarers.items()},
-        unknown_globals=frozenset(unknown),
-        modules=(
-            build_module_run(facts, language_filter, directory_symlinks)
-            if mode == MODE_IMPORTS
+        alias_modules=(
+            alias_module_run(modules, variant_paths)
+            if modules and variant_paths is not None
             else None
         ),
+        global_declarers={name: frozenset(paths) for name, paths in declarers.items()},
+        unknown_globals=frozenset(unknown),
+        modules=modules,
         py_modules=(
             py_modules.build_py_module_run(facts, directory_symlinks)
             if mode == MODE_IMPORTS
@@ -323,6 +323,7 @@ def proof(
     member: str | None = None,
     span_key: str | None = None,
     head: str | None = None,
+    alias: bool = False,
 ) -> tuple[frozenset[str], Mapping[str, Any], tuple[str, ...]]:
     """``(P, final outcome, binding rule IDs)`` for one call (6.3).
 
@@ -382,8 +383,11 @@ def proof(
     if member is not None and binding.get("member") != member:
         # The reference and the tree must agree on the member (fail closed).
         return frozenset(), _none("export-not-found"), ()
+    modules = context.alias_modules if alias else context.modules
+    if modules is None:
+        return frozenset(), _none("export-not-found"), ()
     resolved = resolve_import(
-        context.modules,
+        modules,
         file_context.path,
         file_context.language,
         binding,
@@ -603,6 +607,25 @@ def decide(context: RunContext, relationship: Mapping[str, Any]) -> Decision:
         ):
             return not_eligible
     raw = script_global_outcome(context, file_context, raw)
+    if alias:
+        proven, outcome, binding_rules = proof(
+            raw,
+            context.mode,
+            file_context,
+            context.symbol_lookup,
+            context=context,
+            alias=True,
+        )
+        if RULE_IMPORT in binding_rules:
+            after, rules = _substitute(
+                before, proven, (RULE_IMPORT_ALIAS, *binding_rules[1:])
+            )
+            if rules:
+                return Decision(
+                    call_site_id, True, outcome, before, after, proven, rules
+                )
+    if not ambiguous:
+        return not_eligible
     proven, outcome, binding_rules = proof(
         raw,
         context.mode,
@@ -613,18 +636,6 @@ def decide(context: RunContext, relationship: Mapping[str, Any]) -> Decision:
         span_key=key,
         head=reference.partition(".")[0] or None,
     )
-    if (
-        alias
-        and RULE_IMPORT in binding_rules
-        and proven.isdisjoint(context.decorated_classes)
-    ):
-        after, rules = _substitute(
-            before, proven, (RULE_IMPORT_ALIAS, *binding_rules[1:])
-        )
-        if rules:
-            return Decision(call_site_id, True, outcome, before, after, proven, rules)
-    if not ambiguous:
-        return not_eligible
     after, rules = narrow(
         before,
         proven,

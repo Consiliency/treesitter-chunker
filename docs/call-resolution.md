@@ -31,10 +31,14 @@ result still applies, including a possible singleton name match.
 JS/TS substitution is withheld when a recorded loader path changes under URL
 parsing (an embedded tab, LF or CR, or leading or trailing control characters
 or spaces). Different loaders can then select different files, including on
-a re-export or a path to a writer. Substitution is also withheld for a
-class with a class decorator, even through re-exports, because the decorator
-can replace the exported constructor. A legacy TypeScript decorator on a
-constructor parameter can also replace the binding through `Reflect.decorate`.
+a re-export or a path to a writer. A decorator anywhere in a module on the
+export chain withholds substitution, including member and parameter
+decorators on unrelated classes. Substitution is also withheld into modules that
+receive namespace member calls. Under CommonJS emit a replacement constructor
+or a downleveled class field can write to the receiver's exports. Substitution also requires a unique
+source at every hop. For example, either a lone `svc.js` or a lone `svc.ts`
+can supply `./svc.js`, but siblings with the same stem, including declaration
+files, make the target uncertain for both JS and TS importers.
 
 Python is intentionally excluded from renamed-import substitution. A failed
 `delattr` can expose the exporting module through `AttributeError.obj`, so
