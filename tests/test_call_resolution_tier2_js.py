@@ -1314,6 +1314,7 @@ def test_export_table_of_a_module(tmp_path: Path) -> None:
     assert scope["module_bindings"] == {
         "has_decorator": False,
         "unsafe_alias_emit": False,
+        "has_ambient_module": False,
         "stars": ["./s"],
         "commonjs": False,
         "opaque": False,

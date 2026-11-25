@@ -17,6 +17,7 @@ from typing import Any
 from .auto import ZeroConfigAPI
 from ._internal.registry import baml_companion_available
 from .call_resolution import engine as call_resolution_engine
+from .call_resolution.modules import TYPESCRIPT_SUFFIXES
 from .call_resolution.facts import (
     compute_scope_facts,
     unsupported_scope_facts,
@@ -92,6 +93,9 @@ _RESOLUTION_OPTIONS = {
     "rootdirs",
     "customconditions",
     "allowarbitraryextensions",
+    "typeroots",
+    "types",
+    "noresolve",
 }
 
 
@@ -109,10 +113,32 @@ def _unmodeled_config(path: Path) -> bool:
             or "references" in config
         ):
             return True
+        # A project may explicitly include ambient declarations outside the
+        # inventory. Unknown path forms cannot establish a closed project.
+        for key in ("files", "include"):
+            entries = config.get(key, [])
+            if not isinstance(entries, list) or any(
+                not isinstance(entry, str)
+                or entry.startswith(("/", "\\"))
+                or ":" in entry
+                or ".." in entry.replace("\\", "/").split("/")
+                for entry in entries
+            ):
+                return True
         options = {
             key.lower(): value
             for key, value in config.get("compilerOptions", {}).items()
         }
+        if "moduleresolution" not in options and str(
+            options.get("module", "")
+        ).lower() in {
+            "node16",
+            "node18",
+            "node20",
+            "nodenext",
+            "preserve",
+        }:
+            return True
         return bool(_RESOLUTION_OPTIONS.intersection(options)) or str(
             options.get("moduleresolution", "node")
         ).lower() not in {"node", "node10"}
@@ -123,6 +149,10 @@ def _unmodeled_config(path: Path) -> bool:
 def _unsafe_ancestor_config(root: Path) -> bool:
     parents = set(root.absolute().parents) | set(root.resolve().parents)
     for parent in parents:
+        # Visible @types packages can introduce wildcard declarations outside
+        # the extraction root. The run has no facts for these inputs.
+        if (parent / "node_modules" / "@types").is_dir():
+            return True
         for name in _CONFIG_FILES:
             config = parent / name
             try:
@@ -131,22 +161,28 @@ def _unsafe_ancestor_config(root: Path) -> bool:
                 continue
             except OSError:
                 return True
-            if _unmodeled_config(config):
-                return True
+            # An ancestor project can include source files beside the root.
+            return True
     return False
 
 
-def _unsafe_nested_config(directory: Path) -> bool:
+def _unsafe_excluded_project(directory: Path) -> bool:
     def scan_error(error: OSError) -> None:
         raise error
 
     try:
-        return any(
-            _unmodeled_config(folder / file)
-            for folder, _, files in directory.walk(on_error=scan_error)
-            for file in files
-            if file.lower() in _CONFIG_FILES
-        )
+        if directory.is_symlink() or directory.is_junction():
+            return True
+        for folder, directories, files in directory.walk(on_error=scan_error):
+            if any((folder / name).is_junction() for name in directories):
+                return True
+            for file in files:
+                name = file.lower()
+                if name.endswith(TYPESCRIPT_SUFFIXES) or (folder / file).is_symlink():
+                    return True
+                if name in _CONFIG_FILES and _unmodeled_config(folder / file):
+                    return True
+        return False
     except OSError:
         return True
 
@@ -183,7 +219,7 @@ def module_layout(path: str | Path) -> tuple[bool, tuple[str, ...] | None]:
                 if name in SKIP_PARTS:
                     # A nested compiler project can affect the proof even
                     # when extraction excludes its sources.
-                    unsafe = unsafe or _unsafe_nested_config(Path(current) / name)
+                    unsafe = unsafe or _unsafe_excluded_project(Path(current) / name)
                     continue
                 entry = Path(current) / name
                 if entry.is_symlink() or entry.is_junction():

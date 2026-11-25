@@ -66,7 +66,11 @@ extensionless files, alternate source and declaration extensions, and directory
 indexes. An opaque directory package or compiler configuration can also
 prevent a unique lookup. This includes `moduleSuffixes`, `paths`, `baseUrl`,
 `rootDirs`, `customConditions`, `allowArbitraryExtensions`, inherited configs,
-and explicit resolution modes other than `node` or `node10`.
+and explicit resolution modes other than `node` or `node10`. TypeScript can
+bind an export to a wildcard declaration such as `declare module "*.js"`
+even when its resolver finds a physical JS file. A string-named module
+declaration, or a TypeScript input without complete facts, therefore
+withholds substitution across the run.
 
 Python is intentionally excluded from renamed-import substitution. A failed
 `delattr` can expose the exporting module through `AttributeError.obj`, so

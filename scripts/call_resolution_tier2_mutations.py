@@ -129,6 +129,18 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "        return False\n        config = json.loads(path.read_text",
     ),
     (
+        "alias-ambient-module",
+        MOD,
+        "if any(module.has_ambient_module for module in run.files.values()):",
+        "if False:",
+    ),
+    (
+        "alias-unparsed-typescript",
+        MOD,
+        "if module is None or not module.supported:",
+        "if False:",
+    ),
+    (
         "alias-enable-python",
         ENG,
         'and family == "js"\n        and binding.get("form") == "named"\n'

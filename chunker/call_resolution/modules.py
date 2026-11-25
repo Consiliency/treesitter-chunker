@@ -471,6 +471,7 @@ class ModuleFile:
     commonjs: bool = False
     opaque: bool = False
     has_decorator: bool = False
+    has_ambient_module: bool = False
 
 
 @dataclass(frozen=True)
@@ -506,10 +507,22 @@ class ModuleRun:
         return self.tainted
 
 
-def alias_module_run(run: ModuleRun, variant_paths: Sequence[str]) -> ModuleRun:
+TYPESCRIPT_SUFFIXES = (".ts", ".tsx", ".mts", ".cts")
+
+
+def alias_module_run(run: ModuleRun, variant_paths: Sequence[str]) -> ModuleRun | None:
     """Reject unsafe modules at every hop, leaving ordinary Tier 2 untouched."""
+    # The TypeScript checker can bind a symbol to a wildcard ambient module
+    # even when traceResolution identifies a physical implementation. A TS
+    # input missing from the facts could supply exactly such a declaration.
+    if any(module.has_ambient_module for module in run.files.values()):
+        return None
     disk_paths: dict[str, set[str]] = {}
     for path in variant_paths:
+        if path.lower().endswith(TYPESCRIPT_SUFFIXES):
+            module = run.files.get(path)
+            if module is None or not module.supported:
+                return None
         disk_paths.setdefault(_fold(path), set()).add(path)
     blocked = {path for path, module in run.files.items() if module.has_decorator}
     # CommonJS namespace calls receive the exports object. The emitted body
@@ -625,6 +638,7 @@ def build_module_run(
             commonjs=bool(bindings.get("commonjs")),
             opaque=bool(bindings.get("opaque")) or not supported,
             has_decorator=bool(bindings.get("has_decorator")),
+            has_ambient_module=bool(bindings.get("has_ambient_module")),
         )
     for path, specifier in filename_taints:
         if filename_writers:

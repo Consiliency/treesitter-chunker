@@ -713,8 +713,8 @@ def test_single_file_self_import_lacks_sibling_inventory(tmp_path: Path) -> None
         ("svc.jsx", "svc.jsx/index.ts", "svc.ts"),
         ("svc.js", "svc.js/index.ts", "svc.jsx"),
         ("theme.css", "theme.css.ts", "theme.d.css.ts"),
-        ("svc.js", "svc.ts", "svc.js.mts"),
-        ("svc.js", "svc.ts", "svc.jsx/index.mts"),
+        ("svc.js", "svc.ts", "svc.js.mjs"),
+        ("svc.js", "svc.ts", "svc.jsx/index.mjs"),
         ("svc", "svc.ts", "svc/package.json"),
         ("svc", "svc.ts", "svc.json"),
     ],
@@ -790,3 +790,65 @@ def test_unmodeled_lookup_config(
         },
     )
     _assert_alias_withheld(tmp_path / "project")
+
+
+@pytest.mark.parametrize(
+    "location",
+    ["global.d.ts", "types.ts", "types.mts", "node_modules/@types/svc/index.d.ts"],
+)
+@pytest.mark.parametrize("language", [None, "javascript"])
+def test_ambient_module_can_supply_export(
+    tmp_path: Path, location: str, language: str | None
+) -> None:
+    _write(
+        tmp_path,
+        {
+            "use.js": JS_USE,
+            "svc.js": JS_SVC,
+            location: 'declare module "*.js" { export function exp(): "ambient"; }',
+            "tsconfig.json": '{"compilerOptions":{"module":"commonjs","moduleResolution":"node","strict":true}}',
+        },
+    )
+    for extract, field in (
+        (extract_symbol_graph, "relationships"),
+        (extract_boundary_ir, "edges"),
+    ):
+        before = _site(extract(tmp_path, language=language)[field])
+        assert before["resolution"] == "unresolved"
+        assert (
+            _site(
+                extract(tmp_path, call_resolution="imports", language=language)[field]
+            )
+            == before
+        )
+
+
+def test_checker_prefers_ambient_declaration_after_disk_lookup(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        {
+            "use.ts": JS_USE + "\nconst proof: 'ambient' = run();",
+            "svc.js": JS_SVC,
+            "global.d.ts": 'declare module "*.js" { export function exp(): "ambient"; }',
+            "tsconfig.json": '{"compilerOptions":{"module":"commonjs","moduleResolution":"node","strict":true,"noEmit":true},"files":["use.ts","global.d.ts"]}',
+        },
+    )
+    _assert_alias_withheld(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        {"files": ["../global.d.ts"]},
+        {"compilerOptions": {"typeRoots": ["../types"]}},
+        {"compilerOptions": {"module": "NodeNext"}},
+    ],
+)
+def test_external_or_implicit_project_lookup(
+    tmp_path: Path, config: dict[str, Any]
+) -> None:
+    _write(
+        tmp_path,
+        {"use.ts": JS_USE, "svc.js": JS_SVC, "tsconfig.json": json.dumps(config)},
+    )
+    _assert_alias_withheld(tmp_path)
