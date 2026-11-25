@@ -12,9 +12,14 @@ refers to under the language's binding and module-resolution rules. This is
 what existing edges have always represented in every mode. The default
 `name` mode uses a heuristic to identify that declaration.
 
-For JS/TS, the target is the implementation file and export that module resolution
-loads, and ambient or type-only overlays such as `declare module` and `.d.ts`
-shims are outside the set of call targets.
+For JS/TS, the target is the implementation file and export that standard
+Node/TypeScript module resolution selects from the source tree. Ambient or
+type-only overlays such as `declare module` and `.d.ts` shims are outside the
+set of call targets. Build-tool remapping is configuration, outside the
+source, and an edge does not account for it. Examples are bundler aliases and
+`browser` maps, `moduleSuffixes`, `paths`, and compiler options inherited from
+installed packages. Renamed-import substitution still withholds where its
+guards detect such settings.
 
 The edge does not guarantee what runs. A decorator can return a different
 callable, or code can replace one by monkeypatching, writing to a closure
