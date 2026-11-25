@@ -71,11 +71,16 @@ def _lock_checkout(stack: ExitStack, git: str, checkout: Path) -> None:
 def _install_npm_dependencies(
     npm: str, source_dir: Path, warnings: list[str], *, allow_npm_scripts: bool
 ) -> None:
-    scripts_option = (
-        "--ignore-scripts=false" if allow_npm_scripts else "--ignore-scripts"
-    )
-    commands = ("rebuild", "install") if allow_npm_scripts else ("install",)
-    for command in commands:
+    commands = [("install", "--ignore-scripts")]
+    if allow_npm_scripts:
+        commands = [
+            ("rebuild", "--ignore-scripts=false"),
+            ("install", "--ignore-scripts=false"),
+        ]
+        if (source_dir / "node_modules").is_dir():
+            # Remove obsolete dependencies before executing hooks in the updated checkout.
+            commands.insert(0, ("install", "--ignore-scripts"))
+    for command, scripts_option in commands:
         completed = subprocess.run(
             [npm, command, scripts_option, "--json=false", "--loglevel=warn"],
             cwd=source_dir,

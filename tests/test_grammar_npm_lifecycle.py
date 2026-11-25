@@ -19,16 +19,17 @@ from chunker.grammar_management import _build_tools
 
 @pytest.mark.parametrize("operation", ["install", "update"])
 @pytest.mark.parametrize(
-    ("allow_scripts", "approved", "retry"),
+    ("allow_scripts", "approved", "previous"),
     [
-        pytest.param(False, True, False, id="default"),
-        pytest.param(True, False, False, id="unapproved"),
-        pytest.param(True, True, False, id="fresh"),
-        pytest.param(True, True, True, id="retry"),
+        pytest.param(False, True, None, id="default"),
+        pytest.param(True, False, None, id="unapproved"),
+        pytest.param(True, True, None, id="fresh"),
+        pytest.param(True, True, "same", id="retry"),
+        pytest.param(True, True, "older", id="upgrade"),
     ],
 )
 def test_npm_postinstall(
-    tmp_path, monkeypatch, capsys, operation, allow_scripts, approved, retry
+    tmp_path, monkeypatch, capsys, operation, allow_scripts, approved, previous
 ):
     npm = shutil.which("npm")
     if not npm or not shutil.which("node"):
@@ -63,6 +64,21 @@ def test_npm_postinstall(
             package = json.loads(manifest.read_text(encoding="utf-8"))
             package["scripts"]["postinstall"] = "node consume-dependency.cjs"
             package["allowScripts"] = {"file:fixture-dependency.tgz": True}
+            if previous == "older":
+                # The old hook uses a tool that belongs only to the old revision.
+                toolchain = checkout / "old-toolchain.cjs"
+                toolchain.write_text("", encoding="utf-8")
+                dep_manifest = checkout / "dependency/package.json"
+                old_package = json.loads(dep_manifest.read_text(encoding="utf-8"))
+                old_package.update(
+                    version="0.1.0",
+                    scripts={"postinstall": "node ../../old-toolchain.cjs"},
+                )
+                dep_manifest.write_text(json.dumps(old_package), encoding="utf-8")
+                with tarfile.open(checkout / "old.tgz", "w:gz") as archive:
+                    archive.add(dep_manifest, "package/package.json")
+                package["dependencies"]["fixture-dependency"] = "file:old.tgz"
+                package["allowScripts"]["file:old.tgz"] = True
             manifest.write_text(json.dumps(package), encoding="utf-8")
 
     npm_major = int(
@@ -118,10 +134,16 @@ def test_npm_postinstall(
         assert (dependency / "package.json").is_file()
         return output
 
-    if not allow_scripts or retry:
+    if not allow_scripts or previous:
         invoke(argv)
         assert not marker.exists()
         assert not dep_marker.exists()
+    if previous == "older":
+        (checkout / "old-toolchain.cjs").unlink()
+        manifest = checkout / "package.json"
+        package = json.loads(manifest.read_text(encoding="utf-8"))
+        package["dependencies"]["fixture-dependency"] = "file:fixture-dependency.tgz"
+        manifest.write_text(json.dumps(package), encoding="utf-8")
     if allow_scripts:
         output = invoke([*argv, "--allow-npm-scripts"])
         assert marker.read_text(encoding="utf-8") == "ran\n"
