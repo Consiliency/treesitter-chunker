@@ -33,6 +33,7 @@ JSS = CR + "js_scope.py"
 STR = CR + "js_strings.py"
 FACTS = CR + "facts.py"
 TESTS = (
+    "tests/test_call_resolution_nested.py",
     "tests/test_call_resolution_import_alias.py",
     "tests/test_call_resolution_tier2_js.py",
     "tests/test_call_resolution_engine.py::test_expected_imports_tables_hold_at_this_head",
@@ -44,6 +45,79 @@ TESTS = (
 
 # (id, file, old text, new text). The old text must occur in the file.
 MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "nested-substitution",
+        ENG,
+        "if nested and binding_rules == (RULE_LEXICAL,):",
+        "if False:",
+    ),
+    (
+        "nested-js-tdz",
+        JSS,
+        "or statement.end_byte > ident.start_byte",
+        "or False",
+    ),
+    (
+        "nested-js-owner",
+        JSS,
+        "if node.type in _NESTED_LOOKUP_BARRIERS:",
+        "if False:",
+    ),
+    (
+        # tests/test_call_resolution_nested.py::test_decorator_in_body_withholds
+        "nested-js-decorator",
+        JSS,
+        "if scope.decorated:",
+        "if False:",
+    ),
+    (
+        "nested-python-order",
+        CR + "py_scope.py",
+        "return node is not None and decl.end_byte <= child.start_byte",
+        "return node is not None",
+    ),
+    (
+        "nested-python-redirected-write",
+        CR + "py_scope.py",
+        "if name in owner.redirected_writes:",
+        "if False:",
+    ),
+    (
+        "nested-python-except-expression",
+        CR + "py_scope.py",
+        'if name == "value" and seen_value and child.type == "identifier":',
+        'if name == "value" and seen_value:',
+    ),
+    (
+        "nested-python-source-hazard",
+        CR + "py_scope.py",
+        '        module_bindings["unparsed"]\n',
+        "        False\n",
+    ),
+    (
+        "nested-python-evaluator-hazard",
+        CR + "py_scope.py",
+        '        or py_modules.CAUSE_EVALUATOR in module_bindings["shutoff"]\n',
+        "",
+    ),
+    (
+        "nested-ts-instantiation-eval",
+        JSS,
+        '        "instantiation_expression",\n',
+        "",
+    ),
+    (
+        "nested-js-wrapper-comment",
+        JSS,
+        "named = operand_children(current)",
+        "named = current.named_children",
+    ),
+    (
+        "nested-arbitrary-local",
+        ENG,
+        'and (raw or {}).get("nested_name") == reference',
+        "and True",
+    ),
     (
         "alias-pick-first",
         ENG,
@@ -369,13 +443,13 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "r699-4-write-pattern-steps",
         JSM,
-        "            if kind in _WRAPPERS or kind in _WRITE_PATTERN_STEPS:\n",
-        "            if kind in _WRAPPERS:\n",
+        "            if kind in TRANSPARENT_WRAPPERS or kind in _WRITE_PATTERN_STEPS:\n",
+        "            if kind in TRANSPARENT_WRAPPERS:\n",
     ),
     (
         "r699-4-write-wrapper-steps",
         JSM,
-        "            if kind in _WRAPPERS or kind in _WRITE_PATTERN_STEPS:\n",
+        "            if kind in TRANSPARENT_WRAPPERS or kind in _WRITE_PATTERN_STEPS:\n",
         "            if kind in _WRITE_PATTERN_STEPS:\n",
     ),
     (
@@ -1565,8 +1639,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "694-comment-arguments",
         JSS,
-        '    return [child for child in node.named_children if child.type != "comment"]\n\n\ndef _array_items',
-        "    return list(node.named_children)\n\n\ndef _array_items",
+        'return [c for c in node.named_children if c.type not in ("comment", "html_comment")]',
+        "return list(node.named_children)",
     ),
     (
         "694-target-comma",

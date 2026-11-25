@@ -17,6 +17,16 @@
      ],
      "caller": "outer",
      "file": "a.ts",
+     "imports": {
+      "candidates": [
+       "a.ts:3:outer.t"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t2.nested_local"
+      ]
+     },
      "line": 4,
      "pr": 2,
      "reference": "t",

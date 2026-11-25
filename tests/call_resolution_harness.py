@@ -14,7 +14,8 @@ violation, tagged with the plan's check number:
    candidates and ``to == reference``; a resolved edge has
    ``candidates == [to]``, ``to`` in the off set, ``is_internal`` true and a
    binding rule in ``call_rules``. A proven JS/TS imports-mode alias can replace
-   the entire off set with its single target, marked ``t2.import_alias``.
+   the entire off set with its single target, marked ``t2.import_alias``. A proven same-file nested declaration
+   can also replace the off set in imports mode (``t2.nested_local``).
 4. ``metadata`` is equal except ``call_resolution``.
 5. Boundary ``nodes``, ``files``, ``diagnostics``, ``source`` and
    ``schema_version`` are byte-identical.
@@ -56,7 +57,9 @@ from chunker.call_resolution.engine import (
     BINDING_RULE_IDS,
     GROUP_RULE_IDS,
     KNOWN_RULE_IDS,
+    NON_CALLABLE_KINDS,
     RULE_IMPORT_ALIAS,
+    RULE_NESTED_LOCAL,
     language_family,
 )
 
@@ -243,9 +246,11 @@ def symbol_graph_violations(
             )
         )
         rules = (on_edge.get("provenance") or {}).get("call_rules")
-        if isinstance(rules, list) and RULE_IMPORT_ALIAS in rules:
+        if isinstance(rules, list) and (
+            RULE_IMPORT_ALIAS in rules or RULE_NESTED_LOCAL in rules
+        ):
             found.extend(
-                _alias_violations(
+                _substitution_violations(
                     off_edge, on_edge, mode, on["symbol_lookup"], 3, label
                 )
             )
@@ -254,7 +259,7 @@ def symbol_graph_violations(
     return found
 
 
-def _alias_violations(
+def _substitution_violations(
     off: dict[str, Any],
     on: dict[str, Any],
     mode: str,
@@ -262,22 +267,41 @@ def _alias_violations(
     check: int,
     label: str,
 ) -> list[Violation]:
-    """The sole exception to the remove-only contract, on both graph surfaces."""
+    """The imports-mode exceptions to the remove-only contract, on both graph surfaces."""
     target = on["to"] if "to" in on else on["target"]
     internal = on.get("is_internal", on.get("metadata", {}).get("is_internal"))
     rules = on["provenance"]["call_rules"]
+    symbol = symbols.get(target, {})
+    suffix = Path(off["file"]).suffix.lower()
+    family = language_family(symbol.get("language"))
+    if RULE_NESTED_LOCAL in rules:
+        valid_binding = (
+            rules == [RULE_NESTED_LOCAL]
+            and (symbol.get("file") or symbol.get("path")) == off["file"]
+            and symbol.get("kind") not in NON_CALLABLE_KINDS
+            and (
+                (suffix == ".py" and family == "python")
+                or (suffix in JS_EXTENSION_LANGUAGES and family == "js")
+            )
+        )
+        label_kind = "nested"
+    else:
+        valid_binding = (
+            rules[0] == RULE_IMPORT_ALIAS
+            and set(rules[1:]) <= GROUP_RULE_IDS
+            and suffix in JS_EXTENSION_LANGUAGES
+            and family == "js"
+        )
+        label_kind = "alias"
     if (
-        mode != "imports"
-        or Path(off["file"]).suffix.lower() not in JS_EXTENSION_LANGUAGES
-        or rules[0] != RULE_IMPORT_ALIAS
-        or not set(rules[1:]) <= GROUP_RULE_IDS
+        not valid_binding
+        or mode != "imports"
         or on["resolution"] != "resolved"
         or on["candidates"] != [target]
         or target in off["candidates"]
-        or language_family(symbols.get(target, {}).get("language")) != "js"
         or internal is not True
     ):
-        return [Violation(check, f"{label}: invalid alias substitution")]
+        return [Violation(check, f"{label}: invalid {label_kind} substitution")]
     return []
 
 
@@ -411,8 +435,10 @@ def _call_edge_violations(
         )
     )
     rules = (on.get("provenance") or {}).get("call_rules")
-    if isinstance(rules, list) and RULE_IMPORT_ALIAS in rules:
-        return found + _alias_violations(off, on, mode, nodes, 7, label)
+    if isinstance(rules, list) and (
+        RULE_IMPORT_ALIAS in rules or RULE_NESTED_LOCAL in rules
+    ):
+        return found + _substitution_violations(off, on, mode, nodes, 7, label)
     off_candidates = list(off.get("candidates") or [])
     on_candidates = list(on.get("candidates") or [])
     if not set(on_candidates) <= set(off_candidates):

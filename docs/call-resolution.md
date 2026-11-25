@@ -53,7 +53,7 @@ stable. Consumers persisting imports-mode targets or counts should refresh
 them and compare calls by site ID. Without this proof the existing lookup
 result still applies, including a possible singleton name match.
 
-JS/TS substitution is withheld when a recorded loader path changes under URL
+JS/TS import alias substitution is withheld when a recorded loader path changes under URL
 parsing (an embedded tab, LF or CR, or leading or trailing control characters
 or spaces). Different loaders can then select different files, including on
 a re-export or a path to a writer. A decorator anywhere in a module on the
@@ -88,7 +88,26 @@ withholds substitution across the run.
 Python is intentionally excluded from renamed-import substitution. A failed
 `delattr` can expose the exporting module through `AttributeError.obj`, so
 a handler can replace the function before the importer binds the alias.
-Substitution gained no edges on the measured Python roots.
+Renamed imports gained no edges on the measured Python roots.
+
+In JavaScript, TypeScript, TSX and Python, `imports` can also replace a bare
+call's name candidates with a proven declaration in the same file. The edge
+records `t2.nested_local`. JS/TS supports direct function declarations and
+single local `const` declarations initialized with an arrow or function
+expression. The call must occur in the same function or method body. A function
+declaration is hoisted. A const initializer must finish before the call.
+Python supports a direct, unconditional, undecorated nested function or class
+in a function body. A nested function can call that helper when its definition
+follows the helper. Competing assignments, deletion and ambiguous bindings
+withhold substitution. A redirected write can veto an enclosing Python helper
+even when an intervening scope has a possible binding. Python source-decoding
+and parse hazards withhold substitution throughout the file. Parentheses, comments and erased TypeScript type arguments
+preserve direct eval and its dynamic-scope veto. A failed proof retains the previous resolution, including
+a possible unrelated singleton.
+
+Greenfield and Code-Index-MCP should refresh stored
+imports-mode edges, including already-resolved calls, and compare by
+`call_site_id`. Local proofs do not require a module filename inventory.
 
 In Python, `structural` skips module-scope and class-body proofs in files
 that can bind names dynamically, for example through `exec`, `globals()`,
@@ -214,3 +233,28 @@ callable executes.
 
 For the edge format, binding rules and exact list of recognized triggers,
 see the [Boundary IR specification](interface-boundary-spec.md#call-resolution-extension-experimental).
+
+## Nested helper results on the reference corpora
+
+The 16 frozen corpus projections overlap. The baseline is main at `181b5f68`, including treesitter-chunker#789. Correcting a singleton changes its target without increasing the resolved count.
+
+Across 492,802 call-site observations, 183 previously resolved calls changed target and 840 additional calls resolved. All 1,023 changed targets matched the independent scope census.
+
+| Frozen root | Calls | Resolved before | Resolved after | Corrected singletons | From ambiguous | From unresolved |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| all-agent-toolkit | 32354 | 7878 | 8059 | 42 | 46 | 135 |
+| all-avatar-client | 29951 | 10700 | 10836 | 11 | 14 | 122 |
+| all-graph-studio | 32597 | 7203 | 7319 | 22 | 68 | 48 |
+| all-graphbase | 3061 | 540 | 540 | 0 | 0 | 0 |
+| all-message-board-ui | 20225 | 5065 | 5327 | 17 | 137 | 125 |
+| all-omniagent-plus | 18058 | 3901 | 3936 | 7 | 4 | 31 |
+| all-self-no-fixtures-no-site | 938 | 78 | 78 | 0 | 0 | 0 |
+| all-spec | 10680 | 3731 | 3775 | 0 | 39 | 5 |
+| python-Code-Index-MCP | 105704 | 23898 | 23925 | 12 | 27 | 0 |
+| python-chunker-only | 24694 | 7904 | 7904 | 1 | 0 | 0 |
+| python-chunker | 73099 | 25865 | 25889 | 14 | 24 | 0 |
+| python-cim-mcp2 | 31851 | 8196 | 8196 | 1 | 0 | 0 |
+| python-pmcp-src | 10349 | 4101 | 4101 | 0 | 0 | 0 |
+| python-pmcp | 52376 | 19385 | 19395 | 54 | 10 | 0 |
+| python-spec-src | 7351 | 2720 | 2720 | 0 | 0 | 0 |
+| python-spec | 39514 | 12605 | 12610 | 2 | 5 | 0 |

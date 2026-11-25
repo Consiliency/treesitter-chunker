@@ -754,7 +754,7 @@ def assemble_symbol_graph(
 
     ``call_resolution`` (experimental) narrows ambiguous call edges with the
     per-file ``scope_facts``, which every fact must then carry. Imports mode
-    can also substitute a proven target for a renamed JS/TS import.
+    can also substitute a proven nested declaration or renamed JS/TS import.
     ``language_filter`` is the run's ``language`` argument; the run's file
     set comes from the facts. Supply the complete filename snapshot from module_layout in
     ``variant_paths``, or None if the inventory is incomplete. Assembly does

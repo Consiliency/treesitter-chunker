@@ -200,6 +200,7 @@ _FUNCTION_DECLARATIONS = frozenset(
 _SELF_NAMED_FUNCTIONS = frozenset({"function_expression", "generator_function"})
 _CLASSES = frozenset({"class", "class_declaration", "abstract_class_declaration"})
 _NAMESPACES = frozenset({"internal_module", "module"})
+_NESTED_LOOKUP_BARRIERS = _FUNCTIONS | _CLASSES | _NAMESPACES
 # Block scopes keyed by their own node.
 _BLOCK_SCOPE_NODES = frozenset(
     {"switch_body", "for_statement", "for_in_statement", "catch_clause"}
@@ -288,6 +289,8 @@ class _Scope:
     merge_scope: _Scope | None = None
     merge_name: str = ""
     always_merged: bool = False
+    # Cached by ``_nested_call``: whether any decorator occurs in the body.
+    decorated: bool | None = None
 
     def bind(self, name: str, binding: _Binding) -> None:
         self.bindings.setdefault(name, []).append(binding)
@@ -338,12 +341,13 @@ def pattern_names(node: Any) -> list[Any]:
 
 # Expressions that wrap a callee or an assignment target without changing
 # what it refers to: ``(t)``, ``t!``, ``t as T``, ``t satisfies T``, ``<T>t``.
-_TRANSPARENT_WRAPPERS = frozenset(
+TRANSPARENT_WRAPPERS = frozenset(
     {
         "parenthesized_expression",
         "non_null_expression",
         "as_expression",
         "satisfies_expression",
+        "instantiation_expression",
         "type_assertion",
     }
 )
@@ -389,11 +393,18 @@ def write_targets(node: Any) -> list[Any]:
     return names
 
 
+def operand_children(node: Any) -> list[Any]:
+    """Named children in operand order, excluding JS and Annex B comments."""
+    if node is None:
+        return []
+    return [c for c in node.named_children if c.type not in ("comment", "html_comment")]
+
+
 def unwrap(node: Any) -> Any:
     """``node`` without transparent wrappers (``(eval)`` and ``eval!`` -> ``eval``)."""
     current = node
-    while current is not None and current.type in _TRANSPARENT_WRAPPERS:
-        named = current.named_children
+    while current is not None and current.type in TRANSPARENT_WRAPPERS:
+        named = operand_children(current)
         if not named:
             return current
         # ``<T>x``: the expression follows the type arguments.
@@ -407,18 +418,9 @@ def _callee(node: Any) -> Any:
     expression evaluates to its last operand (treesitter-chunker#694)."""
     current = unwrap(node)
     while current is not None and current.type == "sequence_expression":
-        operands = [
-            child for child in current.named_children if child.type != "comment"
-        ]
+        operands = operand_children(current)
         current = unwrap(operands[-1]) if operands else None
     return current
-
-
-def _arguments(node: Any) -> list[Any]:
-    """The argument expressions of an ``arguments`` node, without comments."""
-    if node is None:
-        return []
-    return [child for child in node.named_children if child.type != "comment"]
 
 
 def _array_items(node: Any) -> list[Any] | None:
@@ -427,7 +429,7 @@ def _array_items(node: Any) -> list[Any] | None:
     node = _callee(node)
     if node is None or node.type != "array":
         return None
-    return [child for child in node.named_children if child.type != "comment"]
+    return operand_children(node)
 
 
 class _Analysis:
@@ -872,7 +874,7 @@ class _Analysis:
         head = name
         while head is not None and head.type == "nested_identifier":
             head = head.child_by_field_name("object") or (
-                head.named_children[0] if head.named_children else None
+                next(iter(operand_children(head)), None)
             )
         head_name = ""
         if head is not None and head.type == "identifier":
@@ -1152,7 +1154,7 @@ class _Analysis:
         if key.type in ("property_identifier", "identifier"):
             return _text(key, self.source)
         if key.type == "computed_property_name":
-            named = key.named_children
+            named = operand_children(key)
             return self._static_key(named[0]) if named else None
         return self._static_key(key)
 
@@ -1215,7 +1217,7 @@ class _Analysis:
             return
         targets = self._writer_targets(
             node.child_by_field_name("function"),
-            _arguments(node.child_by_field_name("arguments")),
+            operand_children(node.child_by_field_name("arguments")),
         )
         if any(
             target is _ANY_TARGET
@@ -1283,7 +1285,7 @@ class _Analysis:
                 return []
             if self._member_key(bound) != "bind":
                 return []
-            preset = _arguments(function.child_by_field_name("arguments"))
+            preset = operand_children(function.child_by_field_name("arguments"))
             return self._writer_targets(
                 bound.child_by_field_name("object"), preset[1:] + arguments
             )
@@ -1340,7 +1342,7 @@ class _Analysis:
         and the node that uses it."""
         current = node
         while current.parent is not None and current.parent.type in (
-            _TRANSPARENT_WRAPPERS
+            TRANSPARENT_WRAPPERS
         ):
             current = current.parent
         return current, current.parent
@@ -1427,7 +1429,7 @@ class _Analysis:
             self.global_wildcard = True
             return
         arguments = parent.child_by_field_name("arguments")
-        named = arguments.named_children if arguments is not None else []
+        named = operand_children(arguments)
         first = unwrap(named[0]) if named else None
         if first is None or first.type in _FUNCTION_ARGUMENTS:
             return
@@ -1490,7 +1492,7 @@ class _Analysis:
                 self.global_wildcard = True
                 return
             kind = parent.type
-            if kind in _TRANSPARENT_WRAPPERS:
+            if kind in TRANSPARENT_WRAPPERS:
                 current = parent
                 continue
             if _same(parent.child_by_field_name("object"), current):
@@ -1621,7 +1623,7 @@ class _Analysis:
                 return scope
         return None
 
-    def lookup(self, ident: Any) -> dict[str, Any]:
+    def lookup(self, ident: Any, *, bare_call: bool = False) -> dict[str, Any]:
         """The outcome of a value lookup of ``ident``'s name."""
         name = _text(ident, self.source)
         through_merged = False
@@ -1642,9 +1644,52 @@ class _Analysis:
                 through_merged = True
             bindings = scope.bindings.get(name)
             if bindings:
-                return self._decide(scope, name, bindings, through_merged)
+                outcome = self._decide(scope, name, bindings, through_merged)
+                if (
+                    bare_call
+                    and scope.kind == _FUNCTION_SCOPE
+                    and outcome["outcome"] == "local"
+                    and len(bindings) == 1
+                    and self._nested_call(ident, scope, bindings[0])
+                ):
+                    outcome["nested_name"] = name
+                return outcome
         # A merged namespace's other declarations may bind the name.
         return _none(NAMESPACE_MERGED if through_merged else "unbound")
+
+    @staticmethod
+    def _nested_call(ident: Any, scope: _Scope, binding: _Binding) -> bool:
+        """One direct function-body binding, called in that same body.
+
+        A decorator expression anywhere in the body is evaluated in an
+        enclosing scope that this analysis does not model exactly (a
+        parameter decorator can assign the body's helper), so any decorator
+        in the body withholds the nested target.
+        """
+        if scope.decorated is None:
+            scope.decorated = _contains_type(scope.node, "decorator")
+        if scope.decorated:
+            return False
+        statement = binding.statement
+        if statement is None or not _same(statement.parent, scope.node):
+            return False
+        decl = binding.decl
+        if decl.type == "function_declaration":
+            if not _same(decl, statement):
+                return False
+        elif (
+            decl.type not in _FUNCTION_VALUES
+            or statement.type != "lexical_declaration"
+            or statement.end_byte > ident.start_byte
+        ):
+            return False
+        # _declaration only promotes direct single-const function values.
+        node = ident.parent
+        while node is not None and not _same(node, scope.node):
+            if node.type in _NESTED_LOOKUP_BARRIERS:
+                return False
+            node = node.parent
+        return node is not None
 
     def top_level_outcome(self, name: str) -> dict[str, Any]:
         """The outcome of a value lookup of ``name`` at the program scope:
@@ -1672,7 +1717,7 @@ class _Analysis:
             declaration = statement.child_by_field_name("declaration")
             if declaration is not None:
                 if declaration.type == "ambient_declaration":
-                    declaration = next(iter(declaration.named_children), None)
+                    declaration = next(iter(operand_children(declaration)), None)
                 if declaration is not None and declaration.type == "import_alias":
                     # ``export import Q = N``: fail closed on both names.
                     stack = list(declaration.named_children)
@@ -1684,7 +1729,7 @@ class _Analysis:
                 elif declaration is not None and declaration.type in _NAMESPACES:
                     name = declaration.child_by_field_name("name")
                     while name is not None and name.type == "nested_identifier":
-                        name = next(iter(name.named_children), None)
+                        name = next(iter(operand_children(name)), None)
                     if name is not None and name.type == "identifier":
                         names.add(_text(name, self.source))
                 continue
@@ -1907,13 +1952,31 @@ def _inside_class(node: Any) -> bool:
     return False
 
 
+def _contains_type(node: Any, kind: str) -> bool:
+    """Whether a node of type ``kind`` occurs anywhere below ``node``."""
+    stack = [node]
+    while stack:
+        current = stack.pop()
+        if current.type == kind:
+            return True
+        stack.extend(current.named_children)
+    return False
+
+
+_READ_IDENTIFIERS = frozenset({"identifier", "shorthand_property_identifier"})
+
+
 def _mentions(node: Any, name: str, source: bytes) -> bool:
-    """Whether an identifier ``name`` occurs anywhere below ``node``."""
+    """Whether a read of ``name`` occurs anywhere below ``node``.
+
+    An object shorthand (``{ arguments }``) reads the binding too, so it
+    counts as well as a plain identifier.
+    """
     encoded = name.encode()
     stack = [node]
     while stack:
         current = stack.pop()
-        if current.type == "identifier" and (
+        if current.type in _READ_IDENTIFIERS and (
             source[current.start_byte : current.end_byte] == encoded
         ):
             return True
@@ -2032,7 +2095,11 @@ def analyze(
             # the engine reports as no-binding-fact (5.4).
             continue
         head = _callee_head(node)
-        outcome = analysis.lookup(head) if head is not None else _none("unbound")
+        outcome = (
+            analysis.lookup(head, bare_call=node.type == "identifier")
+            if head is not None
+            else _none("unbound")
+        )
         member = _namespace_member(node, head, source)
         if member is not None and outcome.get("outcome") == "import":
             # ``ns.f()`` (Tier 2, section 9.1): the property a two-segment

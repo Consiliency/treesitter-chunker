@@ -148,7 +148,7 @@ POSITIVES: dict[str, tuple[dict[str, str], tuple[str, str], str, list[str]]] = {
     ),
     "default-identifier-parenthesized": (
         {
-            "svc.ts": "function t() { return 1; }\nexport default (t);\n",
+            "svc.ts": "function t() { return 1; }\nexport default (/* value */ t /* end */);\n",
             "use.ts": "import t from './svc';\nexport function u() { return t(); }\n",
         },
         ("use.ts", "t"),

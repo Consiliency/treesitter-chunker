@@ -680,12 +680,14 @@ def test_rule_and_reason_vocabularies() -> None:
         "t1.js_hoist",
         "t2.import",
         "t2.import_alias",
+        "t2.nested_local",
         "t2.namespace",
     }
     assert {
         "t1.lexical",
         "t2.import",
         "t2.import_alias",
+        "t2.nested_local",
         "t2.namespace",
     } == engine.BINDING_RULE_IDS
     assert {
@@ -702,7 +704,7 @@ def test_rule_and_reason_vocabularies() -> None:
     assert not {"stub", "script-goal-deferred", "namespace-deferred"} & (
         KNOWN_NONE_REASONS
     )
-    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "27", "python": "43"}
+    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "31", "python": "45"}
     assert [engine.language_family(name) for name in ("tsx", "javascript", "go")] == [
         "js",
         "js",
@@ -891,7 +893,7 @@ def test_expected_imports_tables_hold_at_this_head(tree: str) -> None:
             assert {key: expected[key] for key in actual} == actual, label
             if "candidate_ids" in expected:
                 assert expected["candidate_ids"] == edge["candidates"], label
-            if IMPORTS_MODE in record:
+            if IMPORTS_MODE in record and "t2.nested_local" not in actual["rules"]:
                 assert record["pr"] in (5, 6), label
 
 
@@ -899,13 +901,13 @@ def test_expected_imports_rows_per_pr_are_pinned() -> None:
     counts: dict[int, int] = {}
     rules: set[str] = set()
     reasons: set[str] = set()
+    nested_trees: list[str] = []
     for tree in TREES:
         for run in _table(tree)["runs"].values():
             for record in run["calls"]:
                 expected = record.get(IMPORTS_MODE)
                 if expected is None:
                     continue
-                counts[record["pr"]] = counts.get(record["pr"], 0) + 1
                 assert set(expected) <= {
                     "outcome",
                     "resolution",
@@ -917,8 +919,13 @@ def test_expected_imports_rows_per_pr_are_pinned() -> None:
                 rules.update(expected["rules"])
                 if expected["outcome"].startswith("none("):
                     reasons.add(expected["outcome"][5:-1])
-                # Tier 2 rows of PR 5 leave ``structural`` unchanged.
-                assert MODE not in record, tree
+                if expected["rules"] == ["t2.nested_local"]:
+                    nested_trees.append(tree)
+                    assert MODE in record, tree
+                else:
+                    counts[record["pr"]] = counts.get(record["pr"], 0) + 1
+                    assert MODE not in record, tree
+    assert sorted(nested_trees) == ["py-closure", "py-closure-2", "ts-nested-scope"]
     assert counts == EXPECTED_IMPORTS_ROWS_PER_PR
     # Traceability (10.6) for the Tier 2 rules and reasons live at this head.
     assert rules >= LIVE_IMPORTS_RULES

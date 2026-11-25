@@ -1345,6 +1345,8 @@ class _Scope:
     bindings: dict[str, list[_Binding]] = field(default_factory=dict)
     # Names written in this scope before redirects, for ``nonlocal`` targets.
     assigned: set[str] = field(default_factory=set)
+    # Redirected writes that may reach this scope under CPython binding rules.
+    redirected_writes: set[str] = field(default_factory=set)
     globals: set[str] = field(default_factory=set)
     nonlocals: set[str] = field(default_factory=set)
     poisoned: bool = False
@@ -1821,9 +1823,11 @@ class _Analysis:
     def _except(self, node: Any, scope: _Scope, depth: int) -> None:
         seen_value = False
         for name, child in self._fields(node):
-            if name == "value" and seen_value:
+            if name == "value" and seen_value and child.type == "identifier":
                 # Python 2 ``except E, e:`` binds ``e``. On 3.14 the form is
-                # PEP 758's ``except (E, e):``, a read, so it is phantom.
+                # PEP 758's ``except (E, e):``, a read. Preserve the existing
+                # lexical veto for a simple name. Visit complex expressions
+                # normally: an exception type expression can assign a name.
                 self._targets(child, scope, depth + 1, phantom=True)
                 continue
             seen_value = seen_value or name == "value"
@@ -4463,6 +4467,14 @@ class _Analysis:
         elif name in scope.nonlocals:
             target = self._nonlocal_target(scope, name) or self.module
         if target is not scope:
+            # The lexical pass over-approximates local bindings and directive
+            # spellings (including private-name mangling). A nearer possible
+            # owner must not shield an outer declaration from this write.
+            outer = scope.parent
+            while outer is not None and outer.kind != _MODULE:
+                if outer.kind == _FUNCTION and name in outer.assigned:
+                    outer.redirected_writes.add(name)
+                outer = outer.parent
             # A write through ``global`` or ``nonlocal`` is a non-definition
             # binding of the scope it lands in (section 7.3).
             binding = _Binding(LOCAL, phantom=binding.phantom)
@@ -4570,6 +4582,49 @@ class _Analysis:
                     return _none("class-scope-bound")
                 return self._decide(scope, name)
         return self._module_lookup(name)  # pragma: no cover - module ends the chain
+
+    def nested_call(self, ident: Any) -> bool:
+        """The local lookup selected a direct function-body declaration.
+
+        In a closure, require the declaration to precede creation of the
+        nested caller. Definition headers execute in a different scope.
+        """
+        owner = self.decided
+        if owner is None or owner.kind != _FUNCTION:
+            return False
+        name = _text(ident, self.source)
+        if name in owner.redirected_writes:
+            return False
+        bindings = owner.bindings.get(name, ())
+        if len(bindings) != 1 or bindings[0].cls != SYMBOL:
+            return False
+        decl = bindings[0].decl
+        body = owner.node.child_by_field_name("body")
+        if not _same(decl.parent, body):
+            return False
+        child = ident
+        node = ident.parent
+        while node is not None and not _same(node, body):
+            if node.type == "function_definition":
+                scope = self.scopes.get((node.id, "scope"))
+                if (
+                    not _same(child, node.child_by_field_name("body"))
+                    or scope is None
+                    or name in scope.nonlocals
+                    or name in scope.globals
+                ):
+                    return False
+            elif node.type in _COMPREHENSIONS or node.type in (
+                "lambda",
+                "class_definition",
+                "type_alias_statement",
+                "decorator",
+                "type",
+                "type_parameter",
+            ):
+                return False
+            child, node = node, node.parent
+        return node is not None and decl.end_byte <= child.start_byte
 
     def _module_lookup(self, name: str) -> dict[str, Any]:
         if self.dynamic:
@@ -5811,6 +5866,13 @@ def analyze(
         head = _callee_head(node)
         key = f"{start}:{end}"
         outcome = analysis.lookup(head) if head is not None else _none("unbound")
+        if (
+            node.type == "identifier"
+            and outcome["outcome"] == "local"
+            and tier2
+            and analysis.nested_call(node)
+        ):
+            outcome["nested_name"] = _text(node, source)
         bindings[key] = outcome
         if head is None or not tier2:
             continue
@@ -5828,6 +5890,12 @@ def analyze(
     exports, module_bindings = py_modules.module_facts(
         analysis, groups, chains, own_ref
     )
+    if (
+        module_bindings["unparsed"]
+        or py_modules.CAUSE_EVALUATOR in module_bindings["shutoff"]
+    ):
+        for outcome in bindings.values():
+            outcome.pop("nested_name", None)
     return {
         "goal": "module",
         "bindings": bindings,
