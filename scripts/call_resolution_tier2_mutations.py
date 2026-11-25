@@ -59,8 +59,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "alias-module-decorator",
         MOD,
-        "if module.has_decorator or not competing.isdisjoint(_variant_stems(path))",
-        "if not competing.isdisjoint(_variant_stems(path))",
+        "if module.has_decorator}",
+        "if False}",
     ),
     (
         "alias-namespace-receiver",
@@ -70,9 +70,9 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     ),
     (
         "alias-assume-complete-inventory",
-        "chunker/symbol_graph.py",
-        "variant_paths: Sequence[str] | None = None,",
-        "variant_paths: Sequence[str] | None = (),",
+        ENG,
+        "alias_module_run(modules, variant_paths)\n            if modules and variant_paths is not None",
+        "alias_module_run(modules, variant_paths if variant_paths is not None else tuple(modules.index.paths))\n            if modules",
     ),
     (
         "alias-emit-collision",
@@ -83,8 +83,50 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "alias-competing-variants",
         MOD,
-        "if module.has_decorator or not competing.isdisjoint(_variant_stems(path))",
-        "if module.has_decorator",
+        "or not _unique_alias_target(index, requested, target)",
+        "",
+    ),
+    (
+        "alias-literal-disk-file",
+        MOD,
+        "paths = {base}",
+        "paths = set()",
+    ),
+    (
+        "alias-appended-extension",
+        MOD,
+        "    paths.update(base + ext for ext in extensions)",
+        "",
+    ),
+    (
+        "alias-replaced-extension",
+        MOD,
+        "if base.endswith(suffix):",
+        "if False:",
+    ),
+    (
+        "alias-arbitrary-declaration",
+        MOD,
+        "    if dot:\n        paths.add",
+        "    if False:\n        paths.add",
+    ),
+    (
+        "alias-substituted-index",
+        MOD,
+        "for path in paths for ext in extensions}",
+        "for path in (base,) for ext in extensions}",
+    ),
+    (
+        "alias-package-target",
+        MOD,
+        'if any(f"{path}/package.json" in index.alias_disk_paths for path in paths):',
+        "if False:",
+    ),
+    (
+        "alias-compiler-config",
+        "chunker/symbol_graph.py",
+        "        config = json.loads(path.read_text",
+        "        return False\n        config = json.loads(path.read_text",
     ),
     (
         "alias-enable-python",

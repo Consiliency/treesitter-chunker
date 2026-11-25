@@ -703,3 +703,90 @@ def test_single_file_self_import_lacks_sibling_inventory(tmp_path: Path) -> None
         },
     )
     _assert_alias_withheld(tmp_path / "svc.js")
+
+
+@pytest.mark.parametrize("bridge", [False, True], ids=["direct", "reexport"])
+@pytest.mark.parametrize(
+    ("specifier", "target", "competitor"),
+    [
+        ("svc", "svc.js", "svc"),
+        ("svc.jsx", "svc.jsx/index.ts", "svc.ts"),
+        ("svc.js", "svc.js/index.ts", "svc.jsx"),
+        ("theme.css", "theme.css.ts", "theme.d.css.ts"),
+        ("svc.js", "svc.ts", "svc.js.mts"),
+        ("svc.js", "svc.ts", "svc.jsx/index.mts"),
+        ("svc", "svc.ts", "svc/package.json"),
+        ("svc", "svc.ts", "svc.json"),
+    ],
+)
+def test_competing_disk_lookup(
+    tmp_path: Path, specifier: str, target: str, competitor: str, bridge: bool
+) -> None:
+    files = {
+        "package.json": '{"type":"module"}',
+        "use.ts": JS_USE.replace("svc.js", "bridge.ts" if bridge else specifier),
+        target: JS_SVC,
+        competitor: (
+            '{"main":"../other.js"}'
+            if competitor.endswith(".json")
+            else (
+                "export declare function exp(): string;"
+                if competitor.endswith(".d.css.ts")
+                else JS_SVC
+            )
+        ),
+        "other.js": JS_SVC,
+    }
+    if bridge:
+        files["bridge.ts"] = f"export {{exp}} from './{specifier}';"
+    if specifier == "svc" and competitor == "svc":
+        files["use.js"] = files.pop("use.ts")
+    _write(tmp_path, files)
+    _assert_alias_withheld(tmp_path)
+
+
+def test_lone_directory_index(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        {"use.ts": JS_USE.replace("./svc.js", "./svc"), "svc/index.ts": JS_SVC},
+    )
+    graph = extract_symbol_graph(tmp_path, call_resolution="imports")
+    edge = _site(graph["relationships"])
+    assert edge["provenance"]["call_rules"] == ["t2.import_alias"]
+    assert graph["symbol_lookup"][edge["to"]]["file"] == "svc/index.ts"
+
+
+@pytest.mark.parametrize(
+    ("option", "value"),
+    [
+        ("moduleSuffixes", [".test", ""]),
+        ("paths", {}),
+        ("baseUrl", "."),
+        ("rootDirs", ["a", "b"]),
+        ("customConditions", ["dev"]),
+        ("allowArbitraryExtensions", True),
+        ("moduleResolution", "bundler"),
+    ],
+)
+@pytest.mark.parametrize(
+    "location",
+    [
+        "project/tsconfig.json",
+        "project/nested/jsconfig.json",
+        "tsconfig.json",
+        "project/build/tsconfig.json",
+    ],
+)
+def test_unmodeled_lookup_config(
+    tmp_path: Path, option: str, value: Any, location: str
+) -> None:
+    _write(
+        tmp_path,
+        {
+            "project/use.ts": JS_USE,
+            "project/svc.ts": JS_SVC,
+            "project/svc.test.ts": JS_SVC,
+            location: json.dumps({"compilerOptions": {option: value}}),
+        },
+    )
+    _assert_alias_withheld(tmp_path / "project")

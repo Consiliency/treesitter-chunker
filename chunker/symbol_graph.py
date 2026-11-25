@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import hashlib
+import json
+import os
 import re
 from bisect import bisect_left
 from collections import defaultdict
@@ -82,14 +84,79 @@ def _should_skip_path(path: Path) -> bool:
     return any(part in SKIP_PARTS for part in path.parts)
 
 
+_CONFIG_FILES = {"tsconfig.json", "jsconfig.json"}
+_RESOLUTION_OPTIONS = {
+    "modulesuffixes",
+    "paths",
+    "baseurl",
+    "rootdirs",
+    "customconditions",
+    "allowarbitraryextensions",
+}
+
+
+def _unmodeled_config(path: Path) -> bool:
+    """An inherited, unreadable or unmodeled configuration cannot prove uniqueness."""
+    try:
+        # TS option names are case-insensitive. Unsupported JSONC syntax
+        # conservatively withholds aliases too.
+        if not path.is_file():
+            return True
+        config = json.loads(path.read_text(encoding="utf-8-sig"))
+        if (
+            not isinstance(config, dict)
+            or "extends" in config
+            or "references" in config
+        ):
+            return True
+        options = {
+            key.lower(): value
+            for key, value in config.get("compilerOptions", {}).items()
+        }
+        return bool(_RESOLUTION_OPTIONS.intersection(options)) or str(
+            options.get("moduleresolution", "node")
+        ).lower() not in {"node", "node10"}
+    except (OSError, ValueError, AttributeError, RecursionError):
+        return True
+
+
+def _unsafe_ancestor_config(root: Path) -> bool:
+    parents = set(root.absolute().parents) | set(root.resolve().parents)
+    for parent in parents:
+        for name in _CONFIG_FILES:
+            config = parent / name
+            try:
+                config.stat()
+            except FileNotFoundError:
+                continue
+            except OSError:
+                return True
+            if _unmodeled_config(config):
+                return True
+    return False
+
+
+def _unsafe_nested_config(directory: Path) -> bool:
+    def scan_error(error: OSError) -> None:
+        raise error
+
+    try:
+        return any(
+            _unmodeled_config(folder / file)
+            for folder, _, files in directory.walk(on_error=scan_error)
+            for file in files
+            if file.lower() in _CONFIG_FILES
+        )
+    except OSError:
+        return True
+
+
 def module_layout(path: str | Path) -> tuple[bool, tuple[str, ...] | None]:
-    """Directory links and JS/TS filenames, including unparsed variants.
+    """Directory links and an on-disk filename snapshot for the JS/TS alias proof.
 
     Read filenames again for incremental assembly: a sibling can change
     import resolution without changing any cached source file.
     """
-    import os
-
     root = Path(path)
     if not root.is_dir():
         # Single-file extraction supplies no inventory of sibling modules.
@@ -100,13 +167,23 @@ def module_layout(path: str | Path) -> tuple[bool, tuple[str, ...] | None]:
     def scan_error(error: OSError) -> None:
         raise error
 
+    unsafe = _unsafe_ancestor_config(root)
     try:
         for current, directories, filenames in os.walk(
             root, followlinks=False, onerror=scan_error
         ):
+            if not unsafe:
+                unsafe = any(
+                    _unmodeled_config(Path(current) / name)
+                    for name in filenames
+                    if name.lower() in _CONFIG_FILES
+                )
             kept = []
             for name in directories:
                 if name in SKIP_PARTS:
+                    # A nested compiler project can affect the proof even
+                    # when extraction excludes its sources.
+                    unsafe = unsafe or _unsafe_nested_config(Path(current) / name)
                     continue
                 entry = Path(current) / name
                 if entry.is_symlink() or entry.is_junction():
@@ -114,15 +191,15 @@ def module_layout(path: str | Path) -> tuple[bool, tuple[str, ...] | None]:
                 else:
                     kept.append(name)
             directories[:] = kept
-            for name in filenames:
-                if name.lower().endswith(
-                    (".js", ".jsx", ".ts", ".tsx", ".mjs", ".mts", ".cjs", ".cts")
-                ):
-                    variants.append((Path(current) / name).relative_to(root).as_posix())
+            if not unsafe:
+                variants.extend(
+                    (Path(current) / name).relative_to(root).as_posix()
+                    for name in filenames
+                )
     except OSError:
         # An incomplete directory inventory cannot support an alias proof.
         return True, None
-    return linked, tuple(variants)
+    return linked, None if unsafe or linked else tuple(variants)
 
 
 def has_directory_symlink(path: str | Path) -> bool:
@@ -727,7 +804,7 @@ def assemble_symbol_graph(
     per-file ``scope_facts``, which every fact must then carry. Imports mode
     can also substitute a proven target for a renamed JS/TS import.
     ``language_filter`` is the run's ``language`` argument; the run's file
-    set comes from the facts. Supply any additional JS/TS variant filenames in
+    set comes from the facts. Supply the complete filename snapshot from module_layout in
     ``variant_paths``, or None if the inventory is incomplete. Assembly does
     no filesystem access.
     """

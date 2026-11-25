@@ -17,9 +17,9 @@ callable, or code can replace one by monkeypatching, writing to a closure
 cell or frame, or modifying an object recovered from an exception. Compiler
 lowering and loader hooks can also change what runs.
 
-When the declaration itself is uncertain, the resolver withholds the
-binding-based result. For example, if both `svc.js` and `svc.ts` could
-supply an import, `imports` mode leaves the name-based result in place.
+When both `svc.js` and `svc.ts` could supply a renamed import,
+`imports` mode withholds alias substitution and keeps the existing result.
+Ordinary imports retain their previous Tier 2 lookup behavior.
 
 ## Choose a mode
 
@@ -61,7 +61,12 @@ CommonJS emit can use a shadowed loader, and TypeScript helpers such as
 `Reflect` methods can intercept generated calls on the exports object, so
 only direct method calls on those names are accepted for substitution.
 Callers assembling previously collected facts must supply the filename
-inventory from `module_layout` to enable alias substitution.
+inventory from `module_layout` to enable alias substitution. It includes
+extensionless files, alternate source and declaration extensions, and directory
+indexes. An opaque directory package or compiler configuration can also
+prevent a unique lookup. This includes `moduleSuffixes`, `paths`, `baseUrl`,
+`rootDirs`, `customConditions`, `allowArbitraryExtensions`, inherited configs,
+and explicit resolution modes other than `node` or `node10`.
 
 Python is intentionally excluded from renamed-import substitution. A failed
 `delattr` can expose the exporting module through `AttributeError.obj`, so
